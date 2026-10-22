@@ -23,6 +23,7 @@ import {
 import { LupItem, CharlaSession, PalletJackReport, RfScannerReport, MainTab } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
 import { calculateElapsedHours, formatDurationHuman, getSlaHealth } from '../services/storage';
+import cdCialBg from '../assets/cd-cial-bg.png';
 
 interface DashboardProps {
   lups: LupItem[];
@@ -66,31 +67,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Zona Verde Hero Banner */}
-      <div className="bg-gradient-to-br from-[#005a2e] via-[#008744] to-[#004d27] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        {/* Subtle decorative circles */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-20 w-48 h-48 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
+      {/* Zona Verde Hero Banner with CIAL CD Background */}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/40 min-h-[300px] sm:min-h-[340px] flex items-center">
+        {/* Background Photo of CIAL CD */}
+        <img 
+          src={cdCialBg} 
+          alt="Centro de Distribución CIAL Alimentos" 
+          className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-105 filter brightness-95" 
+        />
 
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-emerald-100 mb-3 border border-white/20">
+        {/* Green Overlay - Balanced tint so text is ultra-readable and image is clearly perceived */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00381b]/95 via-[#005a2e]/88 to-[#004222]/82" />
+        
+        {/* Radial highlight for depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,168,84,0.35),transparent_70%)]" />
+
+        <div className="relative z-10 p-6 sm:p-10 max-w-3xl">
+          <div className="inline-flex items-center gap-2 bg-black/35 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-emerald-200 mb-3.5 border border-white/20 shadow-xs">
             <Zap className="w-3.5 h-3.5 fill-current text-amber-300" />
             <span>Área de Encuentro Operacional • Zona Verde CIAL</span>
           </div>
           
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2 leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-3 leading-tight drop-shadow-md">
             Gestión Diaria de Seguridad, LUPs y Equipos en CD Frío
           </h1>
-          <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed mb-6">
+          <p className="text-sm sm:text-base text-emerald-100/95 font-medium leading-relaxed mb-6 drop-shadow-xs max-w-2xl">
             Punto de partida del turno para realizar la <strong>Charla de 5 Minutos</strong>, reportar <strong>transpaletas dañadas</strong> y controlar el <strong>tiempo de respuesta del proveedor</strong>.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => onNavigate('charla-timer', featuredLup?.id)}
-              className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition transform active:scale-95 flex items-center gap-2 cursor-pointer"
+              className="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
             >
-              <Timer className="w-4 h-4 fill-current" />
+              <Timer className="w-4 h-4 fill-current text-slate-950" />
               <span>Iniciar Charla de 5 Minutos</span>
             </button>
 
@@ -98,9 +108,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               href={ARIEL_ONEDRIVE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-white/15 hover:bg-white/25 border border-white/25 text-white px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 cursor-pointer group"
+              className="bg-black/35 hover:bg-black/50 backdrop-blur-md border border-white/25 text-white px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 cursor-pointer group shadow-sm"
             >
-              <FolderSync className="w-4 h-4 text-emerald-200 group-hover:rotate-45 transition-transform" />
+              <FolderSync className="w-4 h-4 text-emerald-300 group-hover:rotate-45 transition-transform" />
               <span>Ver OneDrive Oficial LUPs</span>
               <ExternalLink className="w-3.5 h-3.5 opacity-80" />
             </a>

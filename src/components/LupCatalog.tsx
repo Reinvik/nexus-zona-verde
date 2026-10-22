@@ -21,6 +21,7 @@ import { LupItem, LupCategory } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
 import { saveLup } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
+import cdCialBg from '../assets/cd-cial-bg.png';
 
 interface LupCatalogProps {
   lups: LupItem[];
@@ -190,24 +191,37 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Hero Banner with OneDrive highlight */}
-      <div className="bg-gradient-to-r from-emerald-800 via-[#008744] to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-emerald-100 mb-3">
-            <BookOpen className="w-3.5 h-3.5" />
+      {/* Hero Banner with CIAL CD Background */}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/40 min-h-[280px] sm:min-h-[320px] flex items-center">
+        {/* Background Photo of CIAL CD */}
+        <img 
+          src={cdCialBg} 
+          alt="Centro de Distribución CIAL Alimentos" 
+          className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-105 filter brightness-95" 
+        />
+
+        {/* Green Overlay - Balanced tint so text is ultra-readable and image is clearly perceived */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00381b]/95 via-[#005a2e]/88 to-[#004222]/82" />
+        
+        {/* Radial highlight for depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,168,84,0.35),transparent_70%)]" />
+
+        <div className="relative z-10 p-6 sm:p-10 max-w-3xl">
+          <div className="inline-flex items-center gap-2 bg-black/35 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-emerald-200 mb-3.5 border border-white/20 shadow-xs">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
             <span>Biblioteca Operacional de LUPs con Fotos Do / Don't</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2.5 drop-shadow-md">
             Lecciones de Un Punto (LUP) para Charlas de 5 Minutos
           </h2>
-          <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed mb-6">
+          <p className="text-sm sm:text-base text-emerald-100/95 font-medium leading-relaxed mb-6 drop-shadow-xs max-w-2xl">
             Crea y consulta lecciones visuales con <strong>fotos de Caso Correcto ✅</strong> y <strong>Caso Incorrecto ❌</strong> para capacitar a los operadores en terreno.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowNewModal(true)}
-              className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition transform active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition transform active:scale-95 cursor-pointer font-sans"
             >
               <Plus className="w-4 h-4 fill-current text-slate-950" />
               <span>Crear Nueva LUP (con Fotos)</span>
@@ -217,9 +231,9 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               href={ARIEL_ONEDRIVE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white border border-white/20 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition cursor-pointer"
+              className="inline-flex items-center gap-2 bg-black/35 hover:bg-black/50 backdrop-blur-md text-white border border-white/25 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition cursor-pointer group shadow-sm"
             >
-              <FolderSync className="w-4 h-4 text-emerald-200" />
+              <FolderSync className="w-4 h-4 text-emerald-300 group-hover:rotate-45 transition-transform" />
               <span>OneDrive Oficial CIAL (Ariel Mella)</span>
               <ExternalLink className="w-3.5 h-3.5 text-emerald-200" />
             </a>
