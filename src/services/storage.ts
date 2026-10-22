@@ -1,12 +1,14 @@
-import { LupItem, LupAuditLog, CharlaSession, PalletJackReport, RfScannerReport } from '../types';
-import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS } from '../data/seedData';
+import { LupItem, LupAuditLog, CharlaSession, PalletJackReport, RfScannerReport, OperatorItem, AttendanceRecord } from '../types';
+import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
 
 const KEYS = {
   LUPS: 'cial_zv_lups_v1',
   AUDIT_LOGS: 'cial_zv_audit_logs_v1',
   CHARLAS: 'cial_zv_charlas_v1',
   PALLETS: 'cial_zv_pallets_v1',
-  RFS: 'cial_zv_rfs_v1'
+  RFS: 'cial_zv_rfs_v1',
+  OPERATORS: 'cial_zv_operators_v1',
+  ATTENDANCE: 'cial_zv_attendance_v1'
 };
 
 const INITIAL_AUDIT_LOGS: LupAuditLog[] = [
@@ -341,4 +343,113 @@ export function exportToCsv(filename: string, rows: Record<string, any>[]): void
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// ====================
+// OPERADORES & ASISTENCIA DIARIA
+// ====================
+
+export function getOperators(): OperatorItem[] {
+  try {
+    const raw = localStorage.getItem(KEYS.OPERATORS);
+    if (!raw) {
+      localStorage.setItem(KEYS.OPERATORS, JSON.stringify(INITIAL_OPERATORS));
+      return INITIAL_OPERATORS;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading operators from localStorage:', e);
+    return INITIAL_OPERATORS;
+  }
+}
+
+export function saveOperator(operator: OperatorItem): void {
+  try {
+    const current = getOperators();
+    const existingIndex = current.findIndex(o => o.id === operator.id);
+    let updated: OperatorItem[];
+    if (existingIndex >= 0) {
+      updated = [...current];
+      updated[existingIndex] = operator;
+    } else {
+      updated = [operator, ...current];
+    }
+    localStorage.setItem(KEYS.OPERATORS, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Error saving operator:', e);
+  }
+}
+
+export function deleteOperator(operatorId: string): void {
+  try {
+    const current = getOperators();
+    const updated = current.filter(o => o.id !== operatorId);
+    localStorage.setItem(KEYS.OPERATORS, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Error deleting operator:', e);
+  }
+}
+
+export function getAttendanceRecords(date?: string, shiftId?: string): AttendanceRecord[] {
+  try {
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    let all: AttendanceRecord[];
+    if (!raw) {
+      localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(INITIAL_ATTENDANCE));
+      all = INITIAL_ATTENDANCE;
+    } else {
+      all = JSON.parse(raw);
+    }
+    return all.filter(item => {
+      if (date && item.date !== date) return false;
+      if (shiftId && item.shiftId !== shiftId) return false;
+      return true;
+    });
+  } catch (e) {
+    console.error('Error reading attendance from localStorage:', e);
+    return INITIAL_ATTENDANCE;
+  }
+}
+
+export function saveAttendanceRecord(record: AttendanceRecord): void {
+  try {
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    const current: AttendanceRecord[] = raw ? JSON.parse(raw) : [...INITIAL_ATTENDANCE];
+    
+    const existingIndex = current.findIndex(
+      r => r.date === record.date && r.shiftId === record.shiftId && r.operatorId === record.operatorId
+    );
+    
+    let updated: AttendanceRecord[];
+    if (existingIndex >= 0) {
+      updated = [...current];
+      updated[existingIndex] = record;
+    } else {
+      updated = [record, ...current];
+    }
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Error saving attendance record:', e);
+  }
+}
+
+export function saveBulkAttendance(records: AttendanceRecord[]): void {
+  try {
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    let current: AttendanceRecord[] = raw ? JSON.parse(raw) : [...INITIAL_ATTENDANCE];
+    
+    for (const rec of records) {
+      const idx = current.findIndex(
+        r => r.date === rec.date && r.shiftId === rec.shiftId && r.operatorId === rec.operatorId
+      );
+      if (idx >= 0) {
+        current[idx] = rec;
+      } else {
+        current.push(rec);
+      }
+    }
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(current));
+  } catch (e) {
+    console.error('Error saving bulk attendance:', e);
+  }
 }

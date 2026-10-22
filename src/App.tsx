@@ -15,6 +15,7 @@ import {
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
+import { AttendanceModule } from './components/AttendanceModule';
 import { LupCatalog } from './components/LupCatalog';
 import { CharlaTimer } from './components/CharlaTimer';
 import { PalletJackModule } from './components/PalletJackModule';
@@ -147,6 +148,12 @@ export default function App() {
             }}
             onOpenPalletModal={handleOpenPalletReport}
             onOpenRfModal={handleOpenRfReport}
+          />
+        )}
+
+        {activeTab === 'asistencia' && (
+          <AttendanceModule
+            currentUserEmail={user?.email || 'ariel.mella@cial.cl'}
           />
         )}
 

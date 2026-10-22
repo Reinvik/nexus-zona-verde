@@ -18,7 +18,8 @@ import {
   Zap,
   Sun,
   Sunset,
-  Moon
+  Moon,
+  UserCheck
 } from 'lucide-react';
 import { LupItem, CharlaSession, PalletJackReport, RfScannerReport, MainTab } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
@@ -96,6 +97,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => onNavigate('asistencia')}
+              className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
+            >
+              <UserCheck className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+              <span>Pase de Lista de Turno</span>
+            </button>
+
             <button
               onClick={() => onNavigate('charla-timer', featuredLup?.id)}
               className="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
@@ -306,8 +315,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-3">
           Accesos Rápidos del Operador
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           
+          {/* Card 0: Pase de Lista Diario */}
+          <div 
+            onClick={() => onNavigate('asistencia')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                Turno Hoy
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 group-hover:text-emerald-700 transition-colors">
+                Pase de Lista
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Marcar presentes, atrasos, ausentes y licencias con 1 solo clic.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+              <span>Pasar Lista</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
           {/* Card 1: Dar Charla 5m */}
           <div 
             onClick={() => onNavigate('charla-timer')}

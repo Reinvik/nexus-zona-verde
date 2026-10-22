@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, 
+  UserCheck,
   BookOpen, 
   Timer, 
   Truck, 
@@ -31,6 +32,14 @@ export const Navigation: React.FC<NavigationProps> = ({
       shortLabel: 'Inicio',
       icon: LayoutDashboard,
       badge: null
+    },
+    {
+      id: 'asistencia' as MainTab,
+      label: 'Pase de Lista',
+      shortLabel: 'Asistencia',
+      icon: UserCheck,
+      badge: 'Turno',
+      badgeColor: 'bg-emerald-600 text-white'
     },
     {
       id: 'lups' as MainTab,

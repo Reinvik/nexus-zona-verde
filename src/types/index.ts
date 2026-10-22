@@ -51,7 +51,7 @@ export interface LupItem {
   modificationCount?: number; // Contador de ediciones
 }
 
-export type ShiftId = 'manana' | 'tarde' | 'noche';
+export type ShiftId = 'manana' | 'tarde' | 'noche' | 'turno-1' | 'turno-2' | 'turno-3';
 
 export type ShiftType = 'Turno 1 (Mañana 07:00 - 15:00)' | 'Turno 2 (Tarde 15:00 - 23:00)' | 'Turno 3 (Noche 23:00 - 07:00)';
 
@@ -150,9 +150,48 @@ export interface RfScannerReport {
 
 export type MainTab = 
   | 'dashboard' 
+  | 'asistencia'
   | 'lups' 
   | 'charla-timer' 
+  | 'historial-charlas' 
   | 'transpaletas' 
   | 'pistolas-rf' 
-  | 'historial-charlas' 
   | 'reportes-sla';
+
+// ========================
+// ASISTENCIA DIARIA / OPERADORES
+// ========================
+
+export type AttendanceStatus = 
+  | 'presente'
+  | 'tarde'
+  | 'ausente'
+  | 'licencia'
+  | 'justificada';
+
+export interface OperatorItem {
+  id: string;
+  name: string;
+  rut?: string;
+  role: string; // e.g. "Operador de Grúa", "Pickeador Frío", "Operador Transpaleta", "Despachador"
+  area: string; // e.g. "Andenes de Despacho", "Picking Cámara Frío P2", "Recepción Inbound", "Staging"
+  shiftId?: ShiftId; // default shift if any
+  active: boolean;
+  createdAt: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  shiftId: ShiftId;
+  shiftName: ShiftType;
+  operatorId: string;
+  operatorName: string;
+  operatorRole?: string;
+  operatorArea?: string;
+  status: AttendanceStatus;
+  arrivalTime?: string; // HH:mm if tarde
+  notes?: string;
+  registeredBy: string; // Supervisor / user email
+  updatedAt: string; // ISO string
+}
