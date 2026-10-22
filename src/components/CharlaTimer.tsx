@@ -252,249 +252,276 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Top Banner & LUP Selector */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-100 text-amber-900 font-extrabold text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                Modo Charla 5 Minutos
-              </span>
-              <span className="text-xs text-slate-500 font-semibold">
-                Estándar Gemba CIAL
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mt-1">
-              {activeLup ? activeLup.title : 'Selecciona una Lección (LUP)'}
-            </h2>
-          </div>
-
-          {/* LUP Selector Dropdown */}
-          <div className="w-full md:w-80">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              Cambiar Lección de 1 Punto (LUP):
-            </label>
-            <div className="relative">
-              <select
-                value={currentLupId}
-                onChange={(e) => {
-                  setCurrentLupId(e.target.value);
-                  onSelectLup(e.target.value);
-                  handleReset();
-                }}
-                className="w-full bg-slate-50 border border-slate-300 hover:border-emerald-500 text-slate-800 text-sm font-semibold rounded-xl px-3.5 py-2.5 appearance-none focus:outline-none focus:ring-2 focus:ring-[#008744] transition cursor-pointer pr-10"
-              >
-                {lups.map((lup) => (
-                  <option key={lup.id} value={lup.id}>
-                    [{lup.code}] {lup.title}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Big Industrial Timer Gauge */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      {/* Top Banner & LUP Main View */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-7 space-y-5">
+        
+        {/* Top Control Bar: LUP Title & Ultra-Compact Presenter Timer */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           
-          {/* Timer Display Box */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-xl border-4 border-slate-700/60 relative overflow-hidden">
+          {/* LUP Details on Left */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="bg-amber-100 text-amber-900 font-black text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Modo Charla 5 Minutos (Tablet Gemba)
+              </span>
+              <span className="font-mono text-xs font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                {activeLup ? activeLup.code : ''}
+              </span>
+              <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
+                • {activeLup?.area}
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+              {activeLup ? activeLup.title : 'Selecciona una Lección (LUP)'}
+            </h1>
+          </div>
+
+          {/* Ultra-Compact Scoreboard Timer Pill on Right */}
+          <div className="bg-slate-900 text-white rounded-2xl p-2.5 sm:px-4 sm:py-2.5 shadow-lg border border-slate-700/80 flex items-center gap-3 shrink-0 self-start lg:self-center">
             
-            {/* Background Glow */}
-            <div className={`absolute -top-24 -left-24 w-48 h-48 rounded-full blur-3xl opacity-30 ${
-              isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-            }`} />
-
-            {/* Sound Toggle */}
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-xl bg-white/10 transition"
-              title={soundEnabled ? 'Silenciar avisos sonoros' : 'Activar avisos sonoros'}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
-            </button>
-
-            {/* Badge */}
-            <span className="text-xs font-mono tracking-widest uppercase text-emerald-400 font-extrabold mb-2">
-              {isRunning ? 'CHARLA EN CURSO' : timeLeft === 0 ? '¡TIEMPO CUMPLIDO!' : 'LISTO PARA EXPLICAR'}
-            </span>
-
-            {/* Digital Digits */}
-            <div className={`text-6xl sm:text-7xl font-mono font-black tracking-tight my-2 drop-shadow-md ${
-              timeLeft === 0 
-                ? 'text-rose-400 animate-bounce' 
-                : timeLeft < 60 
-                ? 'text-amber-400' 
-                : 'text-white'
-            }`}>
-              {formatTime(timeLeft)}
+            {/* Digital Clock */}
+            <div className="flex items-center gap-2">
+              <div className={`text-2xl sm:text-3xl font-mono font-black tracking-tight ${
+                timeLeft === 0 
+                  ? 'text-rose-400 animate-bounce' 
+                  : timeLeft < 60 
+                  ? 'text-amber-400' 
+                  : 'text-white'
+              }`}>
+                {formatTime(timeLeft)}
+              </div>
+              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold hidden sm:inline">
+                {isRunning ? 'EN VIVO' : 'PAUSA'}
+              </span>
             </div>
 
-            {/* Progress Bar */}
-            <div className="w-full bg-slate-700 h-3 rounded-full mt-2 mb-6 overflow-hidden">
+            {/* Micro Progress Bar */}
+            <div className="w-12 bg-slate-700 h-2 rounded-full overflow-hidden hidden sm:block">
               <div 
-                className={`h-full transition-all duration-1000 ${
-                  timeLeft < 60 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
+                className={`h-full transition-all duration-1000 ${timeLeft < 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
 
-            {/* Main Tactile Buttons */}
-            <div className="flex items-center gap-3 w-full justify-center flex-wrap">
+            {/* Compact Action Buttons */}
+            <div className="flex items-center gap-1.5 border-l border-slate-700 pl-2.5">
               <button
                 onClick={handleTogglePlay}
-                className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl font-black text-sm tracking-wide shadow-lg transition transform active:scale-95 cursor-pointer ${
-                  isRunning
-                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                className={`p-2 rounded-xl font-bold transition transform active:scale-90 cursor-pointer ${
+                  isRunning 
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' 
                     : 'bg-[#008744] hover:bg-emerald-500 text-white'
                 }`}
+                title={isRunning ? 'Pausar tiempo' : 'Iniciar cronómetro'}
               >
-                {isRunning ? (
-                  <>
-                    <Pause className="w-5 h-5 fill-current" />
-                    <span>PAUSAR</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>{timeLeft === 300 ? 'INICIAR' : 'REANUDAR'}</span>
-                  </>
-                )}
+                {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
               </button>
 
               <button
                 onClick={handleAddMinute}
-                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-white p-3.5 rounded-2xl transition cursor-pointer font-bold text-xs flex items-center gap-1 shadow-sm"
-                title="Agregar 1 minuto adicional"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-2 py-1.5 rounded-xl text-[11px] font-black transition cursor-pointer"
+                title="Agregar 1 minuto"
               >
-                <Plus className="w-4 h-4" />
-                <span>1 MIN</span>
+                +1m
               </button>
 
               <button
                 onClick={handleReset}
-                className="bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-300 hover:text-white p-3.5 rounded-2xl transition cursor-pointer"
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
                 title="Reiniciar a 5:00"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
+                title={soundEnabled ? 'Silenciar avisos' : 'Activar avisos'}
+              >
+                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
               </button>
             </div>
 
-            {/* Finish Early / Record button */}
+            {/* Direct Register Button */}
             <button
               onClick={handleFinishEarly}
-              className="mt-4 text-xs font-bold text-emerald-300 hover:text-emerald-200 underline decoration-emerald-500/50 hover:decoration-emerald-400 transition cursor-pointer"
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer whitespace-nowrap active:scale-95"
             >
-              Registrar Charla Inmediatamente
+              Registrar Charla
             </button>
           </div>
 
-          {/* Operator Talking Guide (Cheatsheet) */}
-          <div className="lg:col-span-7 space-y-4">
+        </div>
+
+        {/* LUP Switcher Dropdown (Thin Bar) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+          <div className="flex items-center gap-2 text-slate-600 font-bold">
+            <span>Cambiar LUP para esta charla:</span>
+          </div>
+          <div className="relative w-full sm:w-96">
+            <select
+              value={currentLupId}
+              onChange={(e) => {
+                setCurrentLupId(e.target.value);
+                onSelectLup(e.target.value);
+                handleReset();
+              }}
+              className="w-full bg-white border border-slate-300 hover:border-emerald-500 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 appearance-none focus:outline-none focus:ring-2 focus:ring-[#008744] transition cursor-pointer pr-8"
+            >
+              {lups.map((lup) => (
+                <option key={lup.id} value={lup.id}>
+                  [{lup.code}] {lup.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-2 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* FULL WIDTH PROMINENT LUP PRESENTATION (TABLET-FIRST) */}
+        {activeLup ? (
+          <div className="space-y-5 pt-1">
             
-            {activeLup ? (
-              <>
-                {/* Objective Card */}
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                  <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs uppercase tracking-wider mb-1">
-                    <Award className="w-4 h-4 text-emerald-700" />
-                    <span>Objetivo de la Charla (1 Minuto para abrir):</span>
+            {/* Objective Banner */}
+            <div className="bg-emerald-50/90 border-2 border-emerald-300/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs uppercase tracking-wider mb-1">
+                <Award className="w-4 h-4 text-emerald-700" />
+                <span>Objetivo de la Charla para el Turno:</span>
+              </div>
+              <p className="text-base sm:text-lg font-bold text-emerald-950 leading-relaxed">
+                "{activeLup.objective}"
+              </p>
+            </div>
+
+            {/* DUAL COMPARISON: CASO CORRECTO VS CASO INCORRECTO - FULL WIDTH & BIG PHOTOS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              
+              {/* CASO CORRECTO (QUÉ SÍ HACER) */}
+              <div className="bg-green-50/80 border-3 border-emerald-500 rounded-3xl p-5 sm:p-6 shadow-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3.5">
+                    <span className="bg-emerald-600 text-white text-xs sm:text-sm font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs">
+                      <CheckCircle2 className="w-4 h-4" /> CASO CORRECTO (QUÉ SÍ HACER)
+                    </span>
+                    {activeLup.doPractice.photoSizeKb && (
+                      <span className="text-[10px] text-emerald-700 font-mono font-bold">
+                        📸 {activeLup.doPractice.photoSizeKb} KB
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm font-medium text-emerald-950 leading-relaxed">
-                    "{activeLup.objective}"
+
+                  {/* Big Hero Photo for Coworkers to See */}
+                  {activeLup.doPractice.photoUrl ? (
+                    <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-400 mb-4 h-56 sm:h-72 bg-emerald-100 shadow-sm">
+                      <img 
+                        src={activeLup.doPractice.photoUrl} 
+                        alt="Caso Correcto" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <span className="absolute bottom-2 left-2 bg-emerald-800/90 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
+                        ✅ PRÁCTICA ESTÁNDAR
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-dashed border-emerald-300 mb-4 h-44 flex items-center justify-center text-emerald-700/60 bg-emerald-50 font-bold text-sm">
+                      Sin fotografía registrada
+                    </div>
+                  )}
+
+                  <h3 className="text-lg sm:text-xl font-black text-emerald-950 mb-2">
+                    {activeLup.doPractice.title}
+                  </h3>
+                  <p className="text-sm text-emerald-900 font-medium mb-4 leading-relaxed">
+                    {activeLup.doPractice.description}
                   </p>
-                </div>
 
-                {/* Do vs Don't side by side */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  
-                  {/* DO ✅ */}
-                  <div className="bg-green-50/70 border-2 border-emerald-500/80 rounded-2xl p-4 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-emerald-800 font-black text-xs uppercase tracking-wider mb-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Lo Correcto (Qué SÍ hacer)</span>
-                    </div>
-
-                    {activeLup.doPractice.photoUrl && (
-                      <div className="relative rounded-xl overflow-hidden border border-emerald-400 mb-2.5 h-28 bg-emerald-100/50">
-                        <img src={activeLup.doPractice.photoUrl} alt="Caso Correcto" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1 left-1 bg-emerald-800/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                          📸 CASO CORRECTO
-                        </span>
-                      </div>
-                    )}
-
-                    <h4 className="text-sm font-bold text-emerald-950 mb-1.5">
-                      {activeLup.doPractice.title}
-                    </h4>
-                    <p className="text-xs text-emerald-900 mb-2 font-medium">
-                      {activeLup.doPractice.description}
-                    </p>
-                    <ul className="space-y-1.5">
+                  <div className="space-y-2">
+                    <span className="text-xs font-black uppercase text-emerald-800 block">Puntos Clave:</span>
+                    <ul className="space-y-2 text-sm text-emerald-900">
                       {activeLup.doPractice.points.map((pt, idx) => (
-                        <li key={idx} className="text-xs text-emerald-900 flex items-start gap-1.5">
-                          <span className="text-emerald-600 font-bold">•</span>
-                          <span>{pt}</span>
+                        <li key={idx} className="flex items-start gap-2 bg-white/70 p-2.5 rounded-xl border border-emerald-200">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="font-semibold">{pt}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-
-                  {/* DONT ❌ */}
-                  <div className="bg-rose-50/70 border-2 border-rose-400/80 rounded-2xl p-4 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-rose-800 font-black text-xs uppercase tracking-wider mb-2">
-                      <AlertTriangle className="w-4 h-4 text-rose-600" />
-                      <span>Prohibido (Qué NO hacer)</span>
-                    </div>
-
-                    {activeLup.dontPractice.photoUrl && (
-                      <div className="relative rounded-xl overflow-hidden border border-rose-400 mb-2.5 h-28 bg-rose-100/50">
-                        <img src={activeLup.dontPractice.photoUrl} alt="Caso Incorrecto" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1 left-1 bg-rose-800/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                          📸 CASO INCORRECTO
-                        </span>
-                      </div>
-                    )}
-
-                    <h4 className="text-sm font-bold text-rose-950 mb-1.5">
-                      {activeLup.dontPractice.title}
-                    </h4>
-                    <p className="text-xs text-rose-900 mb-2 font-medium">
-                      {activeLup.dontPractice.description}
-                    </p>
-                    <ul className="space-y-1.5">
-                      {activeLup.dontPractice.points.map((pt, idx) => (
-                        <li key={idx} className="text-xs text-rose-900 flex items-start gap-1.5">
-                          <span className="text-rose-600 font-bold">•</span>
-                          <span>{pt}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
                 </div>
+              </div>
 
-                {/* Key takeaway */}
-                {activeLup.safetyWarning && (
-                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-xl flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-xs font-semibold text-amber-900">
-                      <span className="font-bold">Advertencia Crítica:</span> {activeLup.safetyWarning}
-                    </p>
+              {/* CASO INCORRECTO (PROHIBIDO) */}
+              <div className="bg-rose-50/80 border-3 border-rose-400 rounded-3xl p-5 sm:p-6 shadow-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3.5">
+                    <span className="bg-rose-600 text-white text-xs sm:text-sm font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs">
+                      <AlertTriangle className="w-4 h-4" /> CASO INCORRECTO (PROHIBIDO)
+                    </span>
+                    {activeLup.dontPractice.photoSizeKb && (
+                      <span className="text-[10px] text-rose-700 font-mono font-bold">
+                        📸 {activeLup.dontPractice.photoSizeKb} KB
+                      </span>
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-slate-500 font-medium">
-                Selecciona una lección para visualizar la guía de la charla.
+
+                  {/* Big Hero Photo for Coworkers to See */}
+                  {activeLup.dontPractice.photoUrl ? (
+                    <div className="relative rounded-2xl overflow-hidden border-2 border-rose-400 mb-4 h-56 sm:h-72 bg-rose-100 shadow-sm">
+                      <img 
+                        src={activeLup.dontPractice.photoUrl} 
+                        alt="Caso Incorrecto" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <span className="absolute bottom-2 left-2 bg-rose-800/90 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
+                        ❌ RIESGO / CONDICIÓN INSEGURA
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-dashed border-rose-300 mb-4 h-44 flex items-center justify-center text-rose-700/60 bg-rose-50 font-bold text-sm">
+                      Sin fotografía registrada
+                    </div>
+                  )}
+
+                  <h3 className="text-lg sm:text-xl font-black text-rose-950 mb-2">
+                    {activeLup.dontPractice.title}
+                  </h3>
+                  <p className="text-sm text-rose-900 font-medium mb-4 leading-relaxed">
+                    {activeLup.dontPractice.description}
+                  </p>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-black uppercase text-rose-800 block">Peligros a Evitar:</span>
+                    <ul className="space-y-2 text-sm text-rose-900">
+                      {activeLup.dontPractice.points.map((pt, idx) => (
+                        <li key={idx} className="flex items-start gap-2 bg-white/70 p-2.5 rounded-xl border border-rose-200">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          <span className="font-semibold">{pt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Critical Safety Warning Banner */}
+            {activeLup.safetyWarning && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-xs flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs sm:text-sm font-semibold text-amber-950 leading-relaxed">
+                  <span className="font-black uppercase tracking-wider text-amber-900 block mb-0.5">Advertencia Crítica de Seguridad:</span>
+                  {activeLup.safetyWarning}
+                </p>
               </div>
             )}
 
           </div>
+        ) : (
+          <div className="text-center py-8 text-slate-500 font-medium">
+            Selecciona una lección para visualizar la guía de la charla.
+          </div>
+        )}
 
-        </div>
       </div>
 
       {/* Save Charla Modal */}
