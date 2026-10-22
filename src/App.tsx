@@ -150,6 +150,9 @@ export default function App() {
         {activeTab === 'historial-charlas' && (
           <HistorialCharlas
             charlas={charlas}
+            lups={lups}
+            onCharlasUpdated={loadData}
+            onNavigateToTimer={handleStartCharlaWithLup}
           />
         )}
 

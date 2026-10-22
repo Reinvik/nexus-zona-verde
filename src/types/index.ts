@@ -30,6 +30,8 @@ export interface LupItem {
   area: string;
 }
 
+export type ShiftId = 'manana' | 'tarde' | 'noche';
+
 export type ShiftType = 'Turno 1 (Mañana 07:00 - 15:00)' | 'Turno 2 (Tarde 15:00 - 23:00)' | 'Turno 3 (Noche 23:00 - 07:00)';
 
 export interface CharlaSession {
@@ -37,8 +39,10 @@ export interface CharlaSession {
   lupId: string;
   lupCode: string;
   lupTitle: string;
-  facilitator: string; // Operador o Supervisor que dictó la charla
+  facilitator: string; // Operador o Líder que dictó la charla
+  supervisor: string; // Supervisor formal a cargo del registro del turno
   shift: ShiftType;
+  shiftId: ShiftId;
   area: string; // e.g. "Andenes de Despacho", "Cámara Frigorífica P2"
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
@@ -46,6 +50,8 @@ export interface CharlaSession {
   attendeesCount: number;
   attendeesNotes?: string;
   keyAgreements?: string; // Acuerdos tomados en la charla
+  photoUrl?: string; // Foto liviana de evidencia de la charla
+  photoSizeKb?: number; // Tamaño en KB (< 80 KB)
   createdAt: string;
 }
 

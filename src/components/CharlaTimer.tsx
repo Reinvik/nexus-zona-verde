@@ -17,8 +17,10 @@ import {
   Printer
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { LupItem, CharlaSession, ShiftType } from '../types';
+import { LupItem, CharlaSession, ShiftType, ShiftId } from '../types';
 import { saveCharla } from '../services/storage';
+import { compressImageFile } from '../utils/imageCompressor';
+import { Camera, Image as ImageIcon, X } from 'lucide-react';
 
 interface CharlaTimerProps {
   lups: LupItem[];
@@ -92,11 +94,37 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
 
   // Registration Form State
   const [facilitator, setFacilitator] = useState<string>('');
+  const [supervisor, setSupervisor] = useState<string>('Carlos Venegas (Supervisor Turno)');
   const [shift, setShift] = useState<ShiftType>('Turno 1 (Mañana 07:00 - 15:00)');
   const [area, setArea] = useState<string>('Andenes de Despacho');
   const [attendeesCount, setAttendeesCount] = useState<number>(6);
   const [attendeesNotes, setAttendeesNotes] = useState<string>('');
   const [keyAgreements, setKeyAgreements] = useState<string>('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoSizeKb, setPhotoSizeKb] = useState<number | null>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 800, quality: 0.65 });
+        setPhotoPreview(dataUrl);
+        setPhotoSizeKb(sizeKb);
+      } catch (err) {
+        console.error('Error al comprimir foto:', err);
+      }
+    }
+  };
+
+  const handleSimulatePhoto = () => {
+    const samplePhotos = [
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop&q=60'
+    ];
+    setPhotoPreview(samplePhotos[Math.floor(Math.random() * samplePhotos.length)]);
+    setPhotoSizeKb(45);
+  };
 
   const timerRef = useRef<any>(null);
 
@@ -190,13 +218,17 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
     if (!activeLup) return;
 
     const now = new Date();
+    const shiftId: ShiftId = shift.includes('Mañana') ? 'manana' : shift.includes('Tarde') ? 'tarde' : 'noche';
+
     const session: CharlaSession = {
       id: `charla-${Date.now()}`,
       lupId: activeLup.id,
       lupCode: activeLup.code,
       lupTitle: activeLup.title,
       facilitator: facilitator.trim() || 'Operador / Líder Turno',
+      supervisor: supervisor.trim() || 'Supervisor de Turno CIAL',
       shift,
+      shiftId,
       area,
       date: now.toISOString().slice(0, 10),
       time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
@@ -204,11 +236,15 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
       attendeesCount: Math.max(1, attendeesCount),
       attendeesNotes: attendeesNotes.trim() || undefined,
       keyAgreements: keyAgreements.trim() || undefined,
+      photoUrl: photoPreview || undefined,
+      photoSizeKb: photoSizeKb || undefined,
       createdAt: now.toISOString()
     };
 
     saveCharla(session);
     setShowSaveModal(false);
+    setPhotoPreview(null);
+    setPhotoSizeKb(null);
     handleReset();
     onCharlaSaved();
   };
@@ -470,18 +506,34 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Facilitador (Operador o Líder de Turno) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Ariel Mella / Juan Pérez"
-                  value={facilitator}
-                  onChange={(e) => setFacilitator(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Facilitador (Operador o Líder) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Juan Pérez (Operador)"
+                    value={facilitator}
+                    onChange={(e) => setFacilitator(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Supervisor a Cargo del Registro *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Carlos Venegas / Ariel Mella"
+                    value={supervisor}
+                    onChange={(e) => setSupervisor(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -538,6 +590,55 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                     +
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Foto de Evidencia de la Charla (Formato Liviano)
+                </label>
+                
+                {photoPreview ? (
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 h-32 bg-slate-100 mb-2">
+                    <img src={photoPreview} alt="Evidencia" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-1 left-1 bg-black/70 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono font-bold">
+                      📸 Evidencia Liviana: {photoSizeKb ? `${photoSizeKb} KB` : 'Optimizado'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setPhotoSizeKb(null);
+                      }}
+                      className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1 rounded-full cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <label className="flex-1 border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-2.5 text-center cursor-pointer bg-slate-50 hover:bg-emerald-50/50 transition">
+                      <Camera className="w-5 h-5 text-slate-400 mx-auto mb-1" />
+                      <span className="text-xs font-bold text-slate-600 block">Tomar Foto del Equipo en Zona Verde</span>
+                      <span className="text-[10px] text-slate-400 block">Se comprime automáticamente (&lt; 80 KB)</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment" 
+                        onChange={handlePhotoUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleSimulatePhoto}
+                      className="px-3 border border-slate-200 hover:bg-slate-100 rounded-2xl text-[11px] font-bold text-slate-600 transition cursor-pointer shrink-0"
+                      title="Foto de muestra para pruebas rápidas"
+                    >
+                      Foto Test
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>

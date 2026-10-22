@@ -15,7 +15,10 @@ import {
   ChevronRight,
   TrendingUp,
   ShieldCheck,
-  Zap
+  Zap,
+  Sun,
+  Sunset,
+  Moon
 } from 'lucide-react';
 import { LupItem, CharlaSession, PalletJackReport, RfScannerReport, MainTab } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
@@ -52,9 +55,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const inRepairRfs = rfs.filter(r => r.status === 'en_taller' || r.status === 'retirada_proveedor');
   const overdueRfs = rfs.filter(r => r.status !== 'reparada' && r.status !== 'de_baja' && calculateElapsedHours(r.reportedAt) > 24);
 
-  // Today's talks
+  // Today's talks by shift
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCharlas = charlas.filter(c => c.date === todayStr);
+  const charlaManana = todayCharlas.find(c => c.shiftId === 'manana' || c.shift.includes('Mañana'));
+  const charlaTarde = todayCharlas.find(c => c.shiftId === 'tarde' || c.shift.includes('Tarde'));
+  const charlaNoche = todayCharlas.find(c => c.shiftId === 'noche' || c.shift.includes('Noche'));
+  const turnosDoneCount = (charlaManana ? 1 : 0) + (charlaTarde ? 1 : 0) + (charlaNoche ? 1 : 0);
 
   return (
     <div className="space-y-6 pb-12">
@@ -98,6 +105,153 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <ExternalLink className="w-3.5 h-3.5 opacity-80" />
             </a>
           </div>
+        </div>
+      </div>
+
+      {/* 3 Turnos Diarios Status Widget */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#008744]" />
+                Estado de Charlas LUP Hoy (3 Turnos de Planta)
+              </span>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                turnosDoneCount === 3 
+                  ? 'bg-emerald-100 text-emerald-800' 
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {turnosDoneCount} de 3 Realizadas
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              Supervisión activa de reuniones de 5 minutos en andenes, cámaras de frío y almacenamiento.
+            </p>
+          </div>
+
+          <button
+            onClick={() => onNavigate('historial-charlas')}
+            className="text-xs font-bold text-[#008744] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Ver Registro Completo y Fotos</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          
+          {/* Turno Mañana */}
+          <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between ${
+            charlaManana ? 'bg-emerald-50/70 border-emerald-300' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                charlaManana ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-700'
+              }`}>
+                <Sun className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-slate-500 block">
+                  Turno Mañana (07:00 - 15:00)
+                </span>
+                <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
+                  {charlaManana ? `[${charlaManana.lupCode}] ${charlaManana.lupTitle}` : 'Sin registro aún'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium block">
+                  {charlaManana ? `Sup: ${charlaManana.supervisor || 'Carlos Venegas'}` : 'Pendiente'}
+                </span>
+              </div>
+            </div>
+
+            {charlaManana ? (
+              <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full shrink-0">
+                ✅ OK
+              </span>
+            ) : (
+              <button
+                onClick={() => onNavigate('historial-charlas')}
+                className="text-[11px] font-bold text-amber-700 hover:text-amber-800 underline shrink-0 cursor-pointer"
+              >
+                + Registrar
+              </button>
+            )}
+          </div>
+
+          {/* Turno Tarde */}
+          <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between ${
+            charlaTarde ? 'bg-emerald-50/70 border-emerald-300' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                charlaTarde ? 'bg-emerald-600 text-white' : 'bg-orange-100 text-orange-700'
+              }`}>
+                <Sunset className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-slate-500 block">
+                  Turno Tarde (15:00 - 23:00)
+                </span>
+                <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
+                  {charlaTarde ? `[${charlaTarde.lupCode}] ${charlaTarde.lupTitle}` : 'Sin registro aún'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium block">
+                  {charlaTarde ? `Sup: ${charlaTarde.supervisor || 'Rodrigo Morales'}` : 'Pendiente'}
+                </span>
+              </div>
+            </div>
+
+            {charlaTarde ? (
+              <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full shrink-0">
+                ✅ OK
+              </span>
+            ) : (
+              <button
+                onClick={() => onNavigate('historial-charlas')}
+                className="text-[11px] font-bold text-amber-700 hover:text-amber-800 underline shrink-0 cursor-pointer"
+              >
+                + Registrar
+              </button>
+            )}
+          </div>
+
+          {/* Turno Noche */}
+          <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between ${
+            charlaNoche ? 'bg-emerald-50/70 border-emerald-300' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                charlaNoche ? 'bg-emerald-600 text-white' : 'bg-indigo-100 text-indigo-700'
+              }`}>
+                <Moon className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-slate-500 block">
+                  Turno Noche (23:00 - 07:00)
+                </span>
+                <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
+                  {charlaNoche ? `[${charlaNoche.lupCode}] ${charlaNoche.lupTitle}` : 'Sin registro aún'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium block">
+                  {charlaNoche ? `Sup: ${charlaNoche.supervisor || 'Cristian Castro'}` : 'Pendiente'}
+                </span>
+              </div>
+            </div>
+
+            {charlaNoche ? (
+              <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full shrink-0">
+                ✅ OK
+              </span>
+            ) : (
+              <button
+                onClick={() => onNavigate('historial-charlas')}
+                className="text-[11px] font-bold text-amber-700 hover:text-amber-800 underline shrink-0 cursor-pointer"
+              >
+                + Registrar
+              </button>
+            )}
+          </div>
+
         </div>
       </div>
 
