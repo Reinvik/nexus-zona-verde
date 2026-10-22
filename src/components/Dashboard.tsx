@@ -1,0 +1,427 @@
+import React from 'react';
+import { 
+  Timer, 
+  Truck, 
+  ScanBarcode, 
+  BookOpen, 
+  AlertTriangle, 
+  CheckCircle2, 
+  ExternalLink, 
+  FolderSync, 
+  Plus, 
+  Clock, 
+  Users, 
+  Sparkles, 
+  ChevronRight,
+  TrendingUp,
+  ShieldCheck,
+  Zap
+} from 'lucide-react';
+import { LupItem, CharlaSession, PalletJackReport, RfScannerReport, MainTab } from '../types';
+import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
+import { calculateElapsedHours, formatDurationHuman, getSlaHealth } from '../services/storage';
+
+interface DashboardProps {
+  lups: LupItem[];
+  charlas: CharlaSession[];
+  pallets: PalletJackReport[];
+  rfs: RfScannerReport[];
+  onNavigate: (tab: MainTab, lupId?: string) => void;
+  onOpenPalletModal: () => void;
+  onOpenRfModal: () => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
+  lups,
+  charlas,
+  pallets,
+  rfs,
+  onNavigate,
+  onOpenPalletModal,
+  onOpenRfModal
+}) => {
+  // LUP of the day (first or recommended)
+  const featuredLup = lups[0];
+
+  // Equipment stats
+  const pendingPallets = pallets.filter(p => p.status === 'pendiente');
+  const inRepairPallets = pallets.filter(p => p.status === 'en_taller' || p.status === 'retirada_proveedor');
+  const overduePallets = pallets.filter(p => p.status !== 'reparada' && p.status !== 'de_baja' && calculateElapsedHours(p.reportedAt) > 48);
+
+  const pendingRfs = rfs.filter(r => r.status === 'pendiente');
+  const inRepairRfs = rfs.filter(r => r.status === 'en_taller' || r.status === 'retirada_proveedor');
+  const overdueRfs = rfs.filter(r => r.status !== 'reparada' && r.status !== 'de_baja' && calculateElapsedHours(r.reportedAt) > 24);
+
+  // Today's talks
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCharlas = charlas.filter(c => c.date === todayStr);
+
+  return (
+    <div className="space-y-6 pb-12">
+      
+      {/* Zona Verde Hero Banner */}
+      <div className="bg-gradient-to-br from-[#005a2e] via-[#008744] to-[#004d27] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        {/* Subtle decorative circles */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-20 w-48 h-48 rounded-full bg-emerald-400/20 blur-xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-3xl">
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-emerald-100 mb-3 border border-white/20">
+            <Zap className="w-3.5 h-3.5 fill-current text-amber-300" />
+            <span>Área de Encuentro Operacional • Zona Verde CIAL</span>
+          </div>
+          
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2 leading-tight">
+            Gestión Diaria de Seguridad, LUPs y Equipos en CD Frío
+          </h1>
+          <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed mb-6">
+            Punto de partida del turno para realizar la <strong>Charla de 5 Minutos</strong>, reportar <strong>transpaletas dañadas</strong> y controlar el <strong>tiempo de respuesta del proveedor</strong>.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => onNavigate('charla-timer', featuredLup?.id)}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition transform active:scale-95 flex items-center gap-2 cursor-pointer"
+            >
+              <Timer className="w-4 h-4 fill-current" />
+              <span>Iniciar Charla de 5 Minutos</span>
+            </button>
+
+            <a
+              href={ARIEL_ONEDRIVE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white/15 hover:bg-white/25 border border-white/25 text-white px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 cursor-pointer group"
+            >
+              <FolderSync className="w-4 h-4 text-emerald-200 group-hover:rotate-45 transition-transform" />
+              <span>Ver OneDrive Oficial LUPs</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Critical SLA Alerts (if any) */}
+      {(overduePallets.length > 0 || overdueRfs.length > 0) && (
+        <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-rose-950 uppercase tracking-wide">
+                  Alerta de SLA Proveedor: Equipos con Tiempo Excedido
+                </h3>
+                <button
+                  onClick={() => onNavigate('reportes-sla')}
+                  className="text-xs font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer"
+                >
+                  Ver Tablero SLA
+                </button>
+              </div>
+              <p className="text-xs text-rose-800 mt-1 font-medium leading-relaxed">
+                {overduePallets.length > 0 && (
+                  <span>
+                    • <strong>{overduePallets.length} transpaleta(s)</strong> superan las 48h con el proveedor ({overduePallets.map(p => p.code).join(', ')}).{' '}
+                  </span>
+                )}
+                {overdueRfs.length > 0 && (
+                  <span>
+                    • <strong>{overdueRfs.length} pistola(s) RF</strong> superan las 24h en soporte ({overdueRfs.map(r => r.code).join(', ')}).
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Action Cards (Tactile for operators) */}
+      <div>
+        <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-3">
+          Accesos Rápidos del Operador
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Card 1: Dar Charla 5m */}
+          <div 
+            onClick={() => onNavigate('charla-timer')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-amber-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Timer className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                5 Minutos
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 group-hover:text-amber-600 transition-colors">
+                Modo Charla 5 Min
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Cronómetro visual y guía de puntos clave para explicar frente al equipo.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
+              <span>Iniciar Cronómetro</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 2: Levantar Transpaleta */}
+          <div 
+            onClick={() => onNavigate('transpaletas')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Truck className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                {pendingPallets.length} Pendientes
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 group-hover:text-[#008744] transition-colors">
+                Transpaletas Manuales
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Levantar fallas de aceite, ruedas o timón y medir tiempo de respuesta del proveedor.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+              <span>Reportar / Ver Estado</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 3: Reportar Pistola RF */}
+          <div 
+            onClick={() => onNavigate('pistolas-rf')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-indigo-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <ScanBarcode className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                {pendingRfs.length} Pendientes
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 group-hover:text-indigo-600 transition-colors">
+                Pistolas RF Zebra/HW
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Reportar pantallas rotas, gatillos trabados o fallas Wi-Fi con foto adjunta.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
+              <span>Reportar / Ver Estado</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 4: Catálogo de LUPs */}
+          <div 
+            onClick={() => onNavigate('lups')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-teal-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <span className="text-[10px] font-extrabold bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-full">
+                {lups.length} Disponibles
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 group-hover:text-teal-700 transition-colors">
+                Catálogo de LUPs
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Seguridad SSO, Cadena de Frío, Buenas Prácticas y Procedimientos 5S.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-teal-700">
+              <span>Explorar Biblioteca</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Featured LUP of Shift + Equipment Snapshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LUP of Shift (7 cols) */}
+        <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                LUP Recomendada del Turno
+              </span>
+              <span className="font-mono text-xs font-bold text-slate-500">
+                {featuredLup?.code}
+              </span>
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 mb-2">
+              {featuredLup?.title}
+            </h3>
+            <p className="text-xs text-slate-600 font-medium leading-relaxed mb-4">
+              {featuredLup?.summary}
+            </p>
+
+            {/* Quick Do/Don't visual box */}
+            {featuredLup && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 mb-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>SÍ HACER:</span>
+                  </div>
+                  <p className="text-xs text-emerald-950 font-medium">
+                    {featuredLup.doPractice.title}
+                  </p>
+                </div>
+
+                <div className="bg-rose-50/70 border border-rose-300 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1 mb-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>PROHIBIDO:</span>
+                  </div>
+                  <p className="text-xs text-rose-950 font-medium">
+                    {featuredLup.dontPractice.title}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <span className="text-xs text-slate-400 font-medium">
+              Duración recomendada: <strong>5 minutos</strong>
+            </span>
+            <button
+              onClick={() => onNavigate('charla-timer', featuredLup?.id)}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Timer className="w-4 h-4 fill-current" />
+              <span>Explicar esta LUP</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Operational Equipment Status Summary (5 cols) */}
+        <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-black text-slate-800">
+                Disponibilidad de Recursos Gemba
+              </h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                Estado Actual
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              
+              {/* Transpaletas bar */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <Truck className="w-4 h-4 text-emerald-600" />
+                    <span>Transpaletas Manuales</span>
+                  </span>
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    {pallets.filter(p => p.status === 'reparada').length} de {pallets.length} Operativas
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+                  <div 
+                    className="bg-emerald-500 h-full"
+                    style={{ width: `${pallets.length > 0 ? (pallets.filter(p => p.status === 'reparada').length / pallets.length) * 100 : 0}%` }}
+                    title="Operativas"
+                  />
+                  <div 
+                    className="bg-amber-500 h-full"
+                    style={{ width: `${pallets.length > 0 ? (pendingPallets.length / pallets.length) * 100 : 0}%` }}
+                    title="Pendientes Retiro"
+                  />
+                  <div 
+                    className="bg-purple-500 h-full"
+                    style={{ width: `${pallets.length > 0 ? (inRepairPallets.length / pallets.length) * 100 : 0}%` }}
+                    title="En Taller"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1 font-semibold">
+                  <span className="text-emerald-700">🟢 Operativas</span>
+                  <span className="text-amber-700">🟡 {pendingPallets.length} por retirar</span>
+                  <span className="text-purple-700">🟣 {inRepairPallets.length} en taller</span>
+                </div>
+              </div>
+
+              {/* Pistolas RF bar */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <ScanBarcode className="w-4 h-4 text-indigo-600" />
+                    <span>Pistolas RF (Zebra / HW)</span>
+                  </span>
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    {rfs.filter(r => r.status === 'reparada').length} de {rfs.length} Operativas
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+                  <div 
+                    className="bg-emerald-500 h-full"
+                    style={{ width: `${rfs.length > 0 ? (rfs.filter(r => r.status === 'reparada').length / rfs.length) * 100 : 0}%` }}
+                    title="Operativas"
+                  />
+                  <div 
+                    className="bg-amber-500 h-full"
+                    style={{ width: `${rfs.length > 0 ? (pendingRfs.length / rfs.length) * 100 : 0}%` }}
+                    title="Pendientes"
+                  />
+                  <div 
+                    className="bg-indigo-500 h-full"
+                    style={{ width: `${rfs.length > 0 ? (inRepairRfs.length / rfs.length) * 100 : 0}%` }}
+                    title="En Soporte TI"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1 font-semibold">
+                  <span className="text-emerald-700">🟢 Operativas</span>
+                  <span className="text-amber-700">🟡 {pendingRfs.length} por retirar</span>
+                  <span className="text-indigo-700">🟣 {inRepairRfs.length} en soporte TI</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+            <button
+              onClick={() => onNavigate('transpaletas')}
+              className="text-[#008744] hover:underline cursor-pointer"
+            >
+              Gestionar Transpaletas →
+            </button>
+            <button
+              onClick={() => onNavigate('pistolas-rf')}
+              className="text-indigo-600 hover:underline cursor-pointer"
+            >
+              Gestionar RFs →
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+};
