@@ -4,6 +4,293 @@ export const ARIEL_ONEDRIVE_URL = "https://grupocial-my.sharepoint.com/:f:/g/per
 
 export const INITIAL_LUPS: LupItem[] = [
   {
+    id: 'lup-cial-01',
+    code: 'LUP-DES-01',
+    title: 'Estándar de Filmado y Consolidación de Pallets',
+    category: 'Calidad & BPM',
+    summary: 'Estandarizar el enfilmado superior de cajas y prohibir el uso de pallets rotos o con tacos astillados para evitar aplastamientos y caídas.',
+    objective: 'Mejorar la estabilidad de la carga, evitar daños por aplastamiento y mantener un mismo estándar entre turnos: las cajas superiores del consolidado deben ir recubiertas con film stretch sin quedar sueltas, y está estrictamente prohibido usar pallets en mal estado o con partes faltantes.',
+    durationMinutes: 5,
+    area: 'Despacho / Outbound',
+    author: 'Analista de Mejora Continua / Jefe Eficiencia Operacional',
+    createdAt: '2026-10-20T08:00:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Cajas bien enfilmadas en consolidación y pallet íntegro',
+      description: 'Recubrir las cajas superiores con film stretch tenso y estibar únicamente sobre pallets en perfecto estado estructural.',
+      points: [
+        'Recubrir las capas superiores con film stretch asegurando que ninguna caja quede suelta ni con holgura.',
+        'Inspección visual obligatoria durante la consolidación realizada por los operadores.',
+        'Verificación final del supervisor antes de autorizar la carga a la rampla.'
+      ],
+      photoUrl: '/lups/pallets_y_film/image1-opt.jpg',
+      photoSizeKb: 34
+    },
+    dontPractice: {
+      title: 'Cajas sueltas sin film y pallets quebrados aplastando cajas',
+      description: 'Dejar cajas superiores sueltas sin enfilmar o consolidar sobre pallets con tacos rajados o partes faltantes.',
+      points: [
+        '❌ NUNCA dejar cajas o bandejas sueltas en la consolidación sin enfilmar.',
+        '❌ NUNCA estibar sobre pallets quebrados que aplastan los productos con el taco.',
+        '❌ PROHIBIDO utilizar pallets con partes o tablas faltantes al consolidar.'
+      ],
+      photoUrl: '/lups/pallets_y_film/image7-opt.jpg',
+      photoSizeKb: 23
+    },
+    keyPoints: [
+      'Devolución inmediata de pallets en mal estado detectados desde picking.',
+      'Inspección visual obligatoria durante la consolidación realizada por operadores.',
+      'Verificación final del supervisor antes de la carga a rampla.'
+    ],
+    safetyWarning: 'Las cajas mal consolidadas generan mermas por caída durante el transporte o maniobras de descarga en el Zonal.'
+  },
+  {
+    id: 'lup-cial-02',
+    code: 'LUP-PCK-01',
+    title: 'Buenas Prácticas en el Proceso de Picking (Consumo por Camadas)',
+    category: 'Operación de Equipos',
+    summary: 'Consumir pallets por camadas completas y retirar de inmediato productos no conformes para erradicar diferencias de inventario y caídas.',
+    objective: 'Eliminar prácticas inadecuadas que generan retrasos y mermas: consumir un pallet por completo antes de abrir otro, pickear por camadas y segregar productos con daño mecánico o pérdida de vacío.',
+    durationMinutes: 5,
+    area: 'Picking / Outbound',
+    author: 'Analista de Inventarios / Supervisión Picking',
+    createdAt: '2026-10-20T08:30:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Pickeo estricto por camadas y retiro inmediato de no conformes',
+      description: 'Agotar la camada completa en forma horizontal y apartar productos con daño o pérdida de vacío a la zona delimitada.',
+      points: [
+        'Picking se realiza por camadas terminando de consumir por completo un pallet antes de abrir otro.',
+        'Respetar el orden secuencial de pallets en la posición de picking.',
+        'Retirar y/o botar alusa y retirar pallets vacíos oportunamente para evitar tropiezos.'
+      ],
+      photoUrl: '/lups/buenas_practica_picking/image5-opt.jpg',
+      photoSizeKb: 58
+    },
+    dontPractice: {
+      title: 'Pickeo en pozo/escalera y acumulación de producto dañado',
+      description: 'Sacar cajas de camadas inferiores dejando voladizos inestables o dejar productos rotos en la ubicación.',
+      points: [
+        '❌ NUNCA consumir un pallet nuevo antes de terminar de consumir el pallet en curso.',
+        '❌ NUNCA pickear dejando huecos en el centro o efecto escalera con riesgo de derrumbe.',
+        '❌ NUNCA dejar productos con daño mecánico o pérdida de vacío en las ubicaciones de picking.'
+      ],
+      photoUrl: '/lups/buenas_practica_picking/image4-opt.jpg',
+      photoSizeKb: 76
+    },
+    keyPoints: [
+      'Respetar pickeo por camadas de producto sin saltarse niveles.',
+      'Retirar y/o botar alusa y pallets según aplique manteniendo orden 5S.',
+      'Posicionar productos con no conformidades en la debida zona delimitada.'
+    ],
+    safetyWarning: 'Riesgo de desplome de carga sobre el operador, atrapamiento de film en ruedas de transpaleta y tropiezos en pasillos.'
+  },
+  {
+    id: 'lup-cial-03',
+    code: 'LUP-DES-02',
+    title: 'Altura Máxima de Armado para Zonales (Límite 2.0 Metros)',
+    category: 'Despacho & Zonales',
+    summary: 'Estandarizar la altura de pallets a un máximo óptimo de 2.0 metros tomando como guía visual los separadores de andenes.',
+    objective: 'Estandarizar el proceso de carga para envíos a Zonales a 2.0 metros máximos, evitando que las cajas choquen con la cortina térmica de congelados dentro de la rampa y facilitando la descarga en destino.',
+    durationMinutes: 5,
+    area: 'Despacho / Andenes',
+    author: 'Francisco Lara / Moisés Cermeño (Mejora Continua CIAL)',
+    createdAt: '2026-10-20T09:00:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Pallet nivelado hasta 2.0 metros (Línea de separador de andén)',
+      description: 'Armar pallets de estándar (cajas) y bandejas respetando el límite de 2.0m marcado en los separadores de andenes.',
+      points: [
+        'Tomar como referencia visual permanente los separadores de andenes de despacho.',
+        'Garantizar holgura libre para el cierre correcto de la cortina térmica de congelados.',
+        'Facilitar una descarga limpia y sin roces al llegar a la cámara de la Zonal.'
+      ],
+      photoUrl: '/lups/altura_maxima/image5-opt.jpg',
+      photoSizeKb: 38
+    },
+    dontPractice: {
+      title: 'Pallet sobredimensionado sobre 2.0 metros',
+      description: 'Apilar cajas o bandejas excediendo la altura límite de 2.0m, impactando el techo y cortinas de la rampa.',
+      points: [
+        '❌ NUNCA sobrepasar los 2.0 metros de altura en envíos a Zonales.',
+        '❌ NUNCA forzar la entrada a rampla si las cajas rozan la cortina térmica.',
+        '❌ EVITAR armados cónicos o inclinados que comprometan la verticalidad del pallet.'
+      ],
+      photoUrl: '/lups/altura_maxima/image4-opt.jpg',
+      photoSizeKb: 44
+    },
+    keyPoints: [
+      'Aplica tanto para la carga en andén como para las descargas en zonales.',
+      'Evita daños en cortinas, evaporadores y estructuras de camiones frigoríficos.',
+      'Reduce tiempos muertos y riesgos de maniobra en andenes de recepción de zonales.'
+    ],
+    safetyWarning: 'El choque de cajas con el techo de la rampla genera rotura de envases y riesgo de aplastamiento al abrir el camión.'
+  },
+  {
+    id: 'lup-cial-04',
+    code: 'LUP-REC-01',
+    title: 'Almacenamiento y Reposiciones: Observar, Revisar y Capturar Tarja',
+    category: 'Calidad / Inocuidad',
+    summary: 'Inspección ocular rigurosa antes de capturar tarja con grúa para corroborar SKU, cantidades reales y lote v/s físico.',
+    objective: 'Reforzar el principio "Observar, revisar y capturar": verificar que la tarja corresponda exactamente al contenido del pallet antes de ingresar o reponer en rack, eliminando descuadres de inventario.',
+    durationMinutes: 5,
+    area: 'Recepción & Almacenamiento (Rack Frío)',
+    author: 'Operador de Grúa / Jefe de Turno CIAL',
+    createdAt: '2026-10-20T09:30:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Chequeo visual completo antes de capturar tarja con RF',
+      description: 'Comprobar visualmente el producto físico, cantidad de bultos y etiqueta antes de registrar en el sistema.',
+      points: [
+        'Efectuar un chequeo visual previo antes de capturar la tarja en el sistema WMS.',
+        'Corroborar que las cantidades reales y el SKU coincidan al 100% con la tarja física.',
+        'Reportar de inmediato a supervisión cualquier inconsistencia detectada.'
+      ],
+      photoUrl: '/lups/proceso_de_almacenamiento_-_reposiciones/image1-opt.jpg',
+      photoSizeKb: 35
+    },
+    dontPractice: {
+      title: 'Captura de tarja a ciegas sin corroborar contenido físico',
+      description: 'Escanear tarjas desde la cabina sin comprobar el producto real o almacenar pallets con rótulos cambiados.',
+      points: [
+        '❌ NUNCA capturar tarjas sin tener visibilidad directa del material físico.',
+        '❌ NUNCA asumir que el conteo está correcto sin verificar camadas y cajas.',
+        '❌ PROHIBIDO ingresar pallets al rack si la tarja no coincide con el producto.'
+      ],
+      photoUrl: '/lups/proceso_de_almacenamiento_-_reposiciones/image2-opt.jpg',
+      photoSizeKb: 29
+    },
+    keyPoints: [
+      'Inspección de pallet y material antes de capturar tarja.',
+      'Efectuar registro de compromiso de cada operador de grúa horquilla.',
+      'Realizar seguimiento por parte de supervisores a pallets declarados con incongruencias.'
+    ],
+    safetyWarning: 'Errores en la captura de tarjas provocan entregas equivocadas a clientes y pérdidas de trazabilidad sanitaria.'
+  },
+  {
+    id: 'lup-cial-05',
+    code: 'LUP-DES-03',
+    title: 'Consolidación de Pallets: Etiquetas HU y Timbres Visibles para Zonales',
+    category: 'Despacho & Zonales',
+    summary: 'Verificar Zonal y timbre en HU, dejando la etiqueta visible y legible en una esquina exterior del pallet consolidado.',
+    objective: 'Garantizar la visibilidad inmediata de la Zonal de destino y timbre de control de picking en la HU, evitando pallets extraviados o despachados por error a otra región.',
+    durationMinutes: 5,
+    area: 'Despacho & Control Picking',
+    author: 'Supervisores Despacho / Jefe de Turno CIAL',
+    createdAt: '2026-10-20T10:00:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Etiqueta HU en esquina frontal a la vista y legible',
+      description: 'Verificar Zonal y timbre en HU; colocarla en una esquina a la vista protegida con film transparente.',
+      points: [
+        'Se verifica Zonal y timbre en HU durante el control de picking.',
+        'Despacho dejará en una esquina a la vista y legible las etiquetas durante la consolidación.',
+        'Permitir escaneo instantáneo con pistolas RF desde el andén sin desenfilmar.'
+      ],
+      photoUrl: '/lups/eitquetas/image2-opt.jpg',
+      photoSizeKb: 75
+    },
+    dontPractice: {
+      title: 'Etiqueta desechada, tapada con film negro o no visible',
+      description: 'Ocultar la etiqueta bajo capas de film oscuro, dejarla arrugada o botarla al consolidar.',
+      points: [
+        '❌ NUNCA desechar la etiqueta HU durante el enfilmado del pallet.',
+        '❌ NUNCA tapar la etiqueta con cinta opaca o film oscuro.',
+        '❌ PROHIBIDO despachar pallets cuya Zonal no sea legible a 2 metros de distancia.'
+      ],
+      photoUrl: '/lups/eitquetas/image3-opt.jpg',
+      photoSizeKb: 74
+    },
+    keyPoints: [
+      'Chequeo conjunto en punto de control picking / despacho.',
+      'La etiqueta HU visible previene despachos equivocados a Zonales.',
+      'Garantiza la trazabilidad por bulto en caso de reclamo o auditoría de transporte.'
+    ],
+    safetyWarning: 'Un pallet enviado a una Zonal equivocada (ej: Puerto Montt en lugar de Temuco) implica quiebre de stock en sucursal y sobrecosto de flete refrigerado.'
+  },
+  {
+    id: 'lup-cial-06',
+    code: 'LUP-DES-04',
+    title: 'Orden de Andén: Segregación Térmica (Refrigerado, Congelado, Variable)',
+    category: 'Cadena de Frío',
+    summary: 'Estandarizar la disposición en andén agrupando productos Estándar, Variable y Congelado para proteger el frío y optimizar la cubicación.',
+    objective: 'Efectuar ordenamiento estandarizado en andén segregando Refrigerado, Congelado y Variable en sus posiciones correspondientes, asegurando un carguío óptimo en rampla y preservando la cadena de frío.',
+    durationMinutes: 5,
+    area: 'Andenes de Despacho Outbound',
+    author: 'Supervisores Despacho / Jefe de Turno CIAL',
+    createdAt: '2026-10-20T10:30:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Andén estandarizado y segregado por temperatura y formato',
+      description: 'Disponer pallets en andén alineados por Estándar, Variable y Congelado con cajas trabadas y formatos ídem.',
+      points: [
+        'Inspección regular de pallets y cajas antes de posicionar en andén.',
+        'Disponer pallets con SKU de la misma unidad de medida y formato.',
+        'Correcto apilamiento de cajas formatos ídem respetando la altura máxima.'
+      ],
+      photoUrl: '/lups/orden_anden/image2-opt.jpg',
+      photoSizeKb: 47
+    },
+    dontPractice: {
+      title: 'Andén desordenado y mezcla de temperaturas sin criterio',
+      description: 'Mezclar pallets de congelado con productos variables o refrigerados sin orden de rampla.',
+      points: [
+        '❌ NUNCA mezclar consolidación de refrigerado y congelado en el mismo carril.',
+        '❌ NUNCA dejar pallets atravesados reduciendo la capacidad de cubicación.',
+        '❌ EVITAR cargar a rampla en orden inverso al plan de ruta.'
+      ],
+      photoUrl: '/lups/orden_anden/image1-opt.jpg',
+      photoSizeKb: 49
+    },
+    keyPoints: [
+      'Se debe efectuar ordenamiento estandarizado: Estándar, Variable, Congelado.',
+      'Previene mal carguío en rampla según temperaturas.',
+      'Evita pérdida de cubicación y asegura estabilidad en ruta.'
+    ],
+    safetyWarning: 'El quiebre de la cadena de frío por mala segregación compromete la inocuidad alimentaria y la certificación San Jorge / CIAL.'
+  },
+  {
+    id: 'lup-cial-07',
+    code: 'LUP-STG-01',
+    title: 'Disciplina de Staging: Identificación con Cinta Amarilla por Zonales',
+    category: 'Mantención Autónoma 5S',
+    summary: 'Mantener demarcadas en piso con cinta amarilla las posiciones de Zonales (Puerto Montt, Osorno, Temuco) para un flujo continuo sin cuellos de botella.',
+    objective: 'Garantizar el correcto uso del área de staging posicionando pallets estrictamente dentro de los cajones amarillos asignados a cada Zonal según orden de salida, manteniendo despejadas las vías de tránsito.',
+    durationMinutes: 5,
+    area: 'Zona de Staging / Despacho',
+    author: 'Supervisores Despacho / Jefe de Turno CIAL',
+    createdAt: '2026-10-20T11:00:00Z',
+    oneDriveUrl: ARIEL_ONEDRIVE_URL,
+    doPractice: {
+      title: 'Pallets dentro de líneas amarillas por Zonal (Pto. Montt, Osorno, Temuco)',
+      description: 'Ubicar los pallets dentro de las líneas amarillas demarcadas en piso respetando la prioridad de salida por Zonal.',
+      points: [
+        'Respetar las marcas en piso con cinta amarilla de posiciones con prioridad.',
+        'Agrupar por destino: Puerto Montt, Osorno y Temuco en sus carriles correspondientes.',
+        'Mantener vías de circulación de transpaletas libres de obstáculos.'
+      ],
+      photoUrl: '/lups/orden_staging/image1-opt.jpg',
+      photoSizeKb: 55
+    },
+    dontPractice: {
+      title: 'Pallets fuera de demarcación y pasillos de tránsito bloqueados',
+      description: 'Dejar pallets sobre las líneas amarillas, invadiendo carriles o bloqueando pasillos peatonales y de transpaletas.',
+      points: [
+        '❌ NUNCA dejar pallets fuera de las líneas de demarcación en staging.',
+        '❌ NUNCA bloquear los pasillos de tránsito ni las puertas de andenes.',
+        '❌ PROHIBIDO mezclar pallets de diferentes Zonales en la misma línea de staging.'
+      ],
+      photoUrl: '/lups/orden_staging/image2-opt.jpg',
+      photoSizeKb: 62
+    },
+    keyPoints: [
+      'Demarcación visible en piso con cinta amarilla de alta resistencia.',
+      'Prioridad clara por Zonal para agilizar el carguío hacia ramplas.',
+      'Disciplina 5S permanente en la zona neurálgica de despacho.'
+    ],
+    safetyWarning: 'Pallets mal estacionados en staging provocan colisiones de transpaletas y caídas de operadores en maniobras de giro.'
+  },
+  {
     id: 'lup-1',
     code: 'LUP-SSO-001',
     title: 'Operación Segura de Transpaleta Manual en Andenes y Pendientes',
@@ -125,80 +412,6 @@ export const INITIAL_LUPS: LupItem[] = [
       'Toda pistola con falla debe ser registrada en la app Zona Verde para activar al proveedor.'
     ],
     safetyWarning: 'Una pistola en mal estado paraliza el despacho de camiones y retrasa la salida a ruta.'
-  },
-  {
-    id: 'lup-4',
-    code: 'LUP-BPM-004',
-    title: 'Estándar 5S en Andenes de Despacho: Pallets Plásticos vs Madera',
-    category: 'Mantención Autónoma 5S',
-    summary: 'Segregación correcta de pallets, retiro de film plástico y despeje de zonas de seguridad en andén.',
-    objective: 'Mantener andenes despejados, libres de astillas o clavos, y optimizar el flujo de carga a camiones.',
-    durationMinutes: 5,
-    area: 'Andenes 1 al 12',
-    author: 'Ariel Mella / Excelencia Operacional CIAL',
-    createdAt: '2026-10-18T14:00:00Z',
-    oneDriveUrl: ARIEL_ONEDRIVE_URL,
-    doPractice: {
-      title: 'Apilamiento uniforme y retiro inmediato de restos de film',
-      description: 'Apilar pallets en torres de máximo 15 unidades, perfectamente alineadas en la zona demarcada con líneas amarillas.',
-      points: [
-        'Separar estrictamente pallets plásticos (cámara limpia) de pallets de madera CHEP/nacional.',
-        'Depositar restos de plástico film en los contenedores de reciclaje asignados.',
-        'Dejar pasillo peatonal de 1.20 metros totalmente libre de obstáculos.'
-      ]
-    },
-    dontPractice: {
-      title: 'Torres torcidas o pallets abandonados frente a salidas de emergencia',
-      description: 'Dejar pallets inclinados con clavos salidos o atravesados en las rampas de escape.',
-      points: [
-        '❌ NUNCA superar las 15 unidades de altura por torre de pallet.',
-        '❌ NUNCA dejar trozos de madera o clavos en el piso del andén (riesgo de pinchar ruedas de transpaleta).',
-        '❌ NUNCA bloquear extintores ni tableros eléctricos con mercadería.'
-      ]
-    },
-    keyPoints: [
-      'El orden del andén define la velocidad de carga del camión.',
-      'Un piso limpio previene el 90% de los daños en las ruedas de transpaletas.',
-      'La seguridad comienza con el estándar 5S en cada andén.'
-    ],
-    safetyWarning: 'Pallets mal apilados pueden derrumbarse causando accidentes graves a los operadores.'
-  },
-  {
-    id: 'lup-5',
-    code: 'LUP-SSO-005',
-    title: 'Ergonomía en el Levante Manual de Cajas de Productos CIAL',
-    category: 'Seguridad SSO',
-    summary: 'Técnica de levantamiento con piernas flectadas y carga pegada al cuerpo para cajas de 15 a 25 kg.',
-    objective: 'Cero lumbagos o sobreesfuerzos en el personal de bodega y despacho.',
-    durationMinutes: 5,
-    area: 'Picking & Despacho',
-    author: 'Ariel Mella / Prevención SSO CIAL',
-    createdAt: '2026-10-19T07:30:00Z',
-    oneDriveUrl: ARIEL_ONEDRIVE_URL,
-    doPractice: {
-      title: 'Flectar rodillas, espalda recta y carga al centro del pecho',
-      description: 'Aproximarse a la caja, abrir las piernas al ancho de hombros y empujar la fuerza con las piernas.',
-      points: [
-        'Pegar la caja al pecho antes de iniciar el movimiento de subida.',
-        'Girar con los pies y el cuerpo completo, NUNCA rotar solo la cintura.',
-        'Pedir ayuda entre dos operadores si el bulto supera los 25 kg.'
-      ]
-    },
-    dontPractice: {
-      title: 'Doblar la cintura con las piernas estiradas',
-      description: 'Levantar la caja desde el suelo manteniendo las piernas rígidas y arqueando la columna.',
-      points: [
-        '❌ NUNCA levantar peso con la espalda curvada hacia adelante.',
-        '❌ NUNCA realizar movimientos bruscos o tirones al tomar la carga.',
-        '❌ NUNCA levantar cargas pesadas con piso húmedo o sin guantes de agarre.'
-      ]
-    },
-    keyPoints: [
-      'Tus piernas son 4 veces más fuertes que tu espalda; úsalas.',
-      'Planifica dónde vas a apoyar la caja antes de levantarla.',
-      'Realiza pausas activas y elongaciones al inicio del turno.'
-    ],
-    safetyWarning: 'El sobreesfuerzo lumbar es la principal causa de ausentismo en centros de distribución.'
   }
 ];
 

@@ -3,7 +3,10 @@ export type LupCategory =
   | 'Cadena de Frío'
   | 'Operación de Equipos'
   | 'Calidad & BPM'
-  | 'Mantención Autónoma 5S';
+  | 'Mantención Autónoma 5S'
+  | 'Calidad / Inocuidad'
+  | 'Despacho & Zonales'
+  | 'Eficiencia Operacional';
 
 export interface LupPractice {
   title: string;

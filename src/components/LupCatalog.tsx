@@ -67,7 +67,10 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
     'Cadena de Frío',
     'Operación de Equipos',
     'Calidad & BPM',
-    'Mantención Autónoma 5S'
+    'Mantención Autónoma 5S',
+    'Calidad / Inocuidad',
+    'Despacho & Zonales',
+    'Eficiencia Operacional'
   ];
 
   // Photo handlers with client-side compression
@@ -644,6 +647,9 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                     <option value="Operación de Equipos">Operación de Equipos</option>
                     <option value="Calidad & BPM">Calidad & BPM</option>
                     <option value="Mantención Autónoma 5S">Mantención Autónoma 5S</option>
+                    <option value="Calidad / Inocuidad">Calidad / Inocuidad</option>
+                    <option value="Despacho & Zonales">Despacho & Zonales</option>
+                    <option value="Eficiencia Operacional">Eficiencia Operacional</option>
                   </select>
                 </div>
               </div>
