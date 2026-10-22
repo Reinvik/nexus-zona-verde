@@ -35,6 +35,22 @@ export function getLups(): LupItem[] {
     safeSet(KEYS.LUPS, INITIAL_LUPS);
     return INITIAL_LUPS;
   }
+  // Sincronizar fotos en LUPs iniciales si no las tenían
+  if (data.length > 0 && !data[0].doPractice.photoUrl) {
+    const enriched = data.map(item => {
+      const seed = INITIAL_LUPS.find(s => s.id === item.id);
+      if (seed && seed.doPractice.photoUrl) {
+        return {
+          ...item,
+          doPractice: { ...item.doPractice, photoUrl: seed.doPractice.photoUrl, photoSizeKb: seed.doPractice.photoSizeKb },
+          dontPractice: { ...item.dontPractice, photoUrl: seed.dontPractice.photoUrl, photoSizeKb: seed.dontPractice.photoSizeKb }
+        };
+      }
+      return item;
+    });
+    safeSet(KEYS.LUPS, enriched);
+    return enriched;
+  }
   return data;
 }
 

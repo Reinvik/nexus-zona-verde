@@ -22,7 +22,9 @@ export const INITIAL_LUPS: LupItem[] = [
         'En pendientes o bajadas: colocarse SIEMPRE detrás de la transpaleta (la carga desciende primero).',
         'Zapatos de seguridad bien abrochados y pies alejados de las ruedas directrices.',
         'Detener la marcha soltando lentamente la palanca a posición neutral.'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 48
     },
     dontPractice: {
       title: 'Caminar de espaldas tirando de frente hacia el cuerpo',
@@ -31,7 +33,9 @@ export const INITIAL_LUPS: LupItem[] = [
         '❌ NUNCA bajar una rampa colocándose delante de la transpaleta (riesgo de aplastamiento).',
         '❌ NUNCA transportar pasajeros ni subirse sobre las horquillas como patineta.',
         '❌ NUNCA sobrepasar la capacidad de carga nominal (máx 2.000 kg).'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 52
     },
     keyPoints: [
       'Visualizar siempre la ruta antes de iniciar el movimiento.',
@@ -59,7 +63,9 @@ export const INITIAL_LUPS: LupItem[] = [
         'Esperar la luz verde del semáforo de esclusa antes de ingresar con pallet.',
         'Avisar de inmediato a mantención si la lona se sale de su guía lateral.',
         'Cerrar manualmente la puerta peatonal tras pasar.'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 45
     },
     dontPractice: {
       title: 'Forzar paso con horquillas elevadas o golpear los bordes',
@@ -68,7 +74,9 @@ export const INITIAL_LUPS: LupItem[] = [
         '❌ NUNCA trabar las cortinas con cajas o pallets para dejarlas abiertas.',
         '❌ NUNCA ingresar con la transpaleta a media altura rozando la lona térmica.',
         '❌ NUNCA dejar ambas puertas de la esclusa abiertas al mismo tiempo.'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 50
     },
     keyPoints: [
       '1 minuto con la puerta abierta equivale a 20 minutos de escarcha en el evaporador.',
@@ -96,7 +104,9 @@ export const INITIAL_LUPS: LupItem[] = [
         'Presionar el gatillo con fuerza moderada; no se requiere fuerza excesiva para activar el láser.',
         'Depositar la pistola en el pedestal de carga al finalizar el turno o colación.',
         'Limpiar el cristal del lector con paño de microfibra seco si se empaña por el cambio térmico.'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1580982327559-c1202864eb05?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 42
     },
     dontPractice: {
       title: 'Dejar la pistola suelta sobre pallets o transportarla en bolsillos',
@@ -105,7 +115,9 @@ export const INITIAL_LUPS: LupItem[] = [
         '❌ NUNCA golpear la pantalla con bolígrafos, clavos o llaves (usar dedos limpios o stylus de goma).',
         '❌ NUNCA tirar del gatillo mientras el equipo se encuentra trabado.',
         '❌ NUNCA guardar la pistola en lockers personales al término del turno.'
-      ]
+      ],
+      photoUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=60',
+      photoSizeKb: 46
     },
     keyPoints: [
       'El cristal del lector rayado reduce la velocidad de lectura en un 60%.',

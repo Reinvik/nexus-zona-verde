@@ -416,6 +416,16 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       <span>Lo Correcto (Qué SÍ hacer)</span>
                     </div>
+
+                    {activeLup.doPractice.photoUrl && (
+                      <div className="relative rounded-xl overflow-hidden border border-emerald-400 mb-2.5 h-28 bg-emerald-100/50">
+                        <img src={activeLup.doPractice.photoUrl} alt="Caso Correcto" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 left-1 bg-emerald-800/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+                          📸 CASO CORRECTO
+                        </span>
+                      </div>
+                    )}
+
                     <h4 className="text-sm font-bold text-emerald-950 mb-1.5">
                       {activeLup.doPractice.title}
                     </h4>
@@ -438,6 +448,16 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                       <AlertTriangle className="w-4 h-4 text-rose-600" />
                       <span>Prohibido (Qué NO hacer)</span>
                     </div>
+
+                    {activeLup.dontPractice.photoUrl && (
+                      <div className="relative rounded-xl overflow-hidden border border-rose-400 mb-2.5 h-28 bg-rose-100/50">
+                        <img src={activeLup.dontPractice.photoUrl} alt="Caso Incorrecto" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 left-1 bg-rose-800/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+                          📸 CASO INCORRECTO
+                        </span>
+                      </div>
+                    )}
+
                     <h4 className="text-sm font-bold text-rose-950 mb-1.5">
                       {activeLup.dontPractice.title}
                     </h4>

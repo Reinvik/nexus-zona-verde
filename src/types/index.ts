@@ -9,6 +9,8 @@ export interface LupPractice {
   title: string;
   description: string;
   points: string[];
+  photoUrl?: string; // Foto liviana del caso (correcto o incorrecto)
+  photoSizeKb?: number;
 }
 
 export interface LupItem {

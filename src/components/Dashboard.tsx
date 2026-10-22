@@ -434,22 +434,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Quick Do/Don't visual box */}
             {featuredLup && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3">
-                  <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 mb-1">
+                <div className="bg-emerald-50/70 border border-emerald-300 rounded-2xl p-3">
+                  <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 mb-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>SÍ HACER:</span>
+                    <span>SÍ HACER (Caso Correcto):</span>
                   </div>
-                  <p className="text-xs text-emerald-950 font-medium">
+                  {featuredLup.doPractice.photoUrl && (
+                    <div className="relative rounded-xl overflow-hidden border border-emerald-400 mb-2 h-24 bg-emerald-100">
+                      <img src={featuredLup.doPractice.photoUrl} alt="Caso Correcto" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <p className="text-xs text-emerald-950 font-bold">
                     {featuredLup.doPractice.title}
                   </p>
                 </div>
 
-                <div className="bg-rose-50/70 border border-rose-300 rounded-xl p-3">
-                  <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1 mb-1">
+                <div className="bg-rose-50/70 border border-rose-300 rounded-2xl p-3">
+                  <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1 mb-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                    <span>PROHIBIDO:</span>
+                    <span>PROHIBIDO (Caso Incorrecto):</span>
                   </div>
-                  <p className="text-xs text-rose-950 font-medium">
+                  {featuredLup.dontPractice.photoUrl && (
+                    <div className="relative rounded-xl overflow-hidden border border-rose-300 mb-2 h-24 bg-rose-100">
+                      <img src={featuredLup.dontPractice.photoUrl} alt="Caso Incorrecto" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <p className="text-xs text-rose-950 font-bold">
                     {featuredLup.dontPractice.title}
                   </p>
                 </div>
