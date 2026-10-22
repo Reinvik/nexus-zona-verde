@@ -16,6 +16,18 @@ export interface LupPractice {
   photoSizeKb?: number;
 }
 
+export interface LupAuditLog {
+  id: string;
+  lupId: string;
+  lupCode: string;
+  lupTitle: string;
+  action: 'CREADO' | 'MODIFICADO' | 'ELIMINADO';
+  performedBy: string; // Correo de quien ejecutó la acción (ej: ariel.mella@cial.cl)
+  performedAt: string; // ISO string
+  details?: string; // Motivo o resumen de cambios
+  area?: string;
+}
+
 export interface LupItem {
   id: string;
   code: string; // e.g. "LUP-SSO-001"
@@ -31,8 +43,12 @@ export interface LupItem {
   imageUrl?: string;
   oneDriveUrl?: string; // Link to Ariel Mella's OneDrive / SharePoint
   author: string;
+  createdBy?: string; // Correo del usuario que creó el LUP
   createdAt: string;
   area: string;
+  lastModifiedBy?: string; // Correo del usuario que modificó por última vez
+  lastModifiedAt?: string; // Fecha y hora de última modificación
+  modificationCount?: number; // Contador de ediciones
 }
 
 export type ShiftId = 'manana' | 'tarde' | 'noche';

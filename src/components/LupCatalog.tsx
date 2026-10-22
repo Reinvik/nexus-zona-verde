@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
@@ -7,19 +7,26 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   ShieldCheck, 
-  Sparkles,
-  BookOpen,
-  FolderSync,
-  Clock,
-  Printer,
-  X,
-  Camera,
-  Image as ImageIcon,
-  Eye
+  Sparkles, 
+  BookOpen, 
+  FolderSync, 
+  Clock, 
+  Printer, 
+  X, 
+  Camera, 
+  Image as ImageIcon, 
+  Eye,
+  Edit,
+  Trash2,
+  History,
+  User,
+  Check,
+  RefreshCw,
+  FileText
 } from 'lucide-react';
-import { LupItem, LupCategory } from '../types';
+import { LupItem, LupCategory, LupAuditLog } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
-import { saveLup } from '../services/storage';
+import { saveLup, deleteLup, getLupAuditLogs } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import cdCialBg from '../assets/cd-cial-bg.png';
 
@@ -27,18 +34,34 @@ interface LupCatalogProps {
   lups: LupItem[];
   onSelectForCharla: (lupId: string) => void;
   onLupsUpdated: () => void;
+  currentUserEmail?: string;
 }
 
 export const LupCatalog: React.FC<LupCatalogProps> = ({
   lups,
   onSelectForCharla,
-  onLupsUpdated
+  onLupsUpdated,
+  currentUserEmail = 'colaborador@cial.cl'
 }) => {
   const [search, setSearch] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [activeModalLup, setActiveModalLup] = useState<LupItem | null>(null);
   const [showNewModal, setShowNewModal] = useState<boolean>(false);
+  const [showAuditModal, setShowAuditModal] = useState<boolean>(false);
   const [zoomPhoto, setZoomPhoto] = useState<{ url: string; title: string; subtitle: string } | null>(null);
+  
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<LupAuditLog[]>([]);
+  const [auditFilter, setAuditFilter] = useState<'TODOS' | 'CREADO' | 'MODIFICADO' | 'ELIMINADO'>('TODOS');
+  const [auditSearch, setAuditSearch] = useState<string>('');
+
+  const refreshAuditLogs = () => {
+    setAuditLogs(getLupAuditLogs());
+  };
+
+  useEffect(() => {
+    refreshAuditLogs();
+  }, [lups]);
 
   // New LUP form state
   const [newCode, setNewCode] = useState<string>('');
@@ -46,20 +69,39 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
   const [newCategory, setNewCategory] = useState<LupCategory>('Seguridad SSO');
   const [newObjective, setNewObjective] = useState<string>('');
   const [newArea, setNewArea] = useState<string>('Andenes de Despacho');
-  
-  // Do practice state
   const [newDoTitle, setNewDoTitle] = useState<string>('');
   const [newDoDesc, setNewDoDesc] = useState<string>('');
   const [newDoPhoto, setNewDoPhoto] = useState<string | null>(null);
   const [newDoPhotoSizeKb, setNewDoPhotoSizeKb] = useState<number | null>(null);
-
-  // Don't practice state
   const [newDontTitle, setNewDontTitle] = useState<string>('');
   const [newDontDesc, setNewDontDesc] = useState<string>('');
   const [newDontPhoto, setNewDontPhoto] = useState<string | null>(null);
   const [newDontPhotoSizeKb, setNewDontPhotoSizeKb] = useState<number | null>(null);
-
   const [newSafetyWarning, setNewSafetyWarning] = useState<string>('');
+
+  // Edit LUP state & form
+  const [editingLup, setEditingLup] = useState<LupItem | null>(null);
+  const [editCode, setEditCode] = useState<string>('');
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editCategory, setEditCategory] = useState<LupCategory>('Seguridad SSO');
+  const [editObjective, setEditObjective] = useState<string>('');
+  const [editArea, setEditArea] = useState<string>('');
+  const [editDoTitle, setEditDoTitle] = useState<string>('');
+  const [editDoDesc, setEditDoDesc] = useState<string>('');
+  const [editDoPoints, setEditDoPoints] = useState<string>('');
+  const [editDoPhoto, setEditDoPhoto] = useState<string | null>(null);
+  const [editDoPhotoSizeKb, setEditDoPhotoSizeKb] = useState<number | null>(null);
+  const [editDontTitle, setEditDontTitle] = useState<string>('');
+  const [editDontDesc, setEditDontDesc] = useState<string>('');
+  const [editDontPoints, setEditDontPoints] = useState<string>('');
+  const [editDontPhoto, setEditDontPhoto] = useState<string | null>(null);
+  const [editDontPhotoSizeKb, setEditDontPhotoSizeKb] = useState<number | null>(null);
+  const [editSafetyWarning, setEditSafetyWarning] = useState<string>('');
+  const [editReason, setEditReason] = useState<string>('');
+
+  // Delete LUP confirmation state
+  const [deletingLup, setDeletingLup] = useState<LupItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState<string>('');
 
   const categories: string[] = [
     'Todas',
@@ -74,69 +116,125 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
   ];
 
   // Photo handlers with client-side compression
-  const handleDoPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDoPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
         const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 800, quality: 0.65 });
-        setNewDoPhoto(dataUrl);
-        setNewDoPhotoSizeKb(sizeKb);
+        if (isEdit) {
+          setEditDoPhoto(dataUrl);
+          setEditDoPhotoSizeKb(sizeKb);
+        } else {
+          setNewDoPhoto(dataUrl);
+          setNewDoPhotoSizeKb(sizeKb);
+        }
       } catch (err) {
         console.error('Error al comprimir foto:', err);
       }
     }
   };
 
-  const handleDontPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDontPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
         const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 800, quality: 0.65 });
-        setNewDontPhoto(dataUrl);
-        setNewDontPhotoSizeKb(sizeKb);
+        if (isEdit) {
+          setEditDontPhoto(dataUrl);
+          setEditDontPhotoSizeKb(sizeKb);
+        } else {
+          setNewDontPhoto(dataUrl);
+          setNewDontPhotoSizeKb(sizeKb);
+        }
       } catch (err) {
         console.error('Error al comprimir foto:', err);
       }
     }
   };
 
-  const handleSimulateDoPhoto = () => {
-    setNewDoPhoto('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&auto=format&fit=crop&q=60');
-    setNewDoPhotoSizeKb(48);
+  // Open Edit Modal
+  const handleOpenEdit = (lup: LupItem) => {
+    setEditingLup(lup);
+    setEditCode(lup.code);
+    setEditTitle(lup.title);
+    setEditCategory(lup.category);
+    setEditObjective(lup.objective);
+    setEditArea(lup.area);
+    setEditDoTitle(lup.doPractice.title);
+    setEditDoDesc(lup.doPractice.description);
+    setEditDoPoints(lup.doPractice.points.join('\n'));
+    setEditDoPhoto(lup.doPractice.photoUrl || null);
+    setEditDoPhotoSizeKb(lup.doPractice.photoSizeKb || null);
+    setEditDontTitle(lup.dontPractice.title);
+    setEditDontDesc(lup.dontPractice.description);
+    setEditDontPoints(lup.dontPractice.points.join('\n'));
+    setEditDontPhoto(lup.dontPractice.photoUrl || null);
+    setEditDontPhotoSizeKb(lup.dontPractice.photoSizeKb || null);
+    setEditSafetyWarning(lup.safetyWarning || '');
+    setEditReason('');
   };
 
-  const handleSimulateDontPhoto = () => {
-    setNewDontPhoto('https://images.unsplash.com/photo-1553413077-190dd305871c?w=600&auto=format&fit=crop&q=60');
-    setNewDontPhotoSizeKb(52);
-  };
+  // Save Edit Handler
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLup) return;
 
-  const filteredLups = lups.filter(lup => {
-    const matchesCategory = selectedCategory === 'Todas' || lup.category === selectedCategory;
-    const matchesSearch = 
-      lup.title.toLowerCase().includes(search.toLowerCase()) ||
-      lup.code.toLowerCase().includes(search.toLowerCase()) ||
-      lup.summary.toLowerCase().includes(search.toLowerCase()) ||
-      lup.objective.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+    const doPointsList = editDoPoints.split('\n').map(p => p.trim()).filter(Boolean);
+    const dontPointsList = editDontPoints.split('\n').map(p => p.trim()).filter(Boolean);
 
-  const getCategoryColor = (cat: LupCategory) => {
-    switch (cat) {
-      case 'Seguridad SSO':
-        return 'bg-rose-100 text-rose-800 border-rose-300';
-      case 'Cadena de Frío':
-        return 'bg-sky-100 text-sky-800 border-sky-300';
-      case 'Operación de Equipos':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'Calidad & BPM':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'Mantención Autónoma 5S':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      default:
-        return 'bg-slate-100 text-slate-800 border-slate-300';
+    const updated: LupItem = {
+      ...editingLup,
+      code: editCode.trim() || editingLup.code,
+      title: editTitle.trim() || editingLup.title,
+      category: editCategory,
+      objective: editObjective.trim() || editingLup.objective,
+      summary: editObjective.trim().slice(0, 120),
+      area: editArea.trim() || editingLup.area,
+      doPractice: {
+        title: editDoTitle.trim() || editingLup.doPractice.title,
+        description: editDoDesc.trim() || editingLup.doPractice.description,
+        points: doPointsList.length > 0 ? doPointsList : editingLup.doPractice.points,
+        photoUrl: editDoPhoto || undefined,
+        photoSizeKb: editDoPhotoSizeKb || undefined
+      },
+      dontPractice: {
+        title: editDontTitle.trim() || editingLup.dontPractice.title,
+        description: editDontDesc.trim() || editingLup.dontPractice.description,
+        points: dontPointsList.length > 0 ? dontPointsList : editingLup.dontPractice.points,
+        photoUrl: editDontPhoto || undefined,
+        photoSizeKb: editDontPhotoSizeKb || undefined
+      },
+      safetyWarning: editSafetyWarning.trim() || undefined
+    };
+
+    saveLup(updated, currentUserEmail, editReason.trim() || 'Modificación general de contenidos y estándares');
+    setEditingLup(null);
+    if (activeModalLup && activeModalLup.id === updated.id) {
+      setActiveModalLup(updated);
     }
+    onLupsUpdated();
+    refreshAuditLogs();
   };
 
+  // Open Delete Modal
+  const handleOpenDelete = (lup: LupItem) => {
+    setDeletingLup(lup);
+    setDeleteReason('');
+  };
+
+  // Confirm Delete Handler
+  const handleConfirmDelete = () => {
+    if (!deletingLup) return;
+    deleteLup(deletingLup.id, currentUserEmail, deleteReason.trim() || 'Eliminado por decisión operacional de supervisión');
+    setDeletingLup(null);
+    if (activeModalLup && activeModalLup.id === deletingLup.id) {
+      setActiveModalLup(null);
+    }
+    onLupsUpdated();
+    refreshAuditLogs();
+  };
+
+  // Create LUP Handler
   const handleCreateLup = (e: React.FormEvent) => {
     e.preventDefault();
     const item: LupItem = {
@@ -148,7 +246,8 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
       objective: newObjective.trim(),
       durationMinutes: 5,
       area: newArea.trim(),
-      author: 'Supervisor Operacional CIAL',
+      author: currentUserEmail,
+      createdBy: currentUserEmail,
       createdAt: new Date().toISOString(),
       oneDriveUrl: ARIEL_ONEDRIVE_URL,
       doPractice: {
@@ -172,9 +271,10 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
       safetyWarning: newSafetyWarning.trim() || undefined
     };
 
-    saveLup(item);
+    saveLup(item, currentUserEmail, 'Nuevo LUP ingresado al catálogo de Zona Verde');
     setShowNewModal(false);
     onLupsUpdated();
+    refreshAuditLogs();
 
     // Reset form
     setNewCode('');
@@ -191,34 +291,86 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
     setNewSafetyWarning('');
   };
 
+  const filteredLups = lups.filter(lup => {
+    const matchesCategory = selectedCategory === 'Todas' || lup.category === selectedCategory;
+    const matchesSearch = 
+      lup.title.toLowerCase().includes(search.toLowerCase()) ||
+      lup.code.toLowerCase().includes(search.toLowerCase()) ||
+      lup.summary.toLowerCase().includes(search.toLowerCase()) ||
+      lup.objective.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const filteredAuditLogs = auditLogs.filter(log => {
+    const matchesAction = auditFilter === 'TODOS' || log.action === auditFilter;
+    const matchesSearch = 
+      log.lupCode.toLowerCase().includes(auditSearch.toLowerCase()) ||
+      log.lupTitle.toLowerCase().includes(auditSearch.toLowerCase()) ||
+      log.performedBy.toLowerCase().includes(auditSearch.toLowerCase()) ||
+      (log.details && log.details.toLowerCase().includes(auditSearch.toLowerCase()));
+    return matchesAction && matchesSearch;
+  });
+
+  const getCategoryColor = (cat: LupCategory) => {
+    switch (cat) {
+      case 'Seguridad SSO':
+        return 'bg-rose-100 text-rose-800 border-rose-300';
+      case 'Cadena de Frío':
+        return 'bg-sky-100 text-sky-800 border-sky-300';
+      case 'Operación de Equipos':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'Calidad & BPM':
+      case 'Calidad / Inocuidad':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'Mantención Autónoma 5S':
+        return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'Despacho & Zonales':
+      case 'Eficiencia Operacional':
+        return 'bg-teal-100 text-teal-800 border-teal-300';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
+
+  const formatLogDate = (isoStr: string) => {
+    try {
+      const d = new Date(isoStr);
+      return new Intl.DateTimeFormat('es-CL', {
+        timeZone: 'America/Santiago',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(d);
+    } catch {
+      return isoStr;
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       
       {/* Hero Banner with CIAL CD Background */}
       <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/40 min-h-[280px] sm:min-h-[320px] flex items-center">
-        {/* Background Photo of CIAL CD */}
         <img 
           src={cdCialBg} 
           alt="Centro de Distribución CIAL Alimentos" 
-          className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-105 filter brightness-95" 
+          className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-95"
         />
-
-        {/* Green Overlay - Balanced tint so text is ultra-readable and image is clearly perceived */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#00381b]/95 via-[#005a2e]/88 to-[#004222]/82" />
-        
-        {/* Radial highlight for depth */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,168,84,0.35),transparent_70%)]" />
 
-        <div className="relative z-10 p-6 sm:p-10 max-w-3xl">
+        <div className="relative z-10 p-6 sm:p-10 max-w-4xl">
           <div className="inline-flex items-center gap-2 bg-black/35 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-emerald-200 mb-3.5 border border-white/20 shadow-xs">
             <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Biblioteca Operacional de LUPs con Fotos Do / Don't</span>
+            <span>Biblioteca Operacional de LUPs con Trazabilidad Completa</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2.5 drop-shadow-md">
             Lecciones de Un Punto (LUP) para Charlas de 5 Minutos
           </h2>
           <p className="text-sm sm:text-base text-emerald-100/95 font-medium leading-relaxed mb-6 drop-shadow-xs max-w-2xl">
-            Crea y consulta lecciones visuales con <strong>fotos de Caso Correcto ✅</strong> y <strong>Caso Incorrecto ❌</strong> para capacitar a los operadores en terreno.
+            Crea, edita y consulta lecciones con <strong>fotos de Caso Correcto ✅</strong> y <strong>Caso Incorrecto ❌</strong> con registro estricto de quién creó, modificó o eliminó cada lección.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -227,7 +379,15 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition transform active:scale-95 cursor-pointer font-sans"
             >
               <Plus className="w-4 h-4 fill-current text-slate-950" />
-              <span>Crear Nueva LUP (con Fotos)</span>
+              <span>Crear Nueva LUP</span>
+            </button>
+
+            <button
+              onClick={() => setShowAuditModal(true)}
+              className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition cursor-pointer shadow-sm active:scale-95"
+            >
+              <History className="w-4 h-4 text-emerald-300" />
+              <span>Registro de Auditoría ({auditLogs.length})</span>
             </button>
 
             <a
@@ -237,7 +397,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               className="inline-flex items-center gap-2 bg-black/35 hover:bg-black/50 backdrop-blur-md text-white border border-white/25 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition cursor-pointer group shadow-sm"
             >
               <FolderSync className="w-4 h-4 text-emerald-300 group-hover:rotate-45 transition-transform" />
-              <span>OneDrive Oficial CIAL (Ariel Mella)</span>
+              <span>OneDrive CIAL</span>
               <ExternalLink className="w-3.5 h-3.5 text-emerald-200" />
             </a>
           </div>
@@ -260,8 +420,17 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
             />
           </div>
 
-          <div className="text-xs text-slate-500 font-bold self-end sm:self-center">
-            Mostrando {filteredLups.length} de {lups.length} LUPs
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowAuditModal(true)}
+              className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 cursor-pointer"
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Ver Historial de Auditoría</span>
+            </button>
+            <span className="text-xs text-slate-500 font-bold">
+              {filteredLups.length} de {lups.length} LUPs
+            </span>
           </div>
         </div>
 
@@ -292,7 +461,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
           >
             <div>
               {/* Card Header */}
-              <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                   {lup.code}
                 </span>
@@ -301,44 +470,55 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 </span>
               </div>
 
-              {/* Title & Summary */}
-              <h3 className="text-base font-black text-slate-900 group-hover:text-[#008744] transition-colors leading-snug mb-2">
+              {/* Title & Area */}
+              <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition line-clamp-2 mb-1.5">
                 {lup.title}
               </h3>
-              <p className="text-xs text-slate-600 font-medium line-clamp-2 mb-3 leading-relaxed">
-                {lup.summary}
-              </p>
+              
+              <div className="text-[11px] text-slate-500 font-semibold mb-3 flex items-center justify-between">
+                <span>📍 {lup.area}</span>
+                <span className="text-slate-400">⏱️ {lup.durationMinutes} min</span>
+              </div>
 
-              {/* Dual Photo Thumbnail Comparison (Do vs Don't) */}
+              {/* Photos Preview */}
               {(lup.doPractice.photoUrl || lup.dontPractice.photoUrl) ? (
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  {/* Do Photo */}
-                  <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500 h-24 bg-emerald-50">
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="relative rounded-xl overflow-hidden border border-emerald-300 h-24 bg-emerald-50">
                     {lup.doPractice.photoUrl ? (
-                      <img src={lup.doPractice.photoUrl} alt="Correcto" className="w-full h-full object-cover" />
+                      <img 
+                        src={lup.doPractice.photoUrl} 
+                        alt="Caso Correcto" 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-emerald-700 font-bold">Sin foto</div>
+                      <div className="h-full flex items-center justify-center text-[10px] text-emerald-700 font-bold">
+                        Sin foto
+                      </div>
                     )}
-                    <span className="absolute bottom-1 left-1 bg-emerald-700/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                      ✅ SÍ HACER
+                    <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                      ✅ SÍ
                     </span>
                   </div>
 
-                  {/* Don't Photo */}
-                  <div className="relative rounded-xl overflow-hidden border-2 border-rose-400 h-24 bg-rose-50">
+                  <div className="relative rounded-xl overflow-hidden border border-rose-300 h-24 bg-rose-50">
                     {lup.dontPractice.photoUrl ? (
-                      <img src={lup.dontPractice.photoUrl} alt="Incorrecto" className="w-full h-full object-cover" />
+                      <img 
+                        src={lup.dontPractice.photoUrl} 
+                        alt="Caso Incorrecto" 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-rose-700 font-bold">Sin foto</div>
+                      <div className="h-full flex items-center justify-center text-[10px] text-rose-700 font-bold">
+                        Sin foto
+                      </div>
                     )}
-                    <span className="absolute bottom-1 left-1 bg-rose-700/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                      ❌ NO HACER
+                    <span className="absolute bottom-1 left-1 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                      ❌ NO
                     </span>
                   </div>
                 </div>
               ) : (
-                /* Fallback text preview */
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4 space-y-1.5">
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 mb-3 space-y-1">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="truncate">SÍ: {lup.doPractice.title}</span>
@@ -349,24 +529,52 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Creator & Modifier Traceability Pill */}
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 mb-3 text-[10px] text-slate-600 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Creado por:</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[170px]" title={lup.createdBy || lup.author}>
+                    {lup.createdBy ? lup.createdBy.split('@')[0] : lup.author}
+                  </span>
+                </div>
+                {lup.lastModifiedBy && (
+                  <div className="flex items-center justify-between text-amber-800 pt-0.5 border-t border-slate-200/60">
+                    <span className="font-semibold">Modificado por:</span>
+                    <span className="font-black truncate max-w-[170px]" title={lup.lastModifiedBy}>
+                      {lup.lastModifiedBy.split('@')[0]} (rev. #{lup.modificationCount || 1})
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Card Actions */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
               <button
                 onClick={() => setActiveModalLup(lup)}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
               >
-                Ver Detalle & Fotos
+                Ver Detalle
               </button>
 
-              <button
-                onClick={() => onSelectForCharla(lup.id)}
-                className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
-              >
-                <Timer className="w-3.5 h-3.5 fill-current" />
-                <span>Dar Charla 5m</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleOpenEdit(lup)}
+                  className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition cursor-pointer"
+                  title="Editar LUP (Registrará tu usuario en auditoría)"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => onSelectForCharla(lup.id)}
+                  className="flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+                >
+                  <Timer className="w-3.5 h-3.5 fill-current" />
+                  <span>Dar Charla</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -380,7 +588,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
         </div>
       )}
 
-      {/* LUP DETAIL MODAL (VISUAL SHEET WITH DO/DONT PHOTOS) */}
+      {/* LUP DETAIL MODAL */}
       {activeModalLup && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200">
@@ -412,139 +620,147 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               </button>
             </div>
 
+            {/* Traceability Banner */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="block text-slate-400 font-bold text-[10px] uppercase">Creado por</span>
+                <span className="font-extrabold text-slate-800">
+                  {activeModalLup.createdBy || activeModalLup.author}
+                </span>
+                <span className="block text-[10px] text-slate-400">
+                  {formatLogDate(activeModalLup.createdAt)}
+                </span>
+              </div>
+              <div>
+                <span className="block text-slate-400 font-bold text-[10px] uppercase">Última modificación</span>
+                <span className="font-extrabold text-amber-800">
+                  {activeModalLup.lastModifiedBy || 'Sin modificaciones'}
+                </span>
+                {activeModalLup.lastModifiedAt && (
+                  <span className="block text-[10px] text-slate-400">
+                    {formatLogDate(activeModalLup.lastModifiedAt)}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="block text-slate-400 font-bold text-[10px] uppercase">Historial de Revisiones</span>
+                <span className="font-extrabold text-emerald-800">
+                  {activeModalLup.modificationCount || 0} ediciones registradas
+                </span>
+                <span className="block text-[10px] text-emerald-600 font-semibold">
+                  Trazabilidad CIAL activa
+                </span>
+              </div>
+            </div>
+
             {/* Objective Banner */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 mb-1">
                 Objetivo de la Lección de un Punto:
               </h4>
               <p className="text-sm font-semibold text-emerald-950">
-                {activeModalLup.objective}
+                "{activeModalLup.objective}"
               </p>
             </div>
 
-            {/* BIG SIDE-BY-SIDE COMPARISON: CASO CORRECTO VS CASO INCORRECTO WITH PHOTOS */}
+            {/* DUAL COMPARISON: CORRECT VS INCORRECT */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
               
-              {/* CASO CORRECTO (DO) ✅ */}
-              <div className="bg-green-50/70 border-2 border-emerald-500 rounded-3xl p-5 shadow-xs flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="bg-emerald-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                      <CheckCircle2 className="w-4 h-4" /> CASO CORRECTO (SÍ HACER)
-                    </span>
-                    {activeModalLup.doPractice.photoSizeKb && (
-                      <span className="text-[10px] text-emerald-700 font-mono font-bold">
-                        {activeModalLup.doPractice.photoSizeKb} KB
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Photo of Correct Case */}
-                  {activeModalLup.doPractice.photoUrl ? (
-                    <div 
-                      onClick={() => setZoomPhoto({
-                        url: activeModalLup.doPractice.photoUrl!,
-                        title: `Caso Correcto • ${activeModalLup.code}`,
-                        subtitle: activeModalLup.doPractice.title
-                      })}
-                      className="relative rounded-2xl overflow-hidden border-2 border-emerald-400 mb-4 h-48 sm:h-56 bg-emerald-100/50 group cursor-pointer shadow-xs"
-                    >
-                      <img 
-                        src={activeModalLup.doPractice.photoUrl} 
-                        alt="Caso Correcto" 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                      />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
-                          <Eye className="w-4 h-4" /> Ampliar Fotografía
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border-2 border-dashed border-emerald-300 mb-4 h-32 flex flex-col items-center justify-center text-emerald-700/60 bg-emerald-50/50">
-                      <ImageIcon className="w-8 h-8 mb-1" />
-                      <span className="text-xs font-bold">Sin foto de caso correcto</span>
-                    </div>
-                  )}
-
-                  <h5 className="text-base font-black text-emerald-950 mb-1.5">
-                    {activeModalLup.doPractice.title}
-                  </h5>
-                  <p className="text-xs text-emerald-900 font-medium mb-3 leading-relaxed">
-                    {activeModalLup.doPractice.description}
-                  </p>
-
-                  <ul className="space-y-1.5 text-xs text-emerald-900">
-                    {activeModalLup.doPractice.points.map((pt, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-emerald-600 font-bold">•</span>
-                        <span>{pt}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* CASO CORRECTO */}
+              <div className="bg-green-50/70 border-2 border-emerald-400 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <h4 className="font-black text-sm text-emerald-950 uppercase tracking-wide">
+                    CASO CORRECTO (QUÉ SÍ HACER)
+                  </h4>
                 </div>
+
+                {activeModalLup.doPractice.photoUrl && (
+                  <div 
+                    onClick={() => setZoomPhoto({
+                      url: activeModalLup.doPractice.photoUrl!,
+                      title: `Caso Correcto • ${activeModalLup.code}`,
+                      subtitle: activeModalLup.doPractice.title
+                    })}
+                    className="relative rounded-2xl overflow-hidden border-2 border-emerald-300 mb-4 h-48 sm:h-56 bg-emerald-100/50 group cursor-pointer shadow-xs"
+                  >
+                    <img 
+                      src={activeModalLup.doPractice.photoUrl} 
+                      alt="Caso Correcto" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                        <Eye className="w-4 h-4" /> Ampliar Fotografía
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <h5 className="text-base font-black text-emerald-950 mb-1.5">
+                  {activeModalLup.doPractice.title}
+                </h5>
+                <p className="text-xs text-emerald-900 font-medium mb-3 leading-relaxed">
+                  {activeModalLup.doPractice.description}
+                </p>
+
+                <ul className="space-y-1.5 text-xs text-emerald-900">
+                  {activeModalLup.doPractice.points.map((pt, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-emerald-600 font-bold">•</span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* CASO INCORRECTO (DONT) ❌ */}
-              <div className="bg-rose-50/70 border-2 border-rose-400 rounded-3xl p-5 shadow-xs flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                      <AlertTriangle className="w-4 h-4" /> CASO INCORRECTO (PROHIBIDO)
-                    </span>
-                    {activeModalLup.dontPractice.photoSizeKb && (
-                      <span className="text-[10px] text-rose-700 font-mono font-bold">
-                        {activeModalLup.dontPractice.photoSizeKb} KB
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Photo of Incorrect Case */}
-                  {activeModalLup.dontPractice.photoUrl ? (
-                    <div 
-                      onClick={() => setZoomPhoto({
-                        url: activeModalLup.dontPractice.photoUrl!,
-                        title: `Caso Incorrecto • ${activeModalLup.code}`,
-                        subtitle: activeModalLup.dontPractice.title
-                      })}
-                      className="relative rounded-2xl overflow-hidden border-2 border-rose-300 mb-4 h-48 sm:h-56 bg-rose-100/50 group cursor-pointer shadow-xs"
-                    >
-                      <img 
-                        src={activeModalLup.dontPractice.photoUrl} 
-                        alt="Caso Incorrecto" 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                      />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
-                          <Eye className="w-4 h-4" /> Ampliar Fotografía
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border-2 border-dashed border-rose-300 mb-4 h-32 flex flex-col items-center justify-center text-rose-700/60 bg-rose-50/50">
-                      <ImageIcon className="w-8 h-8 mb-1" />
-                      <span className="text-xs font-bold">Sin foto de caso incorrecto</span>
-                    </div>
-                  )}
-
-                  <h5 className="text-base font-black text-rose-950 mb-1.5">
-                    {activeModalLup.dontPractice.title}
-                  </h5>
-                  <p className="text-xs text-rose-900 font-medium mb-3 leading-relaxed">
-                    {activeModalLup.dontPractice.description}
-                  </p>
-
-                  <ul className="space-y-1.5 text-xs text-rose-900">
-                    {activeModalLup.dontPractice.points.map((pt, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-rose-600 font-bold">•</span>
-                        <span>{pt}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* CASO INCORRECTO */}
+              <div className="bg-rose-50/70 border-2 border-rose-400 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <h4 className="font-black text-sm text-rose-950 uppercase tracking-wide">
+                    CASO INCORRECTO (QUÉ NO HACER)
+                  </h4>
                 </div>
-              </div>
 
+                {activeModalLup.dontPractice.photoUrl && (
+                  <div 
+                    onClick={() => setZoomPhoto({
+                      url: activeModalLup.dontPractice.photoUrl!,
+                      title: `Caso Incorrecto • ${activeModalLup.code}`,
+                      subtitle: activeModalLup.dontPractice.title
+                    })}
+                    className="relative rounded-2xl overflow-hidden border-2 border-rose-300 mb-4 h-48 sm:h-56 bg-rose-100/50 group cursor-pointer shadow-xs"
+                  >
+                    <img 
+                      src={activeModalLup.dontPractice.photoUrl} 
+                      alt="Caso Incorrecto" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                        <Eye className="w-4 h-4" /> Ampliar Fotografía
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <h5 className="text-base font-black text-rose-950 mb-1.5">
+                  {activeModalLup.dontPractice.title}
+                </h5>
+                <p className="text-xs text-rose-900 font-medium mb-3 leading-relaxed">
+                  {activeModalLup.dontPractice.description}
+                </p>
+
+                <ul className="space-y-1.5 text-xs text-rose-900">
+                  {activeModalLup.dontPractice.points.map((pt, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-rose-600 font-bold">•</span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             {/* Safety Warning */}
@@ -559,15 +775,23 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
 
             {/* Modal Actions */}
             <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 flex-wrap">
-              <a
-                href={activeModalLup.oneDriveUrl || ARIEL_ONEDRIVE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1.5"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Ver archivo en OneDrive Ariel Mella</span>
-              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenEdit(activeModalLup)}
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-800 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit className="w-4 h-4 text-emerald-600" />
+                  <span>Modificar LUP</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenDelete(activeModalLup)}
+                  className="px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition flex items-center gap-1.5 cursor-pointer border border-rose-200"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Eliminar</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
@@ -575,7 +799,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Imprimir Ficha</span>
+                  <span>Imprimir</span>
                 </button>
                 <button
                   onClick={() => {
@@ -585,7 +809,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md transition cursor-pointer flex items-center gap-2"
                 >
                   <Timer className="w-4 h-4 fill-current" />
-                  <span>Iniciar Charla de 5 Min con esta LUP</span>
+                  <span>Iniciar Charla de 5 Min</span>
                 </button>
               </div>
             </div>
@@ -594,31 +818,57 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
         </div>
       )}
 
-      {/* CREATE NEW LUP MODAL (WITH DO & DONT PHOTO UPLOAD) */}
-      {showNewModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
+      {/* EDIT LUP MODAL */}
+      {editingLup && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4 mb-5">
               <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-xs font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                    MODO EDICIÓN
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {editingLup.code}
+                  </span>
+                </div>
                 <h3 className="text-xl font-black text-slate-900">
-                  Crear Nueva Lección de un Punto (LUP)
+                  Modificar Lección de Un Punto
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  Define el estándar con fotos reales de Caso Correcto y Caso Incorrecto.
+                <p className="text-xs text-emerald-700 font-bold mt-0.5 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5" />
+                  Registrando cambios como: <strong>{currentUserEmail}</strong>
                 </p>
               </div>
+
               <button
-                onClick={() => setShowNewModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl cursor-pointer"
+                onClick={() => setEditingLup(null)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateLup} className="space-y-4">
+            <form onSubmit={handleSaveEdit} className="space-y-4">
               
-              {/* Code & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Motivo del cambio (Obligatorio para auditoría) */}
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+                <label className="block text-xs font-black text-amber-900 uppercase tracking-wide mb-1">
+                  Motivo o Resumen del Cambio (Se registrará en auditoría) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Actualización de foto por cambio de estándar en andenes de despacho..."
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900"
+                />
+              </div>
+
+              {/* Basic Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Código LUP *
@@ -626,14 +876,490 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Ej: LUP-LOG-006"
-                    value={newCode}
-                    onChange={(e) => setNewCode(e.target.value)}
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Categoría *
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as LupCategory)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  >
+                    <option value="Seguridad SSO">Seguridad SSO</option>
+                    <option value="Cadena de Frío">Cadena de Frío</option>
+                    <option value="Operación de Equipos">Operación de Equipos</option>
+                    <option value="Calidad & BPM">Calidad & BPM</option>
+                    <option value="Mantención Autónoma 5S">Mantención Autónoma 5S</option>
+                    <option value="Calidad / Inocuidad">Calidad / Inocuidad</option>
+                    <option value="Despacho & Zonales">Despacho & Zonales</option>
+                    <option value="Eficiencia Operacional">Eficiencia Operacional</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Título de la LUP *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                   />
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Área Operacional *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editArea}
+                    onChange={(e) => setEditArea(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Objetivo de la Lección *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={editObjective}
+                  onChange={(e) => setEditObjective(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                />
+              </div>
+
+              {/* Caso Correcto Edit */}
+              <div className="bg-emerald-50/60 border-2 border-emerald-300 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase">
+                    ✅ Caso Correcto (Qué Sí Hacer)
+                  </h4>
+                  {editDoPhotoSizeKb && (
+                    <span className="text-[10px] text-emerald-700 font-mono font-bold">
+                      📸 {editDoPhotoSizeKb} KB
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                      Título Caso Correcto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editDoTitle}
+                      onChange={(e) => setEditDoTitle(e.target.value)}
+                      className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                      Cambiar Fotografía Correcta (Opcional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDoPhotoUpload(e, true)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                    Descripción del Caso Correcto *
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={editDoDesc}
+                    onChange={(e) => setEditDoDesc(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                    Puntos Clave (uno por línea)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editDoPoints}
+                    onChange={(e) => setEditDoPoints(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-semibold font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Caso Incorrecto Edit */}
+              <div className="bg-rose-50/60 border-2 border-rose-300 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-rose-900 uppercase">
+                    ❌ Caso Incorrecto (Qué No Hacer)
+                  </h4>
+                  {editDontPhotoSizeKb && (
+                    <span className="text-[10px] text-rose-700 font-mono font-bold">
+                      📸 {editDontPhotoSizeKb} KB
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                      Título Caso Incorrecto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editDontTitle}
+                      onChange={(e) => setEditDontTitle(e.target.value)}
+                      className="w-full bg-white border border-rose-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                      Cambiar Fotografía Incorrecta (Opcional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDontPhotoUpload(e, true)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-rose-600 file:text-white cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                    Descripción del Caso Incorrecto *
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={editDontDesc}
+                    onChange={(e) => setEditDontDesc(e.target.value)}
+                    className="w-full bg-white border border-rose-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                    Riesgos (uno por línea)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editDontPoints}
+                    onChange={(e) => setEditDontPoints(e.target.value)}
+                    className="w-full bg-white border border-rose-300 rounded-xl px-3 py-1.5 text-xs font-semibold font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Safety Warning */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Advertencia de Seguridad (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={editSafetyWarning}
+                  onChange={(e) => setEditSafetyWarning(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingLup(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-[#008744] hover:bg-emerald-600 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Guardar Modificación y Registrar Auditoría</span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deletingLup && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-rose-200">
+            
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-1">
+              ¿Eliminar Lección de un Punto?
+            </h3>
+            
+            <p className="text-xs text-slate-600 mb-3">
+              Estás a punto de eliminar <strong>[{deletingLup.code}] {deletingLup.title}</strong>.
+            </p>
+
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 mb-4 text-xs text-rose-900 leading-relaxed">
+              <p className="font-bold mb-1">⚠️ Registro Obligatorio en Auditoría CIAL:</p>
+              <p>
+                Esta acción se registrará formalmente bajo tu cuenta corporativa: <strong>{currentUserEmail}</strong> en el historial de trazabilidad.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Motivo de la eliminación *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej: Descontinuado por nueva normativa de congelados..."
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDeletingLup(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Confirmar Eliminación</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* AUDIT LOG MODAL (HISTORIAL COMPLETO DE MODIFICACIONES Y ELIMINACIONES) */}
+      {showAuditModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200 flex flex-col justify-between">
+            
+            <div>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-xs font-black bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded">
+                      AUDITORÍA CIAL
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold">
+                      {auditLogs.length} eventos registrados
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                    Registro de Auditoría y Trazabilidad de LUPs
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Historial oficial de quién creó, modificó o eliminó lecciones operacionales en Zona Verde.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowAuditModal(false)}
+                  className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4">
+                {/* Search */}
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por usuario, LUP o motivo..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1">
+                  {(['TODOS', 'CREADO', 'MODIFICADO', 'ELIMINADO'] as const).map((action) => (
+                    <button
+                      key={action}
+                      onClick={() => setAuditFilter(action)}
+                      className={`px-3 py-1 rounded-xl text-[11px] font-black tracking-wide transition cursor-pointer ${
+                        auditFilter === action
+                          ? action === 'ELIMINADO'
+                            ? 'bg-rose-600 text-white'
+                            : action === 'MODIFICADO'
+                            ? 'bg-amber-500 text-slate-950'
+                            : action === 'CREADO'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {action}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audit Timeline */}
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                {filteredAuditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 hover:border-slate-300 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                            log.action === 'ELIMINADO'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                              : log.action === 'MODIFICADO'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          }`}
+                        >
+                          {log.action}
+                        </span>
+
+                        <span className="font-mono text-xs font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                          {log.lupCode}
+                        </span>
+
+                        <span className="text-xs font-black text-slate-900">
+                          {log.lupTitle}
+                        </span>
+                      </div>
+
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        ⏱️ {formatLogDate(log.performedAt)}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                        <User className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Responsable: <strong className="text-slate-900">{log.performedBy}</strong></span>
+                      </div>
+
+                      {log.details && (
+                        <div className="text-slate-600 font-medium italic text-[11px]">
+                          "{log.details}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {filteredAuditLogs.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 text-xs font-semibold">
+                    No se encontraron registros de auditoría para este criterio.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-4">
+              <span className="text-[11px] text-slate-400 font-semibold">
+                Registro inmutable de trazabilidad CIAL Alimentos
+              </span>
+              <button
+                onClick={() => setShowAuditModal(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Cerrar Auditoría
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* CREATE NEW LUP MODAL */}
+      {showNewModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200">
+            
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4 mb-5">
+              <div>
+                <span className="bg-emerald-100 text-emerald-900 font-black text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Nueva Lección Operacional
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+                  Crear Lección de Un Punto (LUP)
+                </h3>
+                <p className="text-xs text-emerald-700 font-bold mt-0.5">
+                  👤 Creador registrado: <strong>{currentUserEmail}</strong>
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowNewModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLup} className="space-y-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Código LUP *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: LUP-DES-05"
+                    value={newCode}
+                    onChange={(e) => setNewCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Categoría *
                   </label>
@@ -654,7 +1380,6 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 </div>
               </div>
 
-              {/* Title & Area */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
@@ -663,7 +1388,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Inspección pre-uso de transpaleta manual"
+                    placeholder="Ej: Correcto Traspaso de Pallets en Andén..."
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
@@ -677,7 +1402,7 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Andenes 1-8 / Cámara Frío P2"
+                    placeholder="Ej: Despacho, Andenes, Cámara Frío..."
                     value={newArea}
                     onChange={(e) => setNewArea(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
@@ -685,41 +1410,42 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 </div>
               </div>
 
-              {/* Objective */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Objetivo ("Qué aprenderá el operador") *
+                  Objetivo de la Lección *
                 </label>
                 <textarea
-                  rows={2}
                   required
-                  placeholder="Ej: Detectar a tiempo fugas hidráulicas y rodamientos rotos antes de iniciar el turno de carga..."
+                  rows={2}
+                  placeholder="¿Qué buscamos lograr o evitar con esta lección en el turno?..."
                   value={newObjective}
                   onChange={(e) => setNewObjective(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                 />
               </div>
 
-              {/* DUAL CONTAINER: DO (CORRECTO) VS DONT (INCORRECTO) WITH PHOTO UPLOAD */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                
-                {/* 1. CASO CORRECTO CONTAINER */}
-                <div className="bg-emerald-50/70 p-4 rounded-3xl border-2 border-emerald-400 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>1. Caso Correcto (SÍ HACER)</span>
-                    </label>
-                  </div>
+              {/* Subida Caso Correcto */}
+              <div className="bg-emerald-50/60 border-2 border-emerald-300 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase">
+                    ✅ Caso Correcto (Qué Sí Hacer)
+                  </h4>
+                  {newDoPhotoSizeKb && (
+                    <span className="text-[10px] text-emerald-700 font-mono font-bold">
+                      📸 {newDoPhotoSizeKb} KB
+                    </span>
+                  )}
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-emerald-800 mb-1">
-                      Título de la práctica correcta *
+                    <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                      Título Caso Correcto *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej: Tirar de costado con vista al frente"
+                      placeholder="Ej: Cajas con traba en cruz..."
                       value={newDoTitle}
                       onChange={(e) => setNewDoTitle(e.target.value)}
                       className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
@@ -727,86 +1453,55 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-emerald-800 mb-1">
-                      Explicación detallada
+                    <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                      Foto Caso Correcto (Comprimida &lt;60KB)
                     </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Detalla cómo se debe realizar correctamente..."
-                      value={newDoDesc}
-                      onChange={(e) => setNewDoDesc(e.target.value)}
-                      className="w-full bg-white border border-emerald-300 rounded-xl p-2 text-xs font-medium"
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDoPhotoUpload(e, false)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
                     />
-                  </div>
-
-                  {/* Photo of Correct Case */}
-                  <div>
-                    <label className="block text-[11px] font-black text-emerald-900 uppercase mb-1">
-                      📸 Foto de Caso Correcto
-                    </label>
-
-                    {newDoPhoto ? (
-                      <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 h-32 bg-white">
-                        <img src={newDoPhoto} alt="Preview Correcto" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1 left-1 bg-black/70 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono font-bold">
-                          {newDoPhotoSizeKb ? `${newDoPhotoSizeKb} KB` : 'Optimizado'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewDoPhoto(null);
-                            setNewDoPhotoSizeKb(null);
-                          }}
-                          className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded-full cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <label className="flex-1 border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-2xl p-2 text-center cursor-pointer bg-white transition">
-                          <Camera className="w-4 h-4 text-emerald-600 mx-auto mb-0.5" />
-                          <span className="text-[11px] font-bold text-emerald-800 block">Subir Foto Correcta</span>
-                          <span className="text-[9px] text-slate-400 block">Formato liviano automático</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            capture="environment" 
-                            onChange={handleDoPhotoUpload} 
-                            className="hidden" 
-                          />
-                        </label>
-
-                        <button
-                          type="button"
-                          onClick={handleSimulateDoPhoto}
-                          className="px-2.5 border border-emerald-300 bg-white hover:bg-emerald-50 rounded-2xl text-[10px] font-bold text-emerald-800 transition cursor-pointer shrink-0"
-                          title="Cargar foto de prueba"
-                        >
-                          Foto Test
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* 2. CASO INCORRECTO CONTAINER */}
-                <div className="bg-rose-50/70 p-4 rounded-3xl border-2 border-rose-300 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-rose-900 uppercase flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4 text-rose-600" />
-                      <span>2. Caso Incorrecto (NO HACER)</span>
-                    </label>
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                    Descripción del Caso Correcto *
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Instrucción detallada de cómo realizar la tarea según estándar..."
+                    value={newDoDesc}
+                    onChange={(e) => setNewDoDesc(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                  />
+                </div>
+              </div>
 
+              {/* Subida Caso Incorrecto */}
+              <div className="bg-rose-50/60 border-2 border-rose-300 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-rose-900 uppercase">
+                    ❌ Caso Incorrecto (Qué No Hacer)
+                  </h4>
+                  {newDontPhotoSizeKb && (
+                    <span className="text-[10px] text-rose-700 font-mono font-bold">
+                      📸 {newDontPhotoSizeKb} KB
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-rose-800 mb-1">
-                      Título de lo que está prohibido *
+                    <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                      Título Caso Incorrecto *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej: Caminar de espaldas tirando de frente"
+                      placeholder="Ej: Cajas en columnas sin traba..."
                       value={newDontTitle}
                       onChange={(e) => setNewDontTitle(e.target.value)}
                       className="w-full bg-white border border-rose-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
@@ -814,140 +1509,98 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-rose-800 mb-1">
-                      Explicación del peligro
+                    <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                      Foto Caso Incorrecto (Comprimida &lt;60KB)
                     </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Detalla por qué es peligroso o qué consecuencias tiene..."
-                      value={newDontDesc}
-                      onChange={(e) => setNewDontDesc(e.target.value)}
-                      className="w-full bg-white border border-rose-300 rounded-xl p-2 text-xs font-medium"
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDontPhotoUpload(e, false)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-rose-600 file:text-white cursor-pointer"
                     />
-                  </div>
-
-                  {/* Photo of Incorrect Case */}
-                  <div>
-                    <label className="block text-[11px] font-black text-rose-900 uppercase mb-1">
-                      📸 Foto de Caso Incorrecto
-                    </label>
-
-                    {newDontPhoto ? (
-                      <div className="relative rounded-2xl overflow-hidden border-2 border-rose-400 h-32 bg-white">
-                        <img src={newDontPhoto} alt="Preview Incorrecto" className="w-full h-full object-cover" />
-                        <span className="absolute bottom-1 left-1 bg-black/70 text-rose-300 text-[10px] px-2 py-0.5 rounded font-mono font-bold">
-                          {newDontPhotoSizeKb ? `${newDontPhotoSizeKb} KB` : 'Optimizado'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewDontPhoto(null);
-                            setNewDontPhotoSizeKb(null);
-                          }}
-                          className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded-full cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <label className="flex-1 border-2 border-dashed border-rose-300 hover:border-rose-400 rounded-2xl p-2 text-center cursor-pointer bg-white transition">
-                          <Camera className="w-4 h-4 text-rose-600 mx-auto mb-0.5" />
-                          <span className="text-[11px] font-bold text-rose-800 block">Subir Foto Incorrecta</span>
-                          <span className="text-[9px] text-slate-400 block">Formato liviano automático</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            capture="environment" 
-                            onChange={handleDontPhotoUpload} 
-                            className="hidden" 
-                          />
-                        </label>
-
-                        <button
-                          type="button"
-                          onClick={handleSimulateDontPhoto}
-                          className="px-2.5 border border-rose-300 bg-white hover:bg-rose-50 rounded-2xl text-[10px] font-bold text-rose-800 transition cursor-pointer shrink-0"
-                          title="Cargar foto de prueba"
-                        >
-                          Foto Test
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-bold text-rose-950 mb-1">
+                    Descripción del Caso Incorrecto *
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Descripción del error operacional o desviación..."
+                    value={newDontDesc}
+                    onChange={(e) => setNewDontDesc(e.target.value)}
+                    className="w-full bg-white border border-rose-300 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                  />
+                </div>
               </div>
 
               {/* Safety Warning */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Advertencia Crítica de Seguridad (Opcional)
+                  Advertencia de Seguridad (Opcional)
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: ¡Riesgo grave de atrapamiento o volcadura si no se sigue este estándar!"
+                  placeholder="Ej: ¡Riesgo inminente de aplastamiento si se mueve el camión!"
                   value={newSafetyWarning}
                   onChange={(e) => setNewSafetyWarning(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                 />
               </div>
 
-              {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowNewModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl text-xs font-black bg-[#008744] hover:bg-emerald-700 text-white shadow-md transition cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-[#008744] hover:bg-emerald-600 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-2"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Publicar LUP con Fotos</span>
+                  <Check className="w-4 h-4" />
+                  <span>Guardar LUP en Catálogo</span>
                 </button>
               </div>
 
             </form>
+
           </div>
         </div>
       )}
 
-      {/* FULL PHOTO ZOOM MODAL */}
+      {/* PHOTO ZOOM MODAL */}
       {zoomPhoto && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 rounded-3xl max-w-2xl w-full p-4 sm:p-6 text-white shadow-2xl border border-slate-700">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+        <div 
+          onClick={() => setZoomPhoto(null)}
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in cursor-zoom-out"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full p-4 sm:p-6 text-white shadow-2xl space-y-3 cursor-default"
+          >
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-black text-white">{zoomPhoto.title}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{zoomPhoto.subtitle}</p>
+                <span className="text-xs text-emerald-400 font-bold uppercase">{zoomPhoto.title}</span>
+                <h4 className="text-base font-extrabold">{zoomPhoto.subtitle}</h4>
               </div>
-              <button
+              <button 
                 onClick={() => setZoomPhoto(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="p-2 hover:bg-slate-800 rounded-xl transition cursor-pointer text-slate-400 hover:text-white"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="rounded-2xl overflow-hidden max-h-[70vh] bg-black flex items-center justify-center">
+            <div className="rounded-2xl overflow-hidden bg-black max-h-[70vh] flex items-center justify-center">
               <img 
                 src={zoomPhoto.url} 
-                alt="Zoom Evidencia" 
+                alt="Detalle" 
                 className="max-h-[70vh] w-auto object-contain" 
               />
-            </div>
-
-            <div className="mt-3 flex items-center justify-end pt-3 border-t border-slate-800">
-              <button
-                onClick={() => setZoomPhoto(null)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
-              >
-                Cerrar Visor
-              </button>
             </div>
           </div>
         </div>

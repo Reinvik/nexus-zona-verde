@@ -155,6 +155,7 @@ export default function App() {
             lups={lups}
             onSelectForCharla={handleStartCharlaWithLup}
             onLupsUpdated={loadData}
+            currentUserEmail={user?.email || 'colaborador@cial.cl'}
           />
         )}
 
