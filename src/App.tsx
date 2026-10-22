@@ -21,16 +21,36 @@ import { PalletJackModule } from './components/PalletJackModule';
 import { RfScannerModule } from './components/RfScannerModule';
 import { SlaDashboard } from './components/SlaDashboard';
 import { HistorialCharlas } from './components/HistorialCharlas';
+import { LoginPage } from './components/LoginPage';
+import { supabase } from './lib/supabase';
 import { ARIEL_ONEDRIVE_URL } from './data/seedData';
-import { FolderSync, ExternalLink, ShieldCheck, Heart, Sparkles } from 'lucide-react';
+import cialLogo from './assets/cial-alimentos-logo.png';
+import { FolderSync, ExternalLink, ShieldCheck, Heart, Sparkles, RotateCcw } from 'lucide-react';
 
 export default function App() {
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
   const [lups, setLups] = useState<LupItem[]>([]);
   const [charlas, setCharlas] = useState<CharlaSession[]>([]);
   const [pallets, setPallets] = useState<PalletJackReport[]>([]);
   const [rfs, setRfs] = useState<RfScannerReport[]>([]);
   const [selectedLupId, setSelectedLupId] = useState<string | undefined>(undefined);
+
+  // Authentication lifecycle with Nexus Supabase
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load data from persistent storage
   const loadData = () => {
@@ -66,6 +86,28 @@ export default function App() {
   const pendingPalletsCount = pallets.filter(p => p.status === 'pendiente').length;
   const pendingRfsCount = rfs.filter(r => r.status === 'pendiente').length;
 
+  // 1. Pantalla de carga mientras se valida sesión con Supabase
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#063d25] flex flex-col items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20 flex flex-col items-center gap-4 text-white shadow-2xl">
+          <div className="bg-white p-3 rounded-2xl shadow-md border border-emerald-100 flex items-center justify-center">
+            <img src={cialLogo} alt="CIAL Alimentos" className="w-14 h-14 object-contain" />
+          </div>
+          <div className="flex items-center gap-2 text-emerald-200 font-extrabold text-sm">
+            <RotateCcw className="w-4 h-4 animate-spin text-emerald-300" />
+            <span>Validando credenciales corporativas CIAL...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Si no hay sesión iniciada, mostrar Login idéntico a Nexus Outbound
+  if (!user) {
+    return <LoginPage onSuccess={() => loadData()} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-slate-900 flex flex-col font-sans selection:bg-[#008744] selection:text-white">
       
@@ -74,6 +116,8 @@ export default function App() {
         onStartCharlaQuick={handleStartCharlaQuick}
         onOpenReportModal={handleOpenPalletReport}
         activeTab={activeTab}
+        user={user}
+        onLogout={() => supabase.auth.signOut()}
       />
 
       {/* Main Navigation Bar */}

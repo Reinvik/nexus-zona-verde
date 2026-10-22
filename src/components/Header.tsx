@@ -8,7 +8,9 @@ import {
   FolderSync, 
   Sparkles,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  User,
+  LogOut
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
@@ -18,12 +20,16 @@ interface HeaderProps {
   onStartCharlaQuick: () => void;
   onOpenReportModal: () => void;
   activeTab: string;
+  user?: any;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onStartCharlaQuick, 
   onOpenReportModal,
-  activeTab 
+  activeTab,
+  user,
+  onLogout
 }) => {
   const [santiagoTime, setSantiagoTime] = useState<string>('');
   const [currentShift, setCurrentShift] = useState<{ name: ShiftType; label: string; badgeColor: string }>({
@@ -151,6 +157,27 @@ export const Header: React.FC<HeaderProps> = ({
               <Zap className="w-4 h-4 fill-slate-900 text-slate-900" />
               <span>Charla 5 Min</span>
             </button>
+
+            {/* User Profile & Logout */}
+            {user && (
+              <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/20">
+                <div 
+                  className="hidden xl:flex items-center gap-1.5 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10 text-xs text-emerald-100 max-w-[180px] truncate"
+                  title={user.email}
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                  <span className="truncate font-semibold">{user.email?.split('@')[0]}</span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="inline-flex items-center gap-1 text-xs font-bold bg-white/15 hover:bg-red-500/80 active:bg-red-600 text-white px-2.5 py-2 rounded-xl transition border border-white/15 cursor-pointer shadow-xs"
+                  title="Cerrar Sesión Corporativa"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Salir</span>
+                </button>
+              </div>
+            )}
           </div>
 
         </div>
