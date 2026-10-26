@@ -167,7 +167,8 @@ export type AttendanceStatus =
   | 'tarde'
   | 'ausente'
   | 'licencia'
-  | 'justificada';
+  | 'justificada'
+  | 'vacaciones';
 
 export interface OperatorItem {
   id: string;
@@ -178,6 +179,9 @@ export interface OperatorItem {
   shiftId?: ShiftId; // default shift if any
   active: boolean;
   createdAt: string;
+  supervisor?: string;
+  jefeTurno?: string;
+  company?: string;
 }
 
 export interface AttendanceRecord {

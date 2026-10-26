@@ -1,5 +1,6 @@
 import { LupItem, LupAuditLog, CharlaSession, PalletJackReport, RfScannerReport, OperatorItem, AttendanceRecord } from '../types';
 import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
+import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
 
 const KEYS = {
   LUPS: 'cial_zv_lups_v1',
@@ -7,8 +8,8 @@ const KEYS = {
   CHARLAS: 'cial_zv_charlas_v1',
   PALLETS: 'cial_zv_pallets_v1',
   RFS: 'cial_zv_rfs_v1',
-  OPERATORS: 'cial_zv_operators_v1',
-  ATTENDANCE: 'cial_zv_attendance_v1'
+  OPERATORS: 'cial_zv_operators_v2',
+  ATTENDANCE: 'cial_zv_attendance_overrides_v2'
 };
 
 const INITIAL_AUDIT_LOGS: LupAuditLog[] = [
@@ -351,6 +352,14 @@ export function exportToCsv(filename: string, rows: Record<string, any>[]): void
 
 export function getOperators(): OperatorItem[] {
   try {
+    // Migration: clean legacy demo roster v1
+    if (localStorage.getItem('cial_zv_operators_v1')) {
+      localStorage.removeItem('cial_zv_operators_v1');
+    }
+    if (localStorage.getItem('cial_zv_attendance_v1')) {
+      localStorage.removeItem('cial_zv_attendance_v1');
+    }
+
     const raw = localStorage.getItem(KEYS.OPERATORS);
     if (!raw) {
       localStorage.setItem(KEYS.OPERATORS, JSON.stringify(INITIAL_OPERATORS));
@@ -392,42 +401,48 @@ export function deleteOperator(operatorId: string): void {
 
 export function getAttendanceRecords(date?: string, shiftId?: string): AttendanceRecord[] {
   try {
-    const raw = localStorage.getItem(KEYS.ATTENDANCE);
-    let all: AttendanceRecord[];
-    if (!raw) {
-      localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(INITIAL_ATTENDANCE));
-      all = INITIAL_ATTENDANCE;
-    } else {
-      all = JSON.parse(raw);
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    
+    // 1. Get historical baseline records for this targetDate
+    const histRecords = getHistoricalAttendanceForDate(targetDate, shiftId);
+    const map = new Map<string, AttendanceRecord>();
+    for (const r of histRecords) {
+      map.set(`${r.date}_${r.operatorId}`, r);
     }
-    return all.filter(item => {
-      if (date && item.date !== date) return false;
-      if (shiftId && item.shiftId !== shiftId) return false;
-      return true;
-    });
+
+    // 2. Overlay manual overrides from localStorage
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    if (raw) {
+      const overrides: AttendanceRecord[] = JSON.parse(raw);
+      for (const ov of overrides) {
+        if (date && ov.date !== date) continue;
+        if (shiftId && shiftId !== 'todos' && ov.shiftId !== shiftId) continue;
+        map.set(`${ov.date}_${ov.operatorId}`, ov);
+      }
+    }
+
+    return Array.from(map.values());
   } catch (e) {
-    console.error('Error reading attendance from localStorage:', e);
-    return INITIAL_ATTENDANCE;
+    console.error('Error reading attendance records:', e);
+    return getHistoricalAttendanceForDate(date || '2026-10-26', shiftId);
   }
 }
 
 export function saveAttendanceRecord(record: AttendanceRecord): void {
   try {
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
-    const current: AttendanceRecord[] = raw ? JSON.parse(raw) : [...INITIAL_ATTENDANCE];
+    const overrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
     
-    const existingIndex = current.findIndex(
-      r => r.date === record.date && r.shiftId === record.shiftId && r.operatorId === record.operatorId
+    const existingIndex = overrides.findIndex(
+      r => r.date === record.date && r.operatorId === record.operatorId
     );
     
-    let updated: AttendanceRecord[];
     if (existingIndex >= 0) {
-      updated = [...current];
-      updated[existingIndex] = record;
+      overrides[existingIndex] = record;
     } else {
-      updated = [record, ...current];
+      overrides.push(record);
     }
-    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(updated));
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(overrides));
   } catch (e) {
     console.error('Error saving attendance record:', e);
   }
@@ -436,19 +451,19 @@ export function saveAttendanceRecord(record: AttendanceRecord): void {
 export function saveBulkAttendance(records: AttendanceRecord[]): void {
   try {
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
-    let current: AttendanceRecord[] = raw ? JSON.parse(raw) : [...INITIAL_ATTENDANCE];
+    const overrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
     
     for (const rec of records) {
-      const idx = current.findIndex(
-        r => r.date === rec.date && r.shiftId === rec.shiftId && r.operatorId === rec.operatorId
+      const idx = overrides.findIndex(
+        r => r.date === rec.date && r.operatorId === rec.operatorId
       );
       if (idx >= 0) {
-        current[idx] = rec;
+        overrides[idx] = rec;
       } else {
-        current.push(rec);
+        overrides.push(rec);
       }
     }
-    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(current));
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(overrides));
   } catch (e) {
     console.error('Error saving bulk attendance:', e);
   }
