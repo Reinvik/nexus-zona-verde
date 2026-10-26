@@ -156,7 +156,36 @@ export type MainTab =
   | 'historial-charlas' 
   | 'transpaletas' 
   | 'pistolas-rf' 
-  | 'reportes-sla';
+  | 'reportes-sla'
+  | 'usuarios';
+
+// ========================
+// ROLES, USUARIOS & PERMISOS
+// ========================
+
+export type UserRole = 'jefatura' | 'supervisor' | 'operador';
+
+export interface UserPermissions {
+  canDeleteLup: boolean;
+  canEditLup: boolean;
+  canCreateLup: boolean;
+  canManageAttendance: boolean;
+  canManageUsers: boolean;
+  canManageEquipment: boolean;
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  area?: string;
+  shiftId?: ShiftId;
+  permissions: UserPermissions;
+  isSuperAdmin?: boolean; // ariel.mella@cial.cl
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ========================
 // ASISTENCIA DIARIA / OPERADORES

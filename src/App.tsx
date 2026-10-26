@@ -4,13 +4,15 @@ import {
   LupItem, 
   CharlaSession, 
   PalletJackReport, 
-  RfScannerReport 
+  RfScannerReport,
+  AppUser
 } from './types';
 import { 
   getLups, 
   getCharlas, 
   getPallets, 
-  getRfs 
+  getRfs,
+  getAppUserByEmail 
 } from './services/storage';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
@@ -22,6 +24,7 @@ import { PalletJackModule } from './components/PalletJackModule';
 import { RfScannerModule } from './components/RfScannerModule';
 import { SlaDashboard } from './components/SlaDashboard';
 import { HistorialCharlas } from './components/HistorialCharlas';
+import { UserManagementModule } from './components/UserManagementModule';
 import { LoginPage } from './components/LoginPage';
 import { supabase } from './lib/supabase';
 import { ARIEL_ONEDRIVE_URL } from './data/seedData';
@@ -37,16 +40,27 @@ export default function App() {
   const [pallets, setPallets] = useState<PalletJackReport[]>([]);
   const [rfs, setRfs] = useState<RfScannerReport[]>([]);
   const [selectedLupId, setSelectedLupId] = useState<string | undefined>(undefined);
+  const [userProfile, setUserProfile] = useState<AppUser | null>(null);
 
   // Authentication lifecycle with Nexus Supabase
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user?.email) {
+        setUserProfile(getAppUserByEmail(session.user.email));
+      } else {
+        setUserProfile(getAppUserByEmail('ariel.mella@cial.cl'));
+      }
       setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user?.email) {
+        setUserProfile(getAppUserByEmail(session.user.email));
+      } else {
+        setUserProfile(getAppUserByEmail('ariel.mella@cial.cl'));
+      }
       setAuthLoading(false);
     });
 
@@ -118,7 +132,9 @@ export default function App() {
         onOpenReportModal={handleOpenPalletReport}
         activeTab={activeTab}
         user={user}
+        userProfile={userProfile || undefined}
         onLogout={() => supabase.auth.signOut()}
+        onNavigateToUsers={() => setActiveTab('usuarios')}
       />
 
       {/* Main Navigation Bar */}
@@ -130,6 +146,7 @@ export default function App() {
         }}
         pendingPalletsCount={pendingPalletsCount}
         pendingRfsCount={pendingRfsCount}
+        currentUser={userProfile || undefined}
       />
 
       {/* Main Content Area */}
@@ -163,6 +180,10 @@ export default function App() {
             onSelectForCharla={handleStartCharlaWithLup}
             onLupsUpdated={loadData}
             currentUserEmail={user?.email || 'colaborador@cial.cl'}
+            canDeleteLup={userProfile?.permissions?.canDeleteLup ?? (userProfile?.role === 'jefatura')}
+            canEditLup={userProfile?.permissions?.canEditLup ?? true}
+            canCreateLup={userProfile?.permissions?.canCreateLup ?? true}
+            userRole={userProfile?.role}
           />
         )}
 
@@ -205,6 +226,12 @@ export default function App() {
             lups={lups}
             onCharlasUpdated={loadData}
             onNavigateToTimer={handleStartCharlaWithLup}
+          />
+        )}
+
+        {activeTab === 'usuarios' && (
+          <UserManagementModule
+            currentUser={userProfile || undefined}
           />
         )}
 

@@ -1,4 +1,15 @@
-import { LupItem, LupAuditLog, CharlaSession, PalletJackReport, RfScannerReport, OperatorItem, AttendanceRecord } from '../types';
+import { 
+  LupItem, 
+  LupAuditLog, 
+  CharlaSession, 
+  PalletJackReport, 
+  RfScannerReport, 
+  OperatorItem, 
+  AttendanceRecord,
+  AppUser,
+  UserRole,
+  UserPermissions
+} from '../types';
 import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
 import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
 
@@ -9,8 +20,117 @@ const KEYS = {
   PALLETS: 'cial_zv_pallets_v1',
   RFS: 'cial_zv_rfs_v1',
   OPERATORS: 'cial_zv_operators_v2',
-  ATTENDANCE: 'cial_zv_attendance_overrides_v2'
+  ATTENDANCE: 'cial_zv_attendance_overrides_v2',
+  USERS: 'cial_zv_users_v1'
 };
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
+  jefatura: {
+    canDeleteLup: true,
+    canEditLup: true,
+    canCreateLup: true,
+    canManageAttendance: true,
+    canManageUsers: true,
+    canManageEquipment: true
+  },
+  supervisor: {
+    canDeleteLup: false, // Solo jefaturas pueden eliminar LUPs
+    canEditLup: true,
+    canCreateLup: true,
+    canManageAttendance: true,
+    canManageUsers: false,
+    canManageEquipment: true
+  },
+  operador: {
+    canDeleteLup: false,
+    canEditLup: false,
+    canCreateLup: false,
+    canManageAttendance: false,
+    canManageUsers: false,
+    canManageEquipment: false
+  }
+};
+
+export const INITIAL_USERS: AppUser[] = [
+  {
+    id: 'user-ariel-mella',
+    email: 'ariel.mella@cial.cl',
+    name: 'Ariel Mella',
+    role: 'jefatura',
+    area: 'Jefatura de Operaciones & CD',
+    permissions: {
+      canDeleteLup: true,
+      canEditLup: true,
+      canCreateLup: true,
+      canManageAttendance: true,
+      canManageUsers: true,
+      canManageEquipment: true
+    },
+    isSuperAdmin: true,
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-francisco-lara',
+    email: 'francisco.lara@cial.cl',
+    name: 'Francisco Lara',
+    role: 'jefatura',
+    area: 'Jefe de Turno / Operaciones',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.jefatura },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-euro-velasquez',
+    email: 'euro.velasquez@cial.cl',
+    name: 'Euro Velásquez',
+    role: 'jefatura',
+    area: 'Jefe de Turno / Operaciones',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.jefatura },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-walter-sanchez',
+    email: 'walter.sanchez@cial.cl',
+    name: 'Walter Sánchez',
+    role: 'supervisor',
+    area: 'Supervisor Despacho & Andenes',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-mayckell-pereira',
+    email: 'mayckell.pereira@cial.cl',
+    name: 'Mayckell Pereira',
+    role: 'supervisor',
+    area: 'Supervisor Encajado & Picking',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-claudio-sepulveda',
+    email: 'claudio.sepulveda@cial.cl',
+    name: 'Claudio Sepúlveda',
+    role: 'supervisor',
+    area: 'Supervisor Picking Frío',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-cristian-hernandez',
+    email: 'cristian.hernandez@cial.cl',
+    name: 'Cristian Hernández',
+    role: 'supervisor',
+    area: 'Supervisor Recepción & Almacenamiento',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  }
+];
 
 const INITIAL_AUDIT_LOGS: LupAuditLog[] = [
   {
@@ -176,28 +296,39 @@ export function saveLup(lup: LupItem, userEmail?: string, changeReason?: string)
   safeSet(KEYS.LUPS, updatedList);
 }
 
-export function deleteLup(id: string, userEmail?: string, reason?: string): void {
+export function deleteLup(id: string, userEmail?: string, reason?: string): { success: boolean; message?: string } {
   const current = getLups();
   const target = current.find(item => item.id === id);
   const now = new Date().toISOString();
-  const actor = userEmail || 'colaborador@cial.cl';
+  const actor = userEmail || 'ariel.mella@cial.cl';
+
+  // Validar permiso de Jefatura para eliminar LUPs
+  const currentUser = getAppUserByEmail(actor);
+  if (!currentUser.permissions.canDeleteLup && !currentUser.isSuperAdmin) {
+    console.warn(`[SEGURIDAD] Intento denegado de eliminación de LUP por ${actor} (Rol: ${currentUser.role})`);
+    return {
+      success: false,
+      message: 'Acceso Denegado: Solo el rol de Jefatura y usuarios expresamente autorizados pueden eliminar LUPs.'
+    };
+  }
 
   if (target) {
-    // Registrar evento de eliminación en auditoría
+    // Registrar evento de eliminación en auditoría con acreditación de Jefatura
     addLupAuditLog({
       id: `audit-del-${Date.now()}`,
       lupId: target.id,
       lupCode: target.code,
       lupTitle: target.title,
       action: 'ELIMINADO',
-      performedBy: actor,
+      performedBy: `${actor} [JEFATURA]`,
       performedAt: now,
-      details: reason || 'Eliminado del catálogo activo',
+      details: reason || 'Eliminado formalmente por Jefatura del catálogo activo',
       area: target.area
     });
   }
 
   safeSet(KEYS.LUPS, current.filter(item => item.id !== id));
+  return { success: true };
 }
 
 // Charlas 5 Min
@@ -467,4 +598,137 @@ export function saveBulkAttendance(records: AttendanceRecord[]): void {
   } catch (e) {
     console.error('Error saving bulk attendance:', e);
   }
+}
+
+// ========================
+// GESTIÓN DE USUARIOS Y PERMISOS (ARIEL MELLA / JEFATURAS)
+// ========================
+
+export function getAppUsers(): AppUser[] {
+  let users = safeGet<AppUser[]>(KEYS.USERS, []);
+  if (!users || users.length === 0) {
+    safeSet(KEYS.USERS, INITIAL_USERS);
+    return INITIAL_USERS;
+  }
+
+  // Garantizar que Ariel Mella siempre exista y mantenga privilegios de Super Administrador
+  const arielIdx = users.findIndex(u => u.email.toLowerCase() === 'ariel.mella@cial.cl');
+  if (arielIdx === -1) {
+    users.unshift(INITIAL_USERS[0]);
+    safeSet(KEYS.USERS, users);
+  } else {
+    // Asegurar permisos clave intactos para Ariel Mella
+    if (!users[arielIdx].permissions.canDeleteLup || !users[arielIdx].permissions.canManageUsers || !users[arielIdx].isSuperAdmin) {
+      users[arielIdx] = {
+        ...users[arielIdx],
+        role: 'jefatura',
+        isSuperAdmin: true,
+        permissions: {
+          ...users[arielIdx].permissions,
+          canDeleteLup: true,
+          canManageUsers: true,
+          canEditLup: true,
+          canCreateLup: true,
+          canManageAttendance: true,
+          canManageEquipment: true
+        }
+      };
+      safeSet(KEYS.USERS, users);
+    }
+  }
+
+  return users;
+}
+
+export function getAppUserByEmail(email?: string): AppUser {
+  if (!email) {
+    // Si no hay email, retornar perfil por defecto de Ariel Mella para pruebas locales
+    const users = getAppUsers();
+    return users.find(u => u.email.toLowerCase() === 'ariel.mella@cial.cl') || INITIAL_USERS[0];
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const users = getAppUsers();
+  const found = users.find(u => u.email.toLowerCase() === normalized);
+
+  if (found) {
+    return found;
+  }
+
+  // Si no está registrado en el sistema, creamos un registro inicial para el colaborador
+  const isJefaturaEmail = normalized.includes('francisco.lara') || normalized.includes('euro.velasquez');
+  const isSupervisorEmail = normalized.includes('walter.sanchez') || normalized.includes('mayckell') || normalized.includes('claudio.sepulveda') || normalized.includes('cristian.hernandez');
+  
+  const role: UserRole = normalized === 'ariel.mella@cial.cl' 
+    ? 'jefatura' 
+    : (isJefaturaEmail ? 'jefatura' : (isSupervisorEmail ? 'supervisor' : 'operador'));
+
+  const displayName = normalized.split('@')[0].split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+
+  const newUser: AppUser = {
+    id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    email: normalized,
+    name: displayName,
+    role,
+    area: role === 'jefatura' ? 'Jefatura de Operaciones' : (role === 'supervisor' ? 'Supervisión de Turno' : 'Operaciones CD'),
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS[role] },
+    isSuperAdmin: normalized === 'ariel.mella@cial.cl',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  saveAppUser(newUser);
+  return newUser;
+}
+
+export function saveAppUser(user: AppUser): void {
+  const users = getAppUsers();
+  const now = new Date().toISOString();
+  const normalizedEmail = user.email.toLowerCase().trim();
+  const existsIndex = users.findIndex(u => u.id === user.id || u.email.toLowerCase() === normalizedEmail);
+
+  // Regla de oro: Si es Ariel Mella, blindar el rol y los permisos de gestión
+  let userToSave = { ...user, updatedAt: now };
+  if (normalizedEmail === 'ariel.mella@cial.cl') {
+    userToSave = {
+      ...userToSave,
+      isSuperAdmin: true,
+      role: 'jefatura',
+      permissions: {
+        ...userToSave.permissions,
+        canDeleteLup: true,
+        canManageUsers: true
+      }
+    };
+  }
+
+  let updatedList: AppUser[];
+  if (existsIndex >= 0) {
+    updatedList = [...users];
+    updatedList[existsIndex] = userToSave;
+  } else {
+    updatedList = [...users, userToSave];
+  }
+
+  safeSet(KEYS.USERS, updatedList);
+}
+
+export function deleteAppUser(userId: string): { success: boolean; message?: string } {
+  const users = getAppUsers();
+  const target = users.find(u => u.id === userId);
+
+  if (!target) {
+    return { success: false, message: 'Usuario no encontrado.' };
+  }
+
+  if (target.isSuperAdmin || target.email.toLowerCase() === 'ariel.mella@cial.cl') {
+    return { 
+      success: false, 
+      message: 'Operación prohibida: No es posible eliminar al Administrador Principal (ariel.mella@cial.cl).' 
+    };
+  }
+
+  const updatedList = users.filter(u => u.id !== userId);
+  safeSet(KEYS.USERS, updatedList);
+  return { success: true };
 }

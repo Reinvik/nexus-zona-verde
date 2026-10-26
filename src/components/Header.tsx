@@ -14,14 +14,16 @@ import {
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
-import { ShiftType } from '../types';
+import { ShiftType, AppUser } from '../types';
 
 interface HeaderProps {
   onStartCharlaQuick: () => void;
   onOpenReportModal: () => void;
   activeTab: string;
   user?: any;
+  userProfile?: AppUser;
   onLogout?: () => void;
+  onNavigateToUsers?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -29,7 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReportModal,
   activeTab,
   user,
-  onLogout
+  userProfile,
+  onLogout,
+  onNavigateToUsers
 }) => {
   const [santiagoTime, setSantiagoTime] = useState<string>('');
   const [currentShift, setCurrentShift] = useState<{ name: ShiftType; label: string; badgeColor: string }>({
@@ -158,16 +162,40 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Charla 5 Min</span>
             </button>
 
-            {/* User Profile & Logout */}
+            {/* User Profile, Role Badge & Logout */}
             {user && (
               <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/20">
                 <div 
-                  className="hidden xl:flex items-center gap-1.5 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/10 text-xs text-emerald-100 max-w-[180px] truncate"
-                  title={user.email}
+                  onClick={onNavigateToUsers}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs max-w-[210px] truncate transition ${
+                    onNavigateToUsers ? 'cursor-pointer hover:bg-black/35' : ''
+                  } ${
+                    userProfile?.role === 'jefatura'
+                      ? 'bg-emerald-950/70 border-emerald-400/40 text-emerald-100'
+                      : userProfile?.role === 'supervisor'
+                        ? 'bg-indigo-950/70 border-indigo-400/40 text-indigo-100'
+                        : 'bg-black/25 border-white/10 text-emerald-100'
+                  }`}
+                  title={`${user.email} (${userProfile?.role?.toUpperCase() || 'Colaborador'}) - Click para gestionar usuarios`}
                 >
                   <User className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
                   <span className="truncate font-semibold">{user.email?.split('@')[0]}</span>
+                  
+                  {userProfile && (
+                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md shrink-0 ${
+                      userProfile.isSuperAdmin
+                        ? 'bg-amber-400 text-slate-950 font-black'
+                        : userProfile.role === 'jefatura'
+                          ? 'bg-emerald-400 text-slate-950'
+                          : userProfile.role === 'supervisor'
+                            ? 'bg-indigo-300 text-slate-950'
+                            : 'bg-slate-300 text-slate-900'
+                    }`}>
+                      {userProfile.isSuperAdmin ? 'Admin' : userProfile.role}
+                    </span>
+                  )}
                 </div>
+
                 <button
                   onClick={onLogout}
                   className="inline-flex items-center gap-1 text-xs font-bold bg-white/15 hover:bg-red-500/80 active:bg-red-600 text-white px-2.5 py-2 rounded-xl transition border border-white/15 cursor-pointer shadow-xs"

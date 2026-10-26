@@ -8,23 +8,28 @@ import {
   ScanBarcode, 
   BarChart3, 
   ClipboardCheck,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound
 } from 'lucide-react';
-import { MainTab } from '../types';
+import { MainTab, AppUser } from '../types';
 
 interface NavigationProps {
   activeTab: MainTab;
   onTabChange: (tab: MainTab) => void;
   pendingPalletsCount: number;
   pendingRfsCount: number;
+  currentUser?: AppUser;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onTabChange,
   pendingPalletsCount,
-  pendingRfsCount
+  pendingRfsCount,
+  currentUser
 }) => {
+  const canManageUsers = currentUser?.permissions?.canManageUsers ?? true;
+
   const tabs = [
     {
       id: 'dashboard' as MainTab,
@@ -84,7 +89,15 @@ export const Navigation: React.FC<NavigationProps> = ({
       shortLabel: 'Historial',
       icon: ClipboardCheck,
       badge: null
-    }
+    },
+    ...(canManageUsers ? [{
+      id: 'usuarios' as MainTab,
+      label: 'Usuarios & Permisos',
+      shortLabel: 'Usuarios',
+      icon: KeyRound,
+      badge: 'Jefatura',
+      badgeColor: 'bg-amber-400 text-slate-950 font-black'
+    }] : [])
   ];
 
   return (
