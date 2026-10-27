@@ -25,7 +25,14 @@ import {
   FileSpreadsheet,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  Layers,
+  Shield,
+  Truck,
+  Boxes,
+  RefreshCw,
+  Compass,
+  Tag
 } from 'lucide-react';
 import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType } from '../types';
 import { 
@@ -149,6 +156,115 @@ const STATUS_CONFIG: Record<AttendanceStatus, {
   }
 };
 
+export interface OperationalGroupInfo {
+  id: string;
+  name: string;
+  shortName: string;
+  badgeClass: string;
+  pillActiveClass: string;
+  pillInactiveClass: string;
+  borderClass: string;
+}
+
+export const OPERATIONAL_GROUPS: Record<string, OperationalGroupInfo> = {
+  picking: {
+    id: 'picking',
+    name: 'Grupo Picking',
+    shortName: 'Picking',
+    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+    pillActiveClass: 'bg-emerald-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100 border border-emerald-200',
+    borderClass: 'border-l-emerald-500'
+  },
+  despacho: {
+    id: 'despacho',
+    name: 'Grupo Despacho',
+    shortName: 'Despacho',
+    badgeClass: 'bg-blue-50 text-blue-800 border-blue-300',
+    pillActiveClass: 'bg-blue-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-blue-50/70 text-blue-800 hover:bg-blue-100 border border-blue-200',
+    borderClass: 'border-l-blue-500'
+  },
+  gruas: {
+    id: 'gruas',
+    name: 'Grupo Grúas',
+    shortName: 'Grúas',
+    badgeClass: 'bg-amber-50 text-amber-900 border-amber-300',
+    pillActiveClass: 'bg-amber-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-amber-50/70 text-amber-900 hover:bg-amber-100 border border-amber-200',
+    borderClass: 'border-l-amber-500'
+  },
+  encajado: {
+    id: 'encajado',
+    name: 'Grupo Encajado',
+    shortName: 'Encajado',
+    badgeClass: 'bg-teal-50 text-teal-800 border-teal-300',
+    pillActiveClass: 'bg-teal-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-teal-50/70 text-teal-800 hover:bg-teal-100 border border-teal-200',
+    borderClass: 'border-l-teal-500'
+  },
+  transpaletas: {
+    id: 'transpaletas',
+    name: 'Grupo Transpaletas',
+    shortName: 'Transpaletas',
+    badgeClass: 'bg-orange-50 text-orange-900 border-orange-300',
+    pillActiveClass: 'bg-orange-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-orange-50/70 text-orange-900 hover:bg-orange-100 border border-orange-200',
+    borderClass: 'border-l-orange-500'
+  },
+  repaletizado: {
+    id: 'repaletizado',
+    name: 'Grupo Repaletizado',
+    shortName: 'Repaletizado',
+    badgeClass: 'bg-purple-50 text-purple-800 border-purple-300',
+    pillActiveClass: 'bg-purple-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-purple-50/70 text-purple-800 hover:bg-purple-100 border border-purple-200',
+    borderClass: 'border-l-purple-500'
+  },
+  patio: {
+    id: 'patio',
+    name: 'Grupo Patio Inbound',
+    shortName: 'Patio',
+    badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-300',
+    pillActiveClass: 'bg-cyan-600 text-white shadow-xs',
+    pillInactiveClass: 'bg-cyan-50/70 text-cyan-800 hover:bg-cyan-100 border border-cyan-200',
+    borderClass: 'border-l-cyan-500'
+  },
+  jefatura: {
+    id: 'jefatura',
+    name: 'Jefatura de Turno',
+    shortName: 'Jefatura',
+    badgeClass: 'bg-slate-100 text-slate-800 border-slate-300',
+    pillActiveClass: 'bg-slate-800 text-white shadow-xs',
+    pillInactiveClass: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200',
+    borderClass: 'border-l-slate-600'
+  }
+};
+
+export const getOperatorGroup = (op: OperatorItem): OperationalGroupInfo => {
+  const r = (op.role || '').toUpperCase();
+  const a = (op.area || '').toUpperCase();
+
+  if (r.includes('JEFE DE TURNO') || a.includes('JEFATURA')) return OPERATIONAL_GROUPS.jefatura;
+  if (r.includes('PICKING') || a.includes('PICKING')) return OPERATIONAL_GROUPS.picking;
+  if (r.includes('DESPACHO') || a.includes('DESPACHO')) return OPERATIONAL_GROUPS.despacho;
+  if (r.includes('GRUERO') || r.includes('GRÚA') || a.includes('GRÚAS')) return OPERATIONAL_GROUPS.gruas;
+  if (r.includes('ENCAJADO') || a.includes('ENCAJADO')) return OPERATIONAL_GROUPS.encajado;
+  if (r.includes('TRANSPALETERO') || r.includes('TRANSPALETA') || a.includes('TRANSPALETAS')) return OPERATIONAL_GROUPS.transpaletas;
+  if (r.includes('REPALETIZADO') || a.includes('REPALETIZADO')) return OPERATIONAL_GROUPS.repaletizado;
+  if (r.includes('PATIO') || a.includes('PATIO')) return OPERATIONAL_GROUPS.patio;
+
+  return {
+    id: 'general',
+    name: 'Dotación General',
+    shortName: 'General',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+    pillActiveClass: 'bg-slate-700 text-white shadow-xs',
+    pillInactiveClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+    borderClass: 'border-l-slate-300'
+  };
+};
+
 export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   currentUserEmail = 'ariel.mella@cial.cl'
 }) => {
@@ -166,6 +282,8 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [search, setSearch] = useState<string>('');
   const [selectedArea, setSelectedArea] = useState<string>('todas');
+  const [selectedSupervisor, setSelectedSupervisor] = useState<string>('todos');
+  const [selectedGroup, setSelectedGroup] = useState<string>('todos');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals
@@ -233,24 +351,63 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return Array.from(set).sort();
   }, [operators]);
 
-  // Filtered operators (by shift, area, search)
+  // Supervisors list with counts
+  const supervisorOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const op of operators) {
+      if (op.supervisor && op.supervisor.trim()) {
+        const s = op.supervisor.trim();
+        counts[s] = (counts[s] || 0) + 1;
+      }
+    }
+    const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+    return names.map(name => ({ name, count: counts[name] }));
+  }, [operators]);
+
+  // Operational Groups list with counts
+  const groupOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const op of operators) {
+      const grp = getOperatorGroup(op);
+      counts[grp.id] = (counts[grp.id] || 0) + 1;
+    }
+    const order = ['picking', 'despacho', 'gruas', 'encajado', 'transpaletas', 'repaletizado', 'patio', 'jefatura'];
+    return order
+      .filter(id => (counts[id] || 0) > 0)
+      .map(id => ({
+        ...OPERATIONAL_GROUPS[id],
+        count: counts[id] || 0
+      }));
+  }, [operators]);
+
+  // Filtered operators (by shift, area, supervisor, group, search)
   const filteredOperators = useMemo(() => {
     return operators.filter(op => {
       if (!op.active) return false;
       if (selectedShiftId !== 'todos' && op.shiftId !== selectedShiftId) return false;
       if (selectedArea !== 'todas' && op.area !== selectedArea) return false;
+      if (selectedSupervisor !== 'todos' && (op.supervisor || '').trim() !== selectedSupervisor) return false;
+      if (selectedGroup !== 'todos') {
+        const grp = getOperatorGroup(op);
+        if (grp.id !== selectedGroup) return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
+        const grp = getOperatorGroup(op);
         const matchesName = op.name.toLowerCase().includes(q);
         const matchesRut = op.rut?.toLowerCase().includes(q) ?? false;
         const matchesRole = op.role.toLowerCase().includes(q);
         const matchesSupervisor = op.supervisor?.toLowerCase().includes(q) ?? false;
         const matchesJefe = op.jefeTurno?.toLowerCase().includes(q) ?? false;
-        if (!matchesName && !matchesRut && !matchesRole && !matchesSupervisor && !matchesJefe) return false;
+        const matchesArea = op.area.toLowerCase().includes(q);
+        const matchesGroup = grp.name.toLowerCase().includes(q) || grp.shortName.toLowerCase().includes(q);
+        if (!matchesName && !matchesRut && !matchesRole && !matchesSupervisor && !matchesJefe && !matchesArea && !matchesGroup) {
+          return false;
+        }
       }
       return true;
     });
-  }, [operators, selectedShiftId, selectedArea, search]);
+  }, [operators, selectedShiftId, selectedArea, selectedSupervisor, selectedGroup, search]);
 
   // KPIs for the active date & shift
   const kpis = useMemo(() => {
@@ -677,7 +834,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
       {/* Date, Shift & Filter Controls */}
       <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
           
           {/* Date Selector (Only active in Daily view) */}
           {viewMode === 'diario' ? (
@@ -696,7 +853,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedDate(todayStr)}
-                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all ${
+                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                     selectedDate === todayStr 
                       ? 'bg-emerald-600 text-white border-emerald-600' 
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
@@ -745,21 +902,41 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             </select>
           </div>
 
-          {/* Area Filter */}
+          {/* Supervisor Filter Dropdown */}
           <div>
             <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-emerald-600" />
-              Filtrar por Área
+              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+              Supervisor a Cargo
             </label>
             <select
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
+              value={selectedSupervisor}
+              onChange={(e) => setSelectedSupervisor(e.target.value)}
+              className="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-indigo-600 focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="todos">Todos los Supervisores ({operators.length})</option>
+              {supervisorOptions.map(s => (
+                <option key={s.name} value={s.name}>
+                  {s.name} ({s.count} colab.)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Operational Group Filter Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-emerald-600" />
+              Grupo Operativo
+            </label>
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
             >
-              <option value="todas">Todas las Áreas ({operators.length})</option>
-              {areas.map(a => (
-                <option key={a} value={a}>
-                  {a}
+              <option value="todos">Todos los Grupos ({operators.length})</option>
+              {groupOptions.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.count})
                 </option>
               ))}
             </select>
@@ -774,10 +951,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Nombre, RUT, cargo, supervisor..."
+                placeholder="Nombre, RUT, rol, supervisor..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               {search && (
@@ -792,6 +969,139 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
           </div>
 
         </div>
+
+        {/* Quick Filter Pill Rows: Supervisors & Groups */}
+        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
+          
+          {/* Quick Pill Row 1: Supervisors */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
+            <span className="font-bold text-slate-600 shrink-0 text-[11px] uppercase tracking-wider flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
+              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+              Supervisores:
+            </span>
+            <button
+              onClick={() => setSelectedSupervisor('todos')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedSupervisor === 'todos'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+            >
+              Todos ({operators.length})
+            </button>
+            {supervisorOptions.map(s => (
+              <button
+                key={s.name}
+                onClick={() => setSelectedSupervisor(selectedSupervisor === s.name ? 'todos' : s.name)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                  selectedSupervisor === s.name
+                    ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
+                    : 'bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+                }`}
+              >
+                <span>{s.name}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                  selectedSupervisor === s.name ? 'bg-indigo-700 text-white' : 'bg-indigo-200/80 text-indigo-900'
+                }`}>
+                  {s.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Pill Row 2: Operational Groups */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
+            <span className="font-bold text-slate-600 shrink-0 text-[11px] uppercase tracking-wider flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
+              <Layers className="w-3.5 h-3.5 text-emerald-600" />
+              Grupos:
+            </span>
+            <button
+              onClick={() => setSelectedGroup('todos')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedGroup === 'todos'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+            >
+              Todos ({operators.length})
+            </button>
+            {groupOptions.map(g => (
+              <button
+                key={g.id}
+                onClick={() => setSelectedGroup(selectedGroup === g.id ? 'todos' : g.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                  selectedGroup === g.id
+                    ? `${g.pillActiveClass} ring-2 ring-emerald-400`
+                    : g.pillInactiveClass
+                }`}
+              >
+                <span>{g.shortName}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                  selectedGroup === g.id ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-800'
+                }`}>
+                  {g.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+        </div>
+
+        {/* Applied Filters indicator bar */}
+        {(selectedSupervisor !== 'todos' || selectedGroup !== 'todos' || selectedShiftId !== 'todos' || selectedArea !== 'todas' || search.trim() !== '') && (
+          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-bold text-slate-600">Filtros activos:</span>
+              {selectedSupervisor !== 'todos' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-bold border border-indigo-200">
+                  <UserCheck className="w-3 h-3 text-indigo-600" />
+                  Supervisor: {selectedSupervisor}
+                  <button onClick={() => setSelectedSupervisor('todos')} className="hover:text-indigo-950 font-black ml-1">✕</button>
+                </span>
+              )}
+              {selectedGroup !== 'todos' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                  <Layers className="w-3 h-3 text-emerald-600" />
+                  Grupo: {OPERATIONAL_GROUPS[selectedGroup]?.name || selectedGroup}
+                  <button onClick={() => setSelectedGroup('todos')} className="hover:text-emerald-950 font-black ml-1">✕</button>
+                </span>
+              )}
+              {selectedShiftId !== 'todos' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold border border-slate-300">
+                  <Clock className="w-3 h-3 text-slate-600" />
+                  {SHIFT_OPTIONS.find(s => s.id === selectedShiftId)?.name.split(' (')[0]}
+                  <button onClick={() => setSelectedShiftId('todos')} className="hover:text-slate-950 font-black ml-1">✕</button>
+                </span>
+              )}
+              {selectedArea !== 'todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold border border-slate-300">
+                  <Filter className="w-3 h-3 text-slate-600" />
+                  {selectedArea}
+                  <button onClick={() => setSelectedArea('todas')} className="hover:text-slate-950 font-black ml-1">✕</button>
+                </span>
+              )}
+              {search.trim() && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-200">
+                  <Search className="w-3 h-3 text-amber-700" />
+                  "{search}"
+                  <button onClick={() => setSearch('')} className="hover:text-amber-950 font-black ml-1">✕</button>
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSelectedSupervisor('todos');
+                setSelectedGroup('todos');
+                setSelectedShiftId('todos');
+                setSelectedArea('todas');
+                setSearch('');
+              }}
+              className="text-xs font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+            >
+              Limpiar todos los filtros
+            </button>
+          </div>
+        )}
 
         {/* Quick Shift summary pill */}
         <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
@@ -978,6 +1288,8 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                       setSearch('');
                       setSelectedArea('todas');
                       setSelectedShiftId('todos');
+                      setSelectedSupervisor('todos');
+                      setSelectedGroup('todos');
                     }}
                     className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
                   >
@@ -1000,11 +1312,11 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     >
                       
                       {/* Left: Operator Avatar + Info */}
-                      <div className="flex items-start sm:items-center gap-3.5 min-w-[320px]">
+                      <div className="flex items-start sm:items-center gap-3.5 min-w-[320px] flex-1">
                         
                         {/* Index + Avatar */}
                         <div className="relative">
-                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm">
                             {operator.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                           </div>
                           <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center border border-white">
@@ -1012,14 +1324,16 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                           </span>
                         </div>
 
-                        {/* Name + Cargo + Area + Supervisor */}
+                        {/* Name + Badges + Supervisor + Cargo + Grupo */}
                         <div className="flex-1">
+                          
+                          {/* Row 1: Name + RUT + Company */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-black text-slate-900">
                               {operator.name}
                             </span>
                             {operator.rut && (
-                              <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold">
+                              <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
                                 {operator.rut}
                               </span>
                             )}
@@ -1030,29 +1344,37 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                             )}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-slate-500">
-                            <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                          {/* Row 2: Badges Destacados de Clasificación (Supervisor + Grupo + Cargo) */}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-xs">
+                            
+                            {/* 1. Supervisor Destacado */}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-black bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-2xs">
+                              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Sup:</span>
+                              <strong className="text-indigo-950 font-black">{operator.supervisor || 'Sin asignar'}</strong>
+                            </span>
+
+                            {/* 2. Grupo Operativo */}
+                            {(() => {
+                              const grp = getOperatorGroup(operator);
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold border shadow-2xs ${grp.badgeClass}`}>
+                                  <Layers className="w-3.5 h-3.5" />
+                                  <span>{grp.name}</span>
+                                </span>
+                              );
+                            })()}
+
+                            {/* 3. Cargo */}
+                            <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                               {operator.role}
                             </span>
-                            <span>•</span>
-                            <span className="text-slate-600 font-medium">
-                              {operator.area}
-                            </span>
-                            {operator.supervisor && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-500 font-medium">
-                                  Sup: <strong className="text-slate-700">{operator.supervisor}</strong>
-                                </span>
-                              </>
-                            )}
+
+                            {/* 4. Jefe Turno */}
                             {operator.jefeTurno && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-500 font-medium">
-                                  Jefe: <strong className="text-slate-700">{operator.jefeTurno}</strong>
-                                </span>
-                              </>
+                              <span className="text-slate-500 font-medium text-[11px] bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                                Jefe: {operator.jefeTurno}
+                              </span>
                             )}
                           </div>
 
@@ -1344,8 +1666,11 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     <th className="p-3 font-black text-slate-800 min-w-[200px] sticky left-12 bg-slate-100 z-30 shadow-xs">
                       Colaborador / RUT
                     </th>
-                    <th className="p-3 font-black text-slate-700 min-w-[180px]">
-                      Cargo & Supervisión
+                    <th className="p-3 font-black text-indigo-900 min-w-[170px] bg-indigo-50/60 border-r border-indigo-100">
+                      Supervisor a Cargo
+                    </th>
+                    <th className="p-3 font-black text-slate-700 min-w-[190px]">
+                      Grupo Operativo & Cargo
                     </th>
                     <th className="p-3 font-black text-emerald-800 text-center min-w-[90px] bg-emerald-50/80">
                       % Adh.
@@ -1400,13 +1725,24 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                           </div>
                         </td>
 
-                        {/* Cargo & Supervisor */}
+                        {/* Supervisor a Cargo */}
+                        <td className="p-3 border-r border-slate-100 bg-indigo-50/20">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-800 font-bold border border-indigo-200 text-xs">
+                            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                            {operator.supervisor || 'N/A'}
+                          </span>
+                        </td>
+
+                        {/* Grupo & Cargo */}
                         <td className="p-3 border-r border-slate-100">
-                          <div className="font-semibold text-slate-800 leading-tight">
-                            {operator.role}
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getOperatorGroup(operator).badgeClass}`}>
+                              <Layers className="w-2.5 h-2.5" />
+                              {getOperatorGroup(operator).name}
+                            </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            Sup: {operator.supervisor || 'N/A'}
+                          <div className="font-semibold text-slate-700 leading-tight text-xs">
+                            {operator.role}
                           </div>
                         </td>
 
@@ -1586,6 +1922,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     <option value="Grúas / Almacenamiento">Grúas / Almacenamiento</option>
                     <option value="Staging / Transpaletas">Staging / Transpaletas</option>
                     <option value="Patio Inbound / Recepción">Patio Inbound / Recepción</option>
+                    <option value="Repaletizado / Reacondicionamiento">Repaletizado / Reacondicionamiento</option>
                     <option value="Jefatura de Turno">Jefatura de Turno</option>
                   </select>
                 </div>
@@ -1613,6 +1950,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                   </label>
                   <input
                     type="text"
+                    list="supervisor-datalist-opts"
                     placeholder="Ej: Cristian Hernandez"
                     value={formSupervisor}
                     onChange={(e) => setFormSupervisor(e.target.value)}
@@ -1633,6 +1971,12 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                   />
                 </div>
               </div>
+
+              <datalist id="supervisor-datalist-opts">
+                {supervisorOptions.map(s => (
+                  <option key={s.name} value={s.name} />
+                ))}
+              </datalist>
 
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button
@@ -1733,6 +2077,12 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
                 />
               </div>
+
+              <datalist id="supervisor-datalist-opts">
+                {supervisorOptions.map(s => (
+                  <option key={s.name} value={s.name} />
+                ))}
+              </datalist>
 
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button
