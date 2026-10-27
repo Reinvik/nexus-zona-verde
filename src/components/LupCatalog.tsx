@@ -234,18 +234,25 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
   // Confirm Delete Handler
   const handleConfirmDelete = () => {
     if (!deletingLup) return;
-    const res = deleteLup(deletingLup.id, currentUserEmail, deleteReason.trim() || 'Eliminado formalmente por Jefatura');
-    if (res && !res.success) {
-      alert(res.message || 'Acceso denegado: Solo el rol de Jefatura puede eliminar LUPs del sistema.');
+    try {
+      const res = deleteLup(deletingLup.id, currentUserEmail, deleteReason.trim() || 'Eliminado formalmente por Jefatura');
+      if (res && !res.success) {
+        alert(res.message || 'Acceso denegado: Solo el rol de Jefatura puede eliminar LUPs del sistema.');
+        setDeletingLup(null);
+        return;
+      }
+      const targetId = deletingLup.id;
       setDeletingLup(null);
-      return;
+      if (activeModalLup && activeModalLup.id === targetId) {
+        setActiveModalLup(null);
+      }
+      onLupsUpdated();
+      refreshAuditLogs();
+    } catch (err: any) {
+      console.error('Error al eliminar LUP:', err);
+      alert('Error al intentar eliminar el LUP: ' + (err?.message || 'Error desconocido'));
+      setDeletingLup(null);
     }
-    setDeletingLup(null);
-    if (activeModalLup && activeModalLup.id === deletingLup.id) {
-      setActiveModalLup(null);
-    }
-    onLupsUpdated();
-    refreshAuditLogs();
   };
 
   // Create LUP Handler

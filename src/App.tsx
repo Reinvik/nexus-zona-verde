@@ -44,7 +44,31 @@ export default function App() {
 
   // Authentication lifecycle with Nexus Supabase
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('[ZonaVerde] Aviso al validar sesión Supabase:', error.message);
+        const isInvalidGrant =
+          error.message?.includes('Refresh Token Not Found') ||
+          (error as any)?.status === 400 ||
+          error.message?.includes('invalid_grant');
+
+        if (isInvalidGrant) {
+          console.warn('[ZonaVerde] Token revocado/inválido. Limpiando sesión corrupta de localStorage...');
+          supabase.auth.signOut().catch(() => {});
+          try {
+            Object.keys(localStorage).forEach((k) => {
+              if (k.startsWith('sb-') && k.endsWith('-auth-token')) {
+                localStorage.removeItem(k);
+              }
+            });
+          } catch {}
+          setUser(null);
+          setUserProfile(null);
+          setAuthLoading(false);
+          return;
+        }
+      }
+
       setUser(session?.user ?? null);
       if (session?.user?.email) {
         setUserProfile(getAppUserByEmail(session.user.email));
@@ -52,14 +76,18 @@ export default function App() {
         setUserProfile(getAppUserByEmail('ariel.mella@cial.cl'));
       }
       setAuthLoading(false);
+    }).catch((err) => {
+      console.warn('[ZonaVerde] Error no crítico en getSession:', err);
+      setAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user?.email) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        setUserProfile(null);
+      } else if (session?.user) {
+        setUser(session.user);
         setUserProfile(getAppUserByEmail(session.user.email));
-      } else {
-        setUserProfile(getAppUserByEmail('ariel.mella@cial.cl'));
       }
       setAuthLoading(false);
     });

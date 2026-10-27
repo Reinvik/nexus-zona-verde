@@ -15,6 +15,7 @@ import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
 
 const KEYS = {
   LUPS: 'cial_zv_lups_v1',
+  DELETED_LUPS: 'cial_zv_deleted_lups_v1',
   AUDIT_LOGS: 'cial_zv_audit_logs_v1',
   CHARLAS: 'cial_zv_charlas_v1',
   PALLETS: 'cial_zv_pallets_v1',
@@ -214,27 +215,42 @@ export function addLupAuditLog(log: LupAuditLog): void {
   safeSet(KEYS.AUDIT_LOGS, [log, ...current]);
 }
 
+// DELETED LUPS REGISTRY (Evita resurrección de semillas eliminadas)
+export function getDeletedLupIds(): string[] {
+  return safeGet<string[]>(KEYS.DELETED_LUPS, []);
+}
+
+export function addDeletedLupId(id: string): void {
+  const current = getDeletedLupIds();
+  if (!current.includes(id)) {
+    safeSet(KEYS.DELETED_LUPS, [...current, id]);
+  }
+}
+
 // LUPs
 export function getLups(): LupItem[] {
   const data = safeGet<LupItem[]>(KEYS.LUPS, []);
+  const deletedIds = new Set(getDeletedLupIds());
+  const activeSeeds = INITIAL_LUPS.filter(seed => !deletedIds.has(seed.id));
+
   if (!data || data.length === 0) {
-    safeSet(KEYS.LUPS, INITIAL_LUPS);
-    return INITIAL_LUPS;
+    safeSet(KEYS.LUPS, activeSeeds);
+    return activeSeeds;
   }
   
-  // Sincronizar o incorporar nuevos LUPs oficiales de CIAL
+  // Sincronizar o incorporar nuevos LUPs oficiales de CIAL respetando eliminaciones
   const existingIds = new Set(data.map(item => item.id));
-  const hasMissingSeeds = INITIAL_LUPS.some(seed => !existingIds.has(seed.id));
+  const hasMissingSeeds = activeSeeds.some(seed => !existingIds.has(seed.id));
   
-  if (hasMissingSeeds || data.some(item => item.id.startsWith('lup-cial-') && !item.doPractice.photoUrl)) {
-    // Mantener los LUPs creados por el usuario y asegurar todos los LUPs iniciales actualizados
-    const userCreated = data.filter(item => !INITIAL_LUPS.some(seed => seed.id === item.id));
-    const merged = [...INITIAL_LUPS, ...userCreated];
+  if (hasMissingSeeds || data.some(item => item.id.startsWith('lup-cial-') && !item.doPractice.photoUrl && !deletedIds.has(item.id))) {
+    // Mantener los LUPs creados por el usuario y asegurar semillas oficiales activas
+    const userCreated = data.filter(item => !INITIAL_LUPS.some(seed => seed.id === item.id) && !deletedIds.has(item.id));
+    const merged = [...activeSeeds, ...userCreated];
     safeSet(KEYS.LUPS, merged);
     return merged;
   }
 
-  return data;
+  return data.filter(item => !deletedIds.has(item.id));
 }
 
 export function saveLup(lup: LupItem, userEmail?: string, changeReason?: string): void {
@@ -311,6 +327,9 @@ export function deleteLup(id: string, userEmail?: string, reason?: string): { su
       message: 'Acceso Denegado: Solo el rol de Jefatura y usuarios expresamente autorizados pueden eliminar LUPs.'
     };
   }
+
+  // Registrar ID en la lista permanente de eliminados
+  addDeletedLupId(id);
 
   if (target) {
     // Registrar evento de eliminación en auditoría con acreditación de Jefatura
