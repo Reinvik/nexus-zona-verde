@@ -1838,57 +1838,70 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               <table className="w-full text-left border-collapse text-xs">
                 
                 {/* Header */}
-                <thead className="bg-slate-100/95 sticky top-0 z-20 border-b border-slate-200 backdrop-blur-xs">
+                <thead className="bg-slate-100 sticky top-0 z-30 border-b border-slate-200 shadow-xs">
                   <tr>
-                    <th className="p-3 font-black text-slate-700 w-12 text-center sticky left-0 bg-slate-100 z-30 shadow-xs">
+                    {/* Fixed Col 1: # */}
+                    <th className="w-[52px] min-w-[52px] max-w-[52px] px-2 py-3 font-black text-slate-700 text-center sticky left-0 bg-slate-100 z-40 border-r border-slate-200">
                       #
                     </th>
-                    <th className="p-3 font-black text-slate-800 min-w-[200px] sticky left-12 bg-slate-100 z-30 shadow-xs">
-                      Colaborador / RUT
+
+                    {/* Fixed Col 2: Colaborador / RUT */}
+                    <th className="w-[280px] min-w-[280px] max-w-[280px] px-3.5 py-3 font-black text-slate-800 text-left sticky left-[52px] bg-slate-100 z-40 border-r-2 border-slate-300 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.12)]">
+                      Colaborador / Identificación
                     </th>
-                    <th className="p-3 font-black text-indigo-900 min-w-[170px] bg-indigo-50/60 border-r border-indigo-100">
+
+                    <th className="p-3 font-black text-indigo-900 min-w-[160px] bg-indigo-50/70 border-r border-indigo-100">
                       Supervisor a Cargo
                     </th>
-                    <th className="p-3 font-black text-slate-700 min-w-[190px]">
+                    <th className="p-3 font-black text-slate-700 min-w-[180px]">
                       Grupo Operativo & Cargo
                     </th>
-                    <th className="p-3 font-black text-emerald-800 text-center min-w-[90px] bg-emerald-50/80">
+                    <th className="p-3 font-black text-emerald-800 text-center min-w-[85px] bg-emerald-50/80">
                       % Adh.
                     </th>
-                    <th className="p-3 font-bold text-slate-600 text-center w-12 bg-slate-50" title="Días Presente">
+                    <th className="p-2 font-bold text-slate-600 text-center w-10 bg-slate-50" title="Días Presente">
                       P
                     </th>
-                    <th className="p-3 font-bold text-teal-700 text-center w-12 bg-teal-50/50" title="Días Vacaciones">
+                    <th className="p-2 font-bold text-teal-700 text-center w-10 bg-teal-50/50" title="Días Vacaciones">
                       V
                     </th>
-                    <th className="p-3 font-bold text-purple-700 text-center w-12 bg-purple-50/50" title="Días Licencia">
+                    <th className="p-2 font-bold text-purple-700 text-center w-10 bg-purple-50/50" title="Días Licencia">
                       L
                     </th>
-                    <th className="p-3 font-bold text-rose-700 text-center w-12 bg-rose-50/50" title="Días Ausente">
+                    <th className="p-2 font-bold text-rose-700 text-center w-10 bg-rose-50/50 border-r border-slate-200" title="Días Ausente">
                       A
                     </th>
                     
-                    {/* Dynamic Date Headers */}
+                    {/* Dynamic Date Headers - Two-line Stacked Design (No cutoffs) */}
                     {matrixDates.map(d => {
                       const isToday = d.key === todayStr;
+                      const parts = d.header.split('-');
+                      const dayNum = parts[0] || d.header;
+                      const monthName = parts[1] || 'OCT';
+
                       return (
                         <th 
                           key={d.key} 
                           ref={isToday ? todayHeaderRef : undefined}
-                          className={`p-1.5 text-center min-w-[44px] border-l transition-all ${
+                          className={`p-1 text-center min-w-[46px] max-w-[46px] border-l transition-all whitespace-nowrap ${
                             isToday 
-                              ? 'bg-emerald-600 text-white font-black border-emerald-500 shadow-sm ring-2 ring-emerald-400 z-10' 
-                              : 'font-bold text-slate-600 border-slate-200/60'
+                              ? 'bg-emerald-600 text-white font-black border-emerald-500 shadow-md ring-2 ring-emerald-400 z-10' 
+                              : 'font-bold text-slate-600 border-slate-200/60 hover:bg-slate-200/70'
                           }`}
-                          title={`${d.key}${isToday ? ' (HOY)' : ''}`}
+                          title={`${d.key}${isToday ? ' (HOY - Fecha Actual)' : ''}`}
                         >
                           {isToday && (
-                            <span className="inline-block text-[9px] uppercase tracking-wider bg-white text-emerald-800 rounded px-1 font-black mb-0.5">
+                            <span className="inline-block text-[8px] uppercase tracking-wider bg-white text-emerald-800 rounded px-1 font-black mb-0.5 leading-tight">
                               HOY
                             </span>
                           )}
-                          <div className={isToday ? 'font-black text-white text-[11px]' : 'text-slate-600 text-xs'}>
-                            {d.header}
+                          <div className="flex flex-col items-center justify-center leading-none py-0.5">
+                            <span className={`text-xs ${isToday ? 'font-black text-white' : 'font-extrabold text-slate-800'}`}>
+                              {dayNum}
+                            </span>
+                            <span className={`text-[9px] uppercase tracking-wider font-semibold mt-0.5 ${isToday ? 'text-emerald-100' : 'text-slate-400'}`}>
+                              {monthName}
+                            </span>
                           </div>
                         </th>
                       );
@@ -1937,21 +1950,44 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                       return { totalEvaluated, presentes, ausencias, vacaciones, licencias, permisos, adherencia };
                     })();
 
+                    const grp = getOperatorGroup(operator);
+
                     return (
-                      <tr key={operator.id} className="hover:bg-slate-50/80 transition-all">
+                      <tr key={operator.id} className="hover:bg-slate-50/80 transition-all group">
                         
-                        {/* Index */}
-                        <td className="p-3 font-bold text-slate-400 text-center sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100">
+                        {/* Fixed Col 1: Index (#) */}
+                        <td className="w-[52px] min-w-[52px] max-w-[52px] px-2 py-3 font-bold text-slate-400 text-center sticky left-0 bg-white group-hover:bg-slate-50 z-20 border-r border-slate-200">
                           {opIdx + 1}
                         </td>
 
-                        {/* Name + RUT */}
-                        <td className="p-3 sticky left-12 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200">
-                          <div className="font-black text-slate-900 leading-tight">
-                            {operator.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                            {operator.rut || 'N/A'}
+                        {/* Fixed Col 2: Colaborador / RUT / Supervisor Badge (No overlap, solid white, beautiful card layout) */}
+                        <td className="w-[280px] min-w-[280px] max-w-[280px] px-3.5 py-2.5 sticky left-[52px] bg-white group-hover:bg-slate-50 z-20 border-r-2 border-slate-300 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.12)]">
+                          <div className="flex items-center gap-2.5">
+                            {/* Avatar with initials */}
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                              {operator.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              {/* Full Name: Crisp, bold, no awkward line-breaks */}
+                              <div className="font-bold text-slate-900 text-xs leading-snug truncate" title={operator.name}>
+                                {operator.name}
+                              </div>
+
+                              {/* Badges row: RUT + Supervisor pill */}
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {operator.rut && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                                    {operator.rut}
+                                  </span>
+                                )}
+                                {operator.supervisor && (
+                                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200/80 truncate max-w-[125px]" title={`Supervisor: ${operator.supervisor}`}>
+                                    👤 {operator.supervisor.split(' ')[0]} {operator.supervisor.split(' ')[1] || ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
