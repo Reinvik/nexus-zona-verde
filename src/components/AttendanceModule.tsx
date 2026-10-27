@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   UserCheck, 
   Users, 
@@ -42,7 +42,9 @@ import {
   getAttendanceRecords, 
   saveAttendanceRecord, 
   saveBulkAttendance, 
-  exportToCsv 
+  exportToCsv,
+  getAllAttendanceOverrides,
+  removeAttendanceOverride
 } from '../services/storage';
 import { 
   HISTORICAL_DATE_KEYS, 
@@ -64,7 +66,7 @@ const SHIFT_OPTIONS: { id: ShiftId | 'todos'; name: string; hours: string; defau
 ];
 
 const MONTH_TABS = [
-  { id: 'todos', name: 'Historial Completo (Ene - Oct)' },
+  { id: '2026-10', name: 'Octubre 2026 (Mes Actual)' },
   { id: '2026-01', name: 'Ene (01)' },
   { id: '2026-02', name: 'Feb (02)' },
   { id: '2026-03', name: 'Mar (03)' },
@@ -74,7 +76,7 @@ const MONTH_TABS = [
   { id: '2026-07', name: 'Jul (07)' },
   { id: '2026-08', name: 'Ago (08)' },
   { id: '2026-09', name: 'Sep (09)' },
-  { id: '2026-10', name: 'Oct (10)' }
+  { id: 'todos', name: 'Historial Completo (Ene - Oct)' }
 ];
 
 const STATUS_CONFIG: Record<AttendanceStatus, {
@@ -274,10 +276,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return now.toISOString().slice(0, 10);
   }, []);
 
-  const [viewMode, setViewMode] = useState<'diario' | 'matriz'>('diario');
+  const [viewMode, setViewMode] = useState<'diario' | 'matriz'>('matriz');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedShiftId, setSelectedShiftId] = useState<ShiftId | 'todos'>('turno-1');
-  const [selectedMonth, setSelectedMonth] = useState<string>('todos');
+  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
   const [operators, setOperators] = useState<OperatorItem[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [search, setSearch] = useState<string>('');
@@ -285,6 +287,30 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const [selectedSupervisor, setSelectedSupervisor] = useState<string>('todos');
   const [selectedGroup, setSelectedGroup] = useState<string>('todos');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Overrides across all dates from storage
+  const [attendanceOverrides, setAttendanceOverrides] = useState<AttendanceRecord[]>([]);
+
+  // DOM Refs for auto-scroll to today
+  const matrixTableContainerRef = useRef<HTMLDivElement>(null);
+  const todayHeaderRef = useRef<HTMLTableHeaderCellElement>(null);
+
+  // Matrix Interactive Cell Edit Modal
+  const [matrixEditModal, setMatrixEditModal] = useState<{
+    operator: OperatorItem;
+    dateKey: string;
+    currentStatus: AttendanceStatus | null;
+    currentNotes?: string;
+    isOverride: boolean;
+  } | null>(null);
+
+  const [modalStatus, setModalStatus] = useState<AttendanceStatus>('vacaciones');
+  const [modalStartDate, setModalStartDate] = useState<string>(todayStr);
+  const [modalDaysCount, setModalDaysCount] = useState<number>(7);
+  const [modalEndDate, setModalEndDate] = useState<string>(todayStr);
+  const [modalIsRange, setModalIsRange] = useState<boolean>(true);
+  const [modalNotes, setModalNotes] = useState<string>('');
+  const [modalArrivalTime, setModalArrivalTime] = useState<string>('');
 
   // Modals
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -320,11 +346,144 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     setOperators(ops);
     const recs = getAttendanceRecords(selectedDate, selectedShiftId === 'todos' ? undefined : selectedShiftId);
     setRecords(recs);
+    const allOverrides = getAllAttendanceOverrides();
+    setAttendanceOverrides(allOverrides);
   };
 
   useEffect(() => {
     loadData();
   }, [selectedDate, selectedShiftId]);
+
+  // Auto-scroll to Today's date column when Matrix view is active
+  useEffect(() => {
+    if (viewMode === 'matriz') {
+      const timer = setTimeout(() => {
+        if (todayHeaderRef.current && matrixTableContainerRef.current) {
+          todayHeaderRef.current.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'center',
+            block: 'nearest'
+          });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, selectedMonth]);
+
+  // Helper to open Matrix Edit Modal
+  const handleOpenMatrixEditModal = (operator: OperatorItem, dateKey: string) => {
+    const key = `${operator.id}_${dateKey}`;
+    const override = overridesMap.get(key);
+    const tuple = HISTORICAL_ATTENDANCE_COMPACT[operator.id]?.[dateKey];
+    const currentSt = override ? override.status : (tuple ? tuple[0] : null);
+    const currentNt = override ? override.notes : (tuple && tuple.length > 1 ? tuple[1] : '');
+
+    setMatrixEditModal({
+      operator,
+      dateKey,
+      currentStatus: currentSt,
+      currentNotes: currentNt,
+      isOverride: !!override
+    });
+
+    const defaultSt: AttendanceStatus = currentSt || 'vacaciones';
+    setModalStatus(defaultSt);
+    setModalStartDate(dateKey);
+
+    const isRange = defaultSt === 'vacaciones' || defaultSt === 'licencia';
+    setModalIsRange(isRange);
+    const days = isRange ? 7 : 1;
+    setModalDaysCount(days);
+
+    const d = new Date(dateKey + 'T12:00:00');
+    d.setDate(d.getDate() + (days - 1));
+    setModalEndDate(d.toISOString().slice(0, 10));
+
+    setModalNotes(currentNt || '');
+    setModalArrivalTime(override?.arrivalTime || (defaultSt === 'tarde' ? '07:15' : ''));
+  };
+
+  const handleQuickDaysSelect = (days: number) => {
+    setModalDaysCount(days);
+    setModalIsRange(days > 1);
+    const d = new Date(modalStartDate + 'T12:00:00');
+    d.setDate(d.getDate() + (days - 1));
+    setModalEndDate(d.toISOString().slice(0, 10));
+  };
+
+  const handleStartDateChange = (newStart: string) => {
+    setModalStartDate(newStart);
+    const d = new Date(newStart + 'T12:00:00');
+    d.setDate(d.getDate() + (modalDaysCount - 1));
+    setModalEndDate(d.toISOString().slice(0, 10));
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    setModalEndDate(newEnd);
+    const s = new Date(modalStartDate + 'T12:00:00');
+    const e = new Date(newEnd + 'T12:00:00');
+    const diffTime = e.getTime() - s.getTime();
+    const diffDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+    setModalDaysCount(diffDays);
+    setModalIsRange(diffDays > 1);
+  };
+
+  const handleSaveMatrixEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matrixEditModal) return;
+    const op = matrixEditModal.operator;
+
+    const recordsToSave: AttendanceRecord[] = [];
+    const start = new Date(modalStartDate + 'T12:00:00');
+    const end = modalIsRange ? new Date(modalEndDate + 'T12:00:00') : new Date(modalStartDate + 'T12:00:00');
+
+    const cur = new Date(start);
+    while (cur <= end) {
+      const dateStr = cur.toISOString().slice(0, 10);
+      recordsToSave.push({
+        id: `att-${dateStr}-${op.id}`,
+        date: dateStr,
+        shiftId: op.shiftId || 'turno-1',
+        shiftName: 'Turno 1 (Mañana 07:00 - 15:00)',
+        operatorId: op.id,
+        operatorName: op.name,
+        operatorRole: op.role,
+        operatorArea: op.area,
+        status: modalStatus,
+        arrivalTime: modalStatus === 'tarde' ? modalArrivalTime : undefined,
+        notes: modalNotes.trim() || undefined,
+        registeredBy: currentUserEmail,
+        updatedAt: new Date().toISOString()
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    saveBulkAttendance(recordsToSave);
+    loadData();
+    setMatrixEditModal(null);
+    showToast(`✅ ${recordsToSave.length} días de ${STATUS_CONFIG[modalStatus].label} asignados a ${op.name}`);
+  };
+
+  const handleRemoveMatrixOverride = () => {
+    if (!matrixEditModal) return;
+    removeAttendanceOverride(matrixEditModal.operator.id, matrixEditModal.dateKey);
+    loadData();
+    setMatrixEditModal(null);
+    showToast(`Restablecido día ${matrixEditModal.dateKey} para ${matrixEditModal.operator.name}`);
+  };
+
+  const scrollToToday = () => {
+    if (selectedMonth !== '2026-10') {
+      setSelectedMonth('2026-10');
+    }
+    setTimeout(() => {
+      todayHeaderRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest'
+      });
+    }, 150);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -341,6 +500,15 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     }
     return map;
   }, [records]);
+
+  // Map of operatorId_date -> AttendanceRecord for fast matrix lookups
+  const overridesMap = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const ov of attendanceOverrides) {
+      map.set(`${ov.operatorId}_${ov.date}`, ov);
+    }
+    return map;
+  }, [attendanceOverrides]);
 
   // Available unique operational areas
   const areas = useMemo(() => {
@@ -1643,18 +1811,30 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               </span>
             </div>
 
-            <button
-              onClick={exportFullAttendanceMatrixCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 shadow-xs transition-all text-xs"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-600" />
-              Descargar Matriz CSV (304 Días)
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={scrollToToday}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xs transition-all text-xs cursor-pointer active:scale-95"
+                title="Desplazarse a la columna de hoy (27-oct)"
+              >
+                <Calendar className="w-3.5 h-3.5 text-white" />
+                <span>📍 Ir a Hoy (27-oct)</span>
+              </button>
+
+              <button
+                onClick={exportFullAttendanceMatrixCsv}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 shadow-xs transition-all text-xs cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                Descargar Matriz CSV
+              </button>
+            </div>
           </div>
 
           {/* Matrix Scrollable Table */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+            <div ref={matrixTableContainerRef} className="overflow-x-auto max-h-[700px] overflow-y-auto scrollbar-thin">
               <table className="w-full text-left border-collapse text-xs">
                 
                 {/* Header */}
@@ -1689,23 +1869,73 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     </th>
                     
                     {/* Dynamic Date Headers */}
-                    {matrixDates.map(d => (
-                      <th 
-                        key={d.key} 
-                        className="p-2 font-bold text-slate-600 text-center min-w-[42px] border-l border-slate-200/60"
-                        title={d.key}
-                      >
-                        {d.header}
-                      </th>
-                    ))}
+                    {matrixDates.map(d => {
+                      const isToday = d.key === todayStr;
+                      return (
+                        <th 
+                          key={d.key} 
+                          ref={isToday ? todayHeaderRef : undefined}
+                          className={`p-1.5 text-center min-w-[44px] border-l transition-all ${
+                            isToday 
+                              ? 'bg-emerald-600 text-white font-black border-emerald-500 shadow-sm ring-2 ring-emerald-400 z-10' 
+                              : 'font-bold text-slate-600 border-slate-200/60'
+                          }`}
+                          title={`${d.key}${isToday ? ' (HOY)' : ''}`}
+                        >
+                          {isToday && (
+                            <span className="inline-block text-[9px] uppercase tracking-wider bg-white text-emerald-800 rounded px-1 font-black mb-0.5">
+                              HOY
+                            </span>
+                          )}
+                          <div className={isToday ? 'font-black text-white text-[11px]' : 'text-slate-600 text-xs'}>
+                            {d.header}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
 
                 {/* Body */}
                 <tbody className="divide-y divide-slate-100">
                   {filteredOperators.map((operator, opIdx) => {
-                    const st = getOperatorStats(operator.id, selectedMonth === 'todos' ? undefined : selectedMonth);
                     const opHist = HISTORICAL_ATTENDANCE_COMPACT[operator.id] || {};
+                    // Calculate stats combining historical base + active localStorage overrides
+                    const st = (() => {
+                      const base = getOperatorStats(operator.id, selectedMonth === 'todos' ? undefined : selectedMonth);
+                      const monthPrefix = selectedMonth === 'todos' ? undefined : selectedMonth;
+                      const opOverrides = attendanceOverrides.filter(
+                        r => r.operatorId === operator.id && (!monthPrefix || r.date.startsWith(monthPrefix))
+                      );
+                      if (opOverrides.length === 0) return base;
+
+                      const evaluatedDates = new Set<string>();
+                      for (const date of Object.keys(opHist)) {
+                        if (!monthPrefix || date.startsWith(monthPrefix)) evaluatedDates.add(date);
+                      }
+                      for (const ov of opOverrides) evaluatedDates.add(ov.date);
+
+                      let totalEvaluated = 0;
+                      let presentes = 0;
+                      let ausencias = 0;
+                      let vacaciones = 0;
+                      let licencias = 0;
+                      let permisos = 0;
+
+                      for (const dt of evaluatedDates) {
+                        const ov = overridesMap.get(`${operator.id}_${dt}`);
+                        const statusVal = ov ? ov.status : opHist[dt]?.[0];
+                        if (!statusVal) continue;
+                        totalEvaluated++;
+                        if (statusVal === 'presente') presentes++;
+                        else if (statusVal === 'ausente') ausencias++;
+                        else if (statusVal === 'vacaciones') vacaciones++;
+                        else if (statusVal === 'licencia') licencias++;
+                        else if (statusVal === 'justificada') permisos++;
+                      }
+                      const adherencia = totalEvaluated > 0 ? Math.round((presentes / totalEvaluated) * 100) : 0;
+                      return { totalEvaluated, presentes, ausencias, vacaciones, licencias, permisos, adherencia };
+                    })();
 
                     return (
                       <tr key={operator.id} className="hover:bg-slate-50/80 transition-all">
@@ -1779,29 +2009,35 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                           {st.ausencias}
                         </td>
 
-                        {/* Daily Cells */}
+                        {/* Daily Cells (Interactive & Editable) */}
                         {matrixDates.map(d => {
+                          const override = overridesMap.get(`${operator.id}_${d.key}`);
                           const tuple = opHist[d.key];
-                          if (!tuple) {
-                            return (
-                              <td key={d.key} className="p-1 text-center border-l border-slate-100 text-slate-300">
-                                —
-                              </td>
-                            );
-                          }
-
-                          const status = tuple[0];
-                          const notes = tuple.length > 1 ? tuple[1] : undefined;
-                          const cfg = STATUS_CONFIG[status];
-                          const tooltip = `${d.key}: ${cfg?.label || status}${notes ? ` (${notes})` : ''}`;
+                          const status = override ? override.status : (tuple ? tuple[0] : null);
+                          const notes = override ? override.notes : (tuple && tuple.length > 1 ? tuple[1] : undefined);
+                          const cfg = status ? STATUS_CONFIG[status] : null;
+                          const isToday = d.key === todayStr;
+                          const tooltip = `${operator.name} • ${d.key}${isToday ? ' (HOY)' : ''}: ${cfg?.label || 'Día Libre / Sin marcar'}${notes ? ` (${notes})` : ''} - Clic para modificar o asignar vacaciones/licencia`;
 
                           return (
-                            <td key={d.key} className="p-1 text-center border-l border-slate-100" title={tooltip}>
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] ${
-                                cfg?.matrixClass || 'bg-slate-100 text-slate-700'
-                              }`}>
-                                {cfg?.code || status[0].toUpperCase()}
-                              </span>
+                            <td 
+                              key={d.key} 
+                              onClick={() => handleOpenMatrixEditModal(operator, d.key)}
+                              className={`p-1 text-center border-l border-slate-100 transition-all cursor-pointer hover:bg-emerald-100/70 ${
+                                isToday ? 'bg-emerald-50/80 font-black border-x-2 border-emerald-400' : ''
+                              }`} 
+                              title={tooltip}
+                            >
+                              <button
+                                type="button"
+                                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-black transition-all hover:scale-115 hover:shadow-md cursor-pointer ${
+                                  cfg 
+                                    ? `${cfg.matrixClass} ${override ? 'ring-2 ring-indigo-500 shadow-xs' : ''}` 
+                                    : 'bg-slate-100/70 text-slate-400 hover:bg-slate-200 hover:text-slate-800 border border-slate-200'
+                                }`}
+                              >
+                                {cfg ? cfg.code : '—'}
+                              </button>
                             </td>
                           );
                         })}
@@ -1998,6 +2234,292 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Asignar Asistencia / Vacaciones / Licencias por N Días */}
+      {matrixEditModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm">
+                  {matrixEditModal.operator.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Asignar Novedad de Asistencia
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                    <strong className="text-slate-800">{matrixEditModal.operator.name}</strong>
+                    {matrixEditModal.operator.rut && (
+                      <span className="font-mono bg-slate-100 px-1.5 py-0.2 rounded text-[11px]">
+                        {matrixEditModal.operator.rut}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-indigo-700 font-semibold mt-0.5 flex items-center gap-1">
+                    <UserCheck className="w-3 h-3 text-indigo-600" />
+                    Sup: {matrixEditModal.operator.supervisor || 'N/A'} • {matrixEditModal.operator.role}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMatrixEditModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMatrixEdit} className="space-y-4 mt-4">
+              
+              {/* Status Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Seleccionar Estado / Novedad:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  
+                  {/* Vacaciones */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('vacaciones');
+                      if (!modalIsRange) handleQuickDaysSelect(7);
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'vacaciones'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-md ring-2 ring-teal-400'
+                        : 'bg-teal-50/70 text-teal-800 border-teal-200 hover:bg-teal-100'
+                    }`}
+                  >
+                    <Palmtree className="w-4 h-4" />
+                    <span>Vacaciones (V)</span>
+                  </button>
+
+                  {/* Licencia */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('licencia');
+                      if (!modalIsRange) handleQuickDaysSelect(7);
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'licencia'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-400'
+                        : 'bg-purple-50/70 text-purple-800 border-purple-200 hover:bg-purple-100'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>Licencia (L)</span>
+                  </button>
+
+                  {/* Presente */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('presente');
+                      setModalIsRange(false);
+                      setModalDaysCount(1);
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'presente'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400'
+                        : 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Presente (P)</span>
+                  </button>
+
+                  {/* Tarde */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('tarde');
+                      setModalIsRange(false);
+                      setModalDaysCount(1);
+                      if (!modalArrivalTime) setModalArrivalTime('07:15');
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'tarde'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-md ring-2 ring-amber-300'
+                        : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span>Atraso (T)</span>
+                  </button>
+
+                  {/* Ausente */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('ausente');
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'ausente'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-400'
+                        : 'bg-rose-50/70 text-rose-800 border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Ausente (A)</span>
+                  </button>
+
+                  {/* Permiso */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStatus('justificada');
+                    }}
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                      modalStatus === 'justificada'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-md ring-2 ring-sky-400'
+                        : 'bg-sky-50/70 text-sky-800 border-sky-200 hover:bg-sky-100'
+                    }`}
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span>Permiso (J)</span>
+                  </button>
+
+                </div>
+              </div>
+
+              {/* Time of Arrival (if Tarde) */}
+              {modalStatus === 'tarde' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Hora de Llegada Efectiva
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={modalArrivalTime}
+                    onChange={(e) => setModalArrivalTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              )}
+
+              {/* Period / Days Duration Selector */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    Período / Duración de Días
+                  </label>
+                  <div className="text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    {modalDaysCount} {modalDaysCount === 1 ? 'Día' : 'Días consecutivos'}
+                  </div>
+                </div>
+
+                {/* Quick Days Pill Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 mr-1">Rápido:</span>
+                  {[1, 3, 5, 7, 10, 15, 30].map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleQuickDaysSelect(d)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        modalDaysCount === d
+                          ? 'bg-slate-900 text-white shadow-xs font-black ring-2 ring-slate-600'
+                          : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      }`}
+                    >
+                      {d === 1 ? '1 día' : d === 7 ? '1 sem (7d)' : d === 15 ? '15d (quincena)' : d === 30 ? '30d (mes)' : `${d} días`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date Inputs */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Fecha Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={modalStartDate}
+                      onChange={(e) => handleStartDateChange(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-emerald-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Fecha Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={modalEndDate}
+                      onChange={(e) => handleEndDateChange(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                  <span>
+                    Asignando <strong>{modalDaysCount} día(s)</strong> de <strong className="text-emerald-700">{STATUS_CONFIG[modalStatus].label}</strong>
+                  </span>
+                  <span className="font-mono text-slate-500">
+                    {modalStartDate} → {modalEndDate}
+                  </span>
+                </div>
+              </div>
+
+              {/* Notes / Reason */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Observaciones / N° Folio Licencia (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Feriado legal anual aprobado / Licencia médica FONASA #12345"
+                  value={modalNotes}
+                  onChange={(e) => setModalNotes(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+                <div>
+                  {matrixEditModal.isOverride && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveMatrixOverride}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                    >
+                      Restablecer día original
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMatrixEditModal(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/30 cursor-pointer transition-all active:scale-95"
+                  >
+                    Guardar en Nómina
+                  </button>
+                </div>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}

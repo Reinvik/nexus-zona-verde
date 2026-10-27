@@ -633,6 +633,28 @@ export function saveBulkAttendance(records: AttendanceRecord[]): void {
   }
 }
 
+export function getAllAttendanceOverrides(): AttendanceRecord[] {
+  try {
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Error reading all attendance overrides:', e);
+    return [];
+  }
+}
+
+export function removeAttendanceOverride(operatorId: string, date: string): void {
+  try {
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    if (!raw) return;
+    const overrides: AttendanceRecord[] = JSON.parse(raw);
+    const updated = overrides.filter(r => !(r.operatorId === operatorId && r.date === date));
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Error removing attendance override:', e);
+  }
+}
+
 // ========================
 // GESTIÓN DE USUARIOS Y PERMISOS (ARIEL MELLA / JEFATURAS)
 // ========================
