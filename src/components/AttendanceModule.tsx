@@ -53,7 +53,7 @@ const SHIFT_OPTIONS: { id: ShiftId | 'todos'; name: string; hours: string; defau
   { id: 'turno-1', name: 'Turno 1 (Mañana 07:00 - 15:00)', hours: '07:00 - 15:00', defaultArrival: '07:15' },
   { id: 'turno-2', name: 'Turno 2 (Tarde 15:00 - 23:00)', hours: '15:00 - 23:00', defaultArrival: '15:15' },
   { id: 'turno-3', name: 'Turno 3 (Noche 23:00 - 07:00)', hours: '23:00 - 07:00', defaultArrival: '23:15' },
-  { id: 'todos', name: 'Todos los Turnos (Dotación 80)', hours: '24 Horas / Todos los Turnos', defaultArrival: '07:00' }
+  { id: 'todos', name: 'Todos los Turnos (Dotación 102)', hours: '24 Horas / Todos los Turnos', defaultArrival: '07:00' }
 ];
 
 const MONTH_TABS = [
@@ -593,7 +593,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               Control de Asistencia & Historial Operativo
             </h1>
             <p className="text-emerald-100/90 text-sm max-w-2xl mt-1">
-              Nómina activa de 80 colaboradores y registro histórico consolidado de asistencia (01-Ene a 31-Oct). Pase de lista rápido por turno con un solo clic.
+              Nómina activa de {operators.length} colaboradores y registro histórico consolidado de asistencia (01-Ene a 31-Oct). Pase de lista rápido por turno con un solo clic.
             </p>
           </div>
 

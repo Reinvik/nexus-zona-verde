@@ -23,11 +23,11 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "rut": "21.660.461-k",
     "role": "ENCAJADO",
     "area": "Encajado Frío",
-    "shiftId": "turno-2",
+    "shiftId": "turno-3",
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Mayckell Pereira",
-    "jefeTurno": "Francisco Lara",
+    "jefeTurno": "Euro Velasquez",
     "company": "Cial Alimentos"
   },
   {
@@ -80,7 +80,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Mayckell Pereira",
     "jefeTurno": "Francisco Lara",
-    "company": "Externo"
+    "company": "Cial Alimentos"
   },
   {
     "id": "op-7",
@@ -92,7 +92,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -105,7 +105,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -118,7 +118,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -131,7 +131,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -157,7 +157,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -183,7 +183,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -209,7 +209,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -261,7 +261,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -274,7 +274,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -313,7 +313,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -326,7 +326,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -339,7 +339,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Back-up jefe de turno  3",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -352,7 +352,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -365,7 +365,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -378,7 +378,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Back-up jefe de turno  3",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -391,7 +391,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -417,7 +417,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -430,7 +430,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -443,7 +443,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Back-up jefe de turno  3",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -469,7 +469,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -482,7 +482,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -495,7 +495,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -521,7 +521,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -547,7 +547,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Back-up jefe de turno  3",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -560,7 +560,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -586,7 +586,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Mayckell Pereira",
-    "jefeTurno": "Back-up jefe de turno  3",
+    "jefeTurno": "Euro Velasquez",
     "company": "Cial Alimentos"
   },
   {
@@ -599,7 +599,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -612,7 +612,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -625,7 +625,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -638,7 +638,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -690,7 +690,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -703,7 +703,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -729,7 +729,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -846,7 +846,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -950,7 +950,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Euro Velasquez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -1024,11 +1024,11 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "rut": "19.583.358-3",
     "role": "ENCAJADO",
     "area": "Encajado Frío",
-    "shiftId": "turno-2",
+    "shiftId": "turno-1",
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Francisco Lara",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
     "company": "Cial Alimentos"
   },
   {
@@ -1042,6 +1042,292 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
     "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-81",
+    "name": "Alcapan Bustamante Francisco Efrain",
+    "rut": "19.062.833-7",
+    "role": "ASISTENTE DE DESPACHO 3",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-3",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Mayckell Pereira",
+    "jefeTurno": "Euro Velasquez",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-82",
+    "name": "Asencios Zevallos Jorge Luis",
+    "rut": "22.606.751-5",
+    "role": "ASISTENTE DE PICKING 2",
+    "area": "Picking / Cámara Frío",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-83",
+    "name": "Guerrero Gonzalez Juan Bautista",
+    "rut": "16.724.984-1",
+    "role": "GRUERO 2",
+    "area": "Grúas / Almacenamiento",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-84",
+    "name": "Asencios Zevallos Hugo Ricardo",
+    "rut": "22.368.957-4",
+    "role": "ASISTENTE DE PICKING 2",
+    "area": "Picking / Cámara Frío",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-85",
+    "name": "Castillo Huerta Fabián Esteban",
+    "rut": "13.565.228-8",
+    "role": "TRANSPALETERO 2",
+    "area": "Staging / Transpaletas",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-86",
+    "name": "Alvarado Caniu Victor Eduardo",
+    "rut": "16.382.159-1",
+    "role": "ASISTENTE DE PICKING 2",
+    "area": "Picking / Cámara Frío",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-87",
+    "name": "Pérez Benavides Manuel Jesús",
+    "rut": "18.329.576-4",
+    "role": "ASISTENTE DE DESPACHO 3",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-3",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Mayckell Pereira",
+    "jefeTurno": "Euro Velasquez",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-88",
+    "name": "Sanchez Navarro Walter Gustavo",
+    "rut": "24.673.345-7",
+    "role": "SUPERVISOR DE DESPACHO 1",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Francisco Lara",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-89",
+    "name": "Arredondo Bravo Hugo Ernesto",
+    "rut": "13.680.238-0",
+    "role": "ASISTENTE DE DESPACHO 1",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Nelson Brito",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-90",
+    "name": "Galleguillos Anchil Oscar Josue",
+    "rut": "20.451.305-8",
+    "role": "ASISTENTE DE DESPACHO 3",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-3",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Mayckell Pereira",
+    "jefeTurno": "Euro Velasquez",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-91",
+    "name": "Retamal Alvarez Fernando  Patricio",
+    "rut": "18.538.977-4",
+    "role": "ASISTENTE DE PICKING 2",
+    "area": "Picking / Cámara Frío",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-92",
+    "name": "Cifuentes Romero Rigoberto",
+    "rut": "15.513.686-3",
+    "role": "GRUERO 2",
+    "area": "Grúas / Almacenamiento",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-93",
+    "name": "Salas Muñoz Christian Fernando",
+    "rut": "19.528.603-5",
+    "role": "ASISTENTE REPALETIZADO",
+    "area": "Repaletizado / Reacondicionamiento",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Cristian Hernandez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-94",
+    "name": "Martinez Sepulveda Eusebio",
+    "rut": "18.326.570-9",
+    "role": "ASISTENTE REPALETIZADO",
+    "area": "Repaletizado / Reacondicionamiento",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Claudio Sepulveda",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-95",
+    "name": "Gomez Parada Lukas Brahim",
+    "rut": "19.525.853-8",
+    "role": "ASISTENTE DE PICKING 2",
+    "area": "Picking / Cámara Frío",
+    "shiftId": "turno-2",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Cristian Hernandez",
+    "jefeTurno": "Francisco Lara",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-96",
+    "name": "Acuña Meliman Nicolás Francisco",
+    "rut": "18.247.515-7",
+    "role": "ASISTENTE DE DESPACHO 1",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Nelson Brito",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-97",
+    "name": "Zamorano Durán Marcelo Eduardo",
+    "rut": "15.485.715-k",
+    "role": "ENCAJADO",
+    "area": "Encajado Frío",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Cristian Hernandez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-98",
+    "name": "Arias Navarrete Jose Luis",
+    "rut": "14.160.698-0",
+    "role": "ASISTENTE DE DESPACHO 1",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Nelson Brito",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-99",
+    "name": "Mariqueo Muñoz Francisco Andres",
+    "rut": "20.550.357-9",
+    "role": "ASISTENTE DE DESPACHO 3",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-3",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Mayckell Pereira",
+    "jefeTurno": "Euro Velasquez",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-100",
+    "name": "Quintana Painemal Isaias Abraham",
+    "rut": "20.141.576.4",
+    "role": "ASISTENTE REPALETIZADO",
+    "area": "Repaletizado / Reacondicionamiento",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Cristian Hernandez",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-101",
+    "name": "Maximiliano Alexander Vega Gallardo",
+    "rut": "21.968.116-k",
+    "role": "ASISTENTE DE DESPACHO 1",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-1",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Nelson Brito",
+    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "company": "Cial Alimentos"
+  },
+  {
+    "id": "op-102",
+    "name": "Astudillo Torrejon Gustavo Adolfo",
+    "rut": "19.112.914-8",
+    "role": "ASISTENTE DE DESPACHO 3",
+    "area": "Andenes de Despacho",
+    "shiftId": "turno-3",
+    "active": true,
+    "createdAt": "2026-01-01T07:00:00Z",
+    "supervisor": "Mayckell Pereira",
+    "jefeTurno": "Euro Velasquez",
     "company": "Cial Alimentos"
   }
 ];

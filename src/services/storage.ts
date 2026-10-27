@@ -20,7 +20,7 @@ const KEYS = {
   CHARLAS: 'cial_zv_charlas_v1',
   PALLETS: 'cial_zv_pallets_v1',
   RFS: 'cial_zv_rfs_v1',
-  OPERATORS: 'cial_zv_operators_v2',
+  OPERATORS: 'cial_zv_operators_v3',
   ATTENDANCE: 'cial_zv_attendance_overrides_v2',
   USERS: 'cial_zv_users_v1'
 };
@@ -368,11 +368,13 @@ export function saveCharla(charla: CharlaSession): void {
 // Transpaletas Manuales
 export function getPallets(): PalletJackReport[] {
   const data = safeGet<PalletJackReport[]>(KEYS.PALLETS, []);
-  if (!data || data.length === 0) {
-    safeSet(KEYS.PALLETS, INITIAL_PALLETS);
-    return INITIAL_PALLETS;
+  // Limpiar reportes demo de prueba (pal-1, pal-2, pal-3, pal-4)
+  const testIds = new Set(['pal-1', 'pal-2', 'pal-3', 'pal-4']);
+  const cleaned = data.filter(p => !testIds.has(p.id));
+  if (cleaned.length !== data.length) {
+    safeSet(KEYS.PALLETS, cleaned);
   }
-  return data;
+  return cleaned;
 }
 
 export function savePallet(pallet: PalletJackReport): void {
@@ -396,11 +398,13 @@ export function deletePallet(id: string): void {
 // Pistolas RF
 export function getRfs(): RfScannerReport[] {
   const data = safeGet<RfScannerReport[]>(KEYS.RFS, []);
-  if (!data || data.length === 0) {
-    safeSet(KEYS.RFS, INITIAL_RFS);
-    return INITIAL_RFS;
+  // Limpiar reportes demo de prueba (rf-1, rf-2, rf-3)
+  const testIds = new Set(['rf-1', 'rf-2', 'rf-3']);
+  const cleaned = data.filter(r => !testIds.has(r.id));
+  if (cleaned.length !== data.length) {
+    safeSet(KEYS.RFS, cleaned);
   }
-  return data;
+  return cleaned;
 }
 
 export function saveRf(rf: RfScannerReport): void {
@@ -502,9 +506,12 @@ export function exportToCsv(filename: string, rows: Record<string, any>[]): void
 
 export function getOperators(): OperatorItem[] {
   try {
-    // Migration: clean legacy demo roster v1
+    // Migration: clean legacy demo rosters v1 and v2
     if (localStorage.getItem('cial_zv_operators_v1')) {
       localStorage.removeItem('cial_zv_operators_v1');
+    }
+    if (localStorage.getItem('cial_zv_operators_v2')) {
+      localStorage.removeItem('cial_zv_operators_v2');
     }
     if (localStorage.getItem('cial_zv_attendance_v1')) {
       localStorage.removeItem('cial_zv_attendance_v1');
@@ -515,7 +522,14 @@ export function getOperators(): OperatorItem[] {
       localStorage.setItem(KEYS.OPERATORS, JSON.stringify(INITIAL_OPERATORS));
       return INITIAL_OPERATORS;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length < INITIAL_OPERATORS.length) {
+      const userAdded = parsed.filter((o: OperatorItem) => !INITIAL_OPERATORS.some(init => init.id === o.id || (init.rut && init.rut.toLowerCase().trim() === o.rut?.toLowerCase().trim())));
+      const merged = [...INITIAL_OPERATORS, ...userAdded];
+      localStorage.setItem(KEYS.OPERATORS, JSON.stringify(merged));
+      return merged;
+    }
+    return parsed;
   } catch (e) {
     console.error('Error reading operators from localStorage:', e);
     return INITIAL_OPERATORS;
