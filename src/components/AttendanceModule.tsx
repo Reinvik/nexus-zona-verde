@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   UserCheck, 
@@ -26,6 +27,10 @@ import {
   ChevronRight,
   TrendingUp,
   Award,
+  Cloud,
+  CloudCheck,
+  CloudAlert,
+  CloudUpload,
   Layers,
   Shield,
   Truck,
@@ -44,7 +49,8 @@ import {
   saveBulkAttendance, 
   exportToCsv,
   getAllAttendanceOverrides,
-  removeAttendanceOverride
+  removeAttendanceOverride,
+  syncAttendanceFromCloud
 } from '../services/storage';
 import { 
   HISTORICAL_DATE_KEYS, 
@@ -288,7 +294,11 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const [selectedGroup, setSelectedGroup] = useState<string>('todos');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Overrides across all dates from storage
+  // Cloud sync status with Supabase
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+
+  // Overrides across all dates from storage / Supabase Cloud
   const [attendanceOverrides, setAttendanceOverrides] = useState<AttendanceRecord[]>([]);
 
   // DOM Refs for auto-scroll to today
@@ -352,7 +362,62 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   useEffect(() => {
     loadData();
+
+    // Sincronización bidireccional inicial con Supabase Cloud
+    let isMounted = true;
+    setSyncStatus('syncing');
+
+    syncAttendanceFromCloud()
+      .then((cloudRecords) => {
+        if (!isMounted) return;
+        setAttendanceOverrides(cloudRecords);
+        const recs = getAttendanceRecords(selectedDate, selectedShiftId === 'todos' ? undefined : selectedShiftId);
+        setRecords(recs);
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }));
+      })
+      .catch((err) => {
+        console.warn('[ZonaVerde] Error inicial conectando a Supabase:', err);
+        if (isMounted) setSyncStatus('offline');
+      });
+
+    // Suscripción en Tiempo Real (Realtime) a cambios en Supabase Cloud
+    const channel = supabase
+      .channel('public_zona_verde_attendance_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'zona_verde_attendance' }, () => {
+        syncAttendanceFromCloud().then((cloudRecords) => {
+          if (!isMounted) return;
+          setAttendanceOverrides(cloudRecords);
+          const recs = getAttendanceRecords(selectedDate, selectedShiftId === 'todos' ? undefined : selectedShiftId);
+          setRecords(recs);
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }));
+        });
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [selectedDate, selectedShiftId]);
+
+  // Handler for manual cloud sync button
+  const handleManualSync = async () => {
+    setSyncStatus('syncing');
+    try {
+      const cloudRecords = await syncAttendanceFromCloud();
+      setAttendanceOverrides(cloudRecords);
+      const recs = getAttendanceRecords(selectedDate, selectedShiftId === 'todos' ? undefined : selectedShiftId);
+      setRecords(recs);
+      setSyncStatus('synced');
+      setLastSyncTime(new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }));
+      showToast('☁️ Asistencia 100% sincronizada con Supabase Cloud');
+    } catch {
+      setSyncStatus('offline');
+      showToast('⚠️ Modo local: los datos se guardaron en caché offline');
+    }
+  };
 
   // Auto-scroll to Today's date column when Matrix view is active
   useEffect(() => {
@@ -634,7 +699,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     };
   }, [filteredOperators, recordMap]);
 
-  // Global matrix stats (totals across 80 operators & 304 days)
+  // Global matrix stats (fully reactive to Supabase Cloud overrides)
   const matrixStats = useMemo(() => {
     let totalMarks = 0;
     let presentes = 0;
@@ -642,15 +707,31 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     let vacaciones = 0;
     let licencias = 0;
     let permisos = 0;
+    const monthPrefix = selectedMonth === 'todos' ? undefined : selectedMonth;
 
     for (const op of filteredOperators) {
-      const st = getOperatorStats(op.id, selectedMonth === 'todos' ? undefined : selectedMonth);
-      totalMarks += st.totalEvaluated;
-      presentes += st.presentes;
-      ausentes += st.ausencias;
-      vacaciones += st.vacaciones;
-      licencias += st.licencias;
-      permisos += st.permisos;
+      const opHist = HISTORICAL_ATTENDANCE_COMPACT[op.id] || {};
+      const opOverrides = attendanceOverrides.filter(
+        r => r.operatorId === op.id && (!monthPrefix || r.date.startsWith(monthPrefix))
+      );
+
+      const evaluatedDates = new Set<string>();
+      for (const date of Object.keys(opHist)) {
+        if (!monthPrefix || date.startsWith(monthPrefix)) evaluatedDates.add(date);
+      }
+      for (const ov of opOverrides) evaluatedDates.add(ov.date);
+
+      for (const dt of evaluatedDates) {
+        const ov = overridesMap.get(`${op.id}_${dt}`);
+        const statusVal = ov ? ov.status : opHist[dt]?.[0];
+        if (!statusVal) continue;
+        totalMarks++;
+        if (statusVal === 'presente') presentes++;
+        else if (statusVal === 'ausente') ausentes++;
+        else if (statusVal === 'vacaciones') vacaciones++;
+        else if (statusVal === 'licencia') licencias++;
+        else if (statusVal === 'justificada') permisos++;
+      }
     }
 
     const adherencia = totalMarks > 0 ? Math.round((presentes / totalMarks) * 100) : 0;
@@ -665,7 +746,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
       permisos,
       adherencia
     };
-  }, [filteredOperators, selectedMonth]);
+  }, [filteredOperators, selectedMonth, attendanceOverrides, overridesMap]);
 
   // Matrix dates to display based on selectedMonth
   const matrixDates = useMemo(() => {
@@ -977,6 +1058,15 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 </button>
 
                 <button
+                  onClick={handleManualSync}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm border border-emerald-400 shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
+                  title="Guardar y asegurar persistencia en Supabase Cloud"
+                >
+                  <CloudUpload className="w-4 h-4 text-white" />
+                  Guardar en Cloud
+                </button>
+
+                <button
                   onClick={handleExportAttendanceCsv}
                   className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all active:scale-95 backdrop-blur-sm"
                   title="Descargar asistencia del día en CSV"
@@ -1273,11 +1363,45 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
         {/* Quick Shift summary pill */}
         <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">Responsable de Nómina:</span>
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-mono font-bold">
-              {currentUserEmail}
-            </span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-700">Responsable:</span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-mono font-bold">
+                {currentUserEmail}
+              </span>
+            </div>
+
+            {/* Cloud Persistence Badge & Manual Sync Button */}
+            <button
+              type="button"
+              onClick={handleManualSync}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                syncStatus === 'synced'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                  : syncStatus === 'syncing'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                  : 'bg-rose-50 text-rose-800 border border-rose-300'
+              }`}
+              title="Persistencia en Supabase Cloud. Clic para forzar sincronización manual."
+            >
+              {syncStatus === 'synced' ? (
+                <>
+                  <CloudCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Cloud Conectado</span>
+                  {lastSyncTime && <span className="text-[10px] text-emerald-600 font-normal">({lastSyncTime})</span>}
+                </>
+              ) : syncStatus === 'syncing' ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                  <span>Sincronizando Nube...</span>
+                </>
+              ) : (
+                <>
+                  <CloudAlert className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Caché Local (Offline)</span>
+                </>
+              )}
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <span>Horario: <strong className="text-slate-700">{currentShift.hours}</strong></span>

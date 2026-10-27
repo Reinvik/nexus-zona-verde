@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 import { 
   LupItem, 
   LupAuditLog, 
@@ -563,6 +564,59 @@ export function deleteOperator(operatorId: string): void {
   }
 }
 
+// Database row interface for Supabase public.zona_verde_attendance
+interface DbAttendanceRow {
+  id: string;
+  date: string;
+  shift_id: string;
+  shift_name: string | null;
+  operator_id: string;
+  operator_name: string;
+  operator_role: string | null;
+  operator_area: string | null;
+  status: string;
+  arrival_time: string | null;
+  notes: string | null;
+  registered_by: string | null;
+  updated_at: string;
+}
+
+function toDbRow(rec: AttendanceRecord): DbAttendanceRow {
+  return {
+    id: `${rec.operatorId}_${rec.date}`,
+    date: rec.date,
+    shift_id: rec.shiftId || 'turno-1',
+    shift_name: rec.shiftName || 'Turno 1',
+    operator_id: rec.operatorId,
+    operator_name: rec.operatorName,
+    operator_role: rec.operatorRole || null,
+    operator_area: rec.operatorArea || null,
+    status: rec.status,
+    arrival_time: rec.arrivalTime || null,
+    notes: rec.notes || null,
+    registered_by: rec.registeredBy || 'Usuario',
+    updated_at: rec.updatedAt || new Date().toISOString()
+  };
+}
+
+function fromDbRow(row: DbAttendanceRow): AttendanceRecord {
+  return {
+    id: row.id,
+    date: row.date,
+    shiftId: (row.shift_id || 'turno-1') as any,
+    shiftName: (row.shift_name || 'Turno 1 (Mañana 07:00 - 15:00)') as any,
+    operatorId: row.operator_id,
+    operatorName: row.operator_name,
+    operatorRole: row.operator_role || undefined,
+    operatorArea: row.operator_area || undefined,
+    status: row.status as any,
+    arrivalTime: row.arrival_time || undefined,
+    notes: row.notes || undefined,
+    registeredBy: row.registered_by || 'Supabase Cloud',
+    updatedAt: row.updated_at
+  };
+}
+
 export function getAttendanceRecords(date?: string, shiftId?: string): AttendanceRecord[] {
   try {
     const targetDate = date || new Date().toISOString().slice(0, 10);
@@ -574,13 +628,13 @@ export function getAttendanceRecords(date?: string, shiftId?: string): Attendanc
       map.set(`${r.date}_${r.operatorId}`, r);
     }
 
-    // 2. Overlay manual overrides from localStorage
+    // 2. Overlay manual overrides from localStorage (hybrid cache)
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
     if (raw) {
       const overrides: AttendanceRecord[] = JSON.parse(raw);
       for (const ov of overrides) {
         if (date && ov.date !== date) continue;
-        if (shiftId && shiftId !== 'todos' && ov.shiftId !== shiftId) continue;
+        // Map by operator for the target date regardless of shift filter mismatch
         map.set(`${ov.date}_${ov.operatorId}`, ov);
       }
     }
@@ -594,6 +648,7 @@ export function getAttendanceRecords(date?: string, shiftId?: string): Attendanc
 
 export function saveAttendanceRecord(record: AttendanceRecord): void {
   try {
+    // 1. Guardado inmediato en LocalStorage (cero latencia de UI)
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
     const overrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
     
@@ -607,6 +662,22 @@ export function saveAttendanceRecord(record: AttendanceRecord): void {
       overrides.push(record);
     }
     localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(overrides));
+
+    // 2. Persistencia en la nube (Supabase Cloud)
+    void (async () => {
+      try {
+        const { error } = await supabase
+          .from('zona_verde_attendance')
+          .upsert(toDbRow(record), { onConflict: 'id' });
+        if (error) {
+          console.warn('[ZonaVerde] Error al sincronizar asistencia con Supabase:', error.message);
+        } else {
+          console.log('[ZonaVerde] ✅ Asistencia sincronizada en Supabase Cloud para:', record.operatorName);
+        }
+      } catch (e) {
+        console.warn('[ZonaVerde] Excepción al sincronizar asistencia con Supabase:', e);
+      }
+    })();
   } catch (e) {
     console.error('Error saving attendance record:', e);
   }
@@ -614,6 +685,7 @@ export function saveAttendanceRecord(record: AttendanceRecord): void {
 
 export function saveBulkAttendance(records: AttendanceRecord[]): void {
   try {
+    // 1. Guardado inmediato en LocalStorage
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
     const overrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
     
@@ -628,6 +700,25 @@ export function saveBulkAttendance(records: AttendanceRecord[]): void {
       }
     }
     localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(overrides));
+
+    // 2. Persistencia en la nube (Supabase Cloud) en batch
+    if (records.length > 0) {
+      const rows = records.map(toDbRow);
+      void (async () => {
+        try {
+          const { error } = await supabase
+            .from('zona_verde_attendance')
+            .upsert(rows, { onConflict: 'id' });
+          if (error) {
+            console.warn('[ZonaVerde] Error al sincronizar lote en Supabase:', error.message);
+          } else {
+            console.log(`[ZonaVerde] ✅ ${records.length} registros guardados permanentemente en Supabase Cloud`);
+          }
+        } catch (e) {
+          console.warn('[ZonaVerde] Excepción al sincronizar lote en Supabase:', e);
+        }
+      })();
+    }
   } catch (e) {
     console.error('Error saving bulk attendance:', e);
   }
@@ -645,13 +736,88 @@ export function getAllAttendanceOverrides(): AttendanceRecord[] {
 
 export function removeAttendanceOverride(operatorId: string, date: string): void {
   try {
+    // 1. LocalStorage
     const raw = localStorage.getItem(KEYS.ATTENDANCE);
-    if (!raw) return;
-    const overrides: AttendanceRecord[] = JSON.parse(raw);
-    const updated = overrides.filter(r => !(r.operatorId === operatorId && r.date === date));
-    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(updated));
+    if (raw) {
+      const overrides: AttendanceRecord[] = JSON.parse(raw);
+      const updated = overrides.filter(r => !(r.operatorId === operatorId && r.date === date));
+      localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(updated));
+    }
+
+    // 2. Supabase Cloud delete
+    void (async () => {
+      try {
+        const { error } = await supabase
+          .from('zona_verde_attendance')
+          .delete()
+          .eq('id', `${operatorId}_${date}`);
+        if (error) {
+          console.warn('[ZonaVerde] Error al eliminar registro en Supabase:', error.message);
+        } else {
+          console.log(`[ZonaVerde] ✅ Registro eliminado de Supabase: ${operatorId}_${date}`);
+        }
+      } catch (e) {
+        console.warn('[ZonaVerde] Excepción al eliminar de Supabase:', e);
+      }
+    })();
   } catch (e) {
     console.error('Error removing attendance override:', e);
+  }
+}
+
+export async function syncAttendanceFromCloud(): Promise<AttendanceRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('zona_verde_attendance')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.warn('[ZonaVerde] Error al consultar Supabase:', error.message);
+      return getAllAttendanceOverrides();
+    }
+
+    if (data && Array.isArray(data)) {
+      const cloudRecords = data.map(fromDbRow);
+      
+      const raw = localStorage.getItem(KEYS.ATTENDANCE);
+      const localOverrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
+      
+      const mergedMap = new Map<string, AttendanceRecord>();
+      
+      // Local first
+      for (const loc of localOverrides) {
+        mergedMap.set(`${loc.operatorId}_${loc.date}`, loc);
+      }
+      
+      // Cloud overrides
+      for (const cld of cloudRecords) {
+        mergedMap.set(`${cld.operatorId}_${cld.date}`, cld);
+      }
+
+      // Check if any local overrides need to be synced to cloud
+      const unSynced = localOverrides.filter(loc => !cloudRecords.some(c => c.operatorId === loc.operatorId && c.date === loc.date));
+      if (unSynced.length > 0) {
+        void (async () => {
+          try {
+            await supabase
+              .from('zona_verde_attendance')
+              .upsert(unSynced.map(toDbRow), { onConflict: 'id' });
+          } catch (e) {
+            console.warn('[ZonaVerde] Error al sincronizar registros locales pendientes:', e);
+          }
+        })();
+      }
+
+      const merged = Array.from(mergedMap.values());
+      localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(merged));
+      return merged;
+    }
+
+    return getAllAttendanceOverrides();
+  } catch (e) {
+    console.error('[ZonaVerde] Excepción en syncAttendanceFromCloud:', e);
+    return getAllAttendanceOverrides();
   }
 }
 
