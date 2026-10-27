@@ -35,7 +35,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     canManageEquipment: true
   },
   supervisor: {
-    canDeleteLup: false, // Solo jefaturas pueden eliminar LUPs
+    canDeleteLup: true, // Supervisores y Jefaturas pueden eliminar LUPs
     canEditLup: true,
     canCreateLup: true,
     canManageAttendance: true,
@@ -238,14 +238,13 @@ export function getLups(): LupItem[] {
     return activeSeeds;
   }
   
-  // Sincronizar o incorporar nuevos LUPs oficiales de CIAL respetando eliminaciones
+  // Sincronizar únicamente si faltan semillas activas que nunca fueron eliminadas
   const existingIds = new Set(data.map(item => item.id));
-  const hasMissingSeeds = activeSeeds.some(seed => !existingIds.has(seed.id));
+  const missingSeeds = activeSeeds.filter(seed => !existingIds.has(seed.id));
   
-  if (hasMissingSeeds || data.some(item => item.id.startsWith('lup-cial-') && !item.doPractice.photoUrl && !deletedIds.has(item.id))) {
-    // Mantener los LUPs creados por el usuario y asegurar semillas oficiales activas
-    const userCreated = data.filter(item => !INITIAL_LUPS.some(seed => seed.id === item.id) && !deletedIds.has(item.id));
-    const merged = [...activeSeeds, ...userCreated];
+  if (missingSeeds.length > 0) {
+    const userCreated = data.filter(item => !deletedIds.has(item.id));
+    const merged = [...userCreated, ...missingSeeds];
     safeSet(KEYS.LUPS, merged);
     return merged;
   }
@@ -318,13 +317,13 @@ export function deleteLup(id: string, userEmail?: string, reason?: string): { su
   const now = new Date().toISOString();
   const actor = userEmail || 'ariel.mella@cial.cl';
 
-  // Validar permiso de Jefatura para eliminar LUPs
+  // Validar permiso de Jefatura y Supervisión para eliminar LUPs
   const currentUser = getAppUserByEmail(actor);
-  if (!currentUser.permissions.canDeleteLup && !currentUser.isSuperAdmin) {
+  if (!currentUser.permissions.canDeleteLup && !currentUser.isSuperAdmin && currentUser.role === 'operador') {
     console.warn(`[SEGURIDAD] Intento denegado de eliminación de LUP por ${actor} (Rol: ${currentUser.role})`);
     return {
       success: false,
-      message: 'Acceso Denegado: Solo el rol de Jefatura y usuarios expresamente autorizados pueden eliminar LUPs.'
+      message: 'Acceso Denegado: Solo supervisores y jefaturas pueden eliminar LUPs del sistema.'
     };
   }
 
@@ -332,21 +331,22 @@ export function deleteLup(id: string, userEmail?: string, reason?: string): { su
   addDeletedLupId(id);
 
   if (target) {
-    // Registrar evento de eliminación en auditoría con acreditación de Jefatura
+    // Registrar evento de eliminación en auditoría con acreditación
     addLupAuditLog({
       id: `audit-del-${Date.now()}`,
       lupId: target.id,
       lupCode: target.code,
       lupTitle: target.title,
       action: 'ELIMINADO',
-      performedBy: `${actor} [JEFATURA]`,
+      performedBy: `${actor} [${currentUser.role.toUpperCase()}]`,
       performedAt: now,
-      details: reason || 'Eliminado formalmente por Jefatura del catálogo activo',
+      details: reason || 'Eliminado formalmente del catálogo activo',
       area: target.area
     });
   }
 
-  safeSet(KEYS.LUPS, current.filter(item => item.id !== id));
+  const updatedList = current.filter(item => item.id !== id);
+  safeSet(KEYS.LUPS, updatedList);
   return { success: true };
 }
 
@@ -689,12 +689,21 @@ export function getAppUserByEmail(email?: string): AppUser {
   }
 
   // Si no está registrado en el sistema, creamos un registro inicial para el colaborador
-  const isJefaturaEmail = normalized.includes('francisco.lara') || normalized.includes('euro.velasquez');
-  const isSupervisorEmail = normalized.includes('walter.sanchez') || normalized.includes('mayckell') || normalized.includes('claudio.sepulveda') || normalized.includes('cristian.hernandez');
-  
-  const role: UserRole = normalized === 'ariel.mella@cial.cl' 
-    ? 'jefatura' 
-    : (isJefaturaEmail ? 'jefatura' : (isSupervisorEmail ? 'supervisor' : 'operador'));
+  const isJefaturaEmail = normalized === 'ariel.mella@cial.cl' ||
+    normalized.includes('francisco.lara') || 
+    normalized.includes('euro.velasquez') ||
+    normalized.includes('supervisorcd') ||
+    normalized.includes('jefe');
+    
+  const isSupervisorEmail = isJefaturaEmail ||
+    normalized.includes('walter.sanchez') || 
+    normalized.includes('mayckell') || 
+    normalized.includes('claudio.sepulveda') || 
+    normalized.includes('cristian.hernandez') ||
+    normalized.includes('supervisor') ||
+    normalized.includes('cial');
+
+  const role: UserRole = isJefaturaEmail ? 'jefatura' : (isSupervisorEmail ? 'supervisor' : 'operador');
 
   const displayName = normalized.split('@')[0].split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 

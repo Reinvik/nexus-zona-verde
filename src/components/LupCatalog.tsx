@@ -598,6 +598,16 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   <Edit className="w-4 h-4" />
                 </button>
 
+                {canDeleteLup && (
+                  <button
+                    onClick={() => handleOpenDelete(lup)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                    title="Eliminar LUP de catálogo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+
                 <button
                   onClick={() => onSelectForCharla(lup.id)}
                   className="flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
@@ -1180,35 +1190,40 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               </p>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Motivo de la eliminación *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Ej: Descontinuado por nueva normativa de congelados..."
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleConfirmDelete();
+            }}>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Motivo de la eliminación (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Descontinuado por nueva normativa de congelados..."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setDeletingLup(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Confirmar Eliminación</span>
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingLup(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Confirmar Eliminación</span>
+                </button>
+              </div>
+            </form>
 
           </div>
         </div>
