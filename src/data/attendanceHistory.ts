@@ -53769,7 +53769,8 @@ export function exportFullAttendanceMatrixCsv(): void {
     ausente: 'Ausencia',
     licencia: 'Licencia',
     justificada: 'Permiso',
-    vacaciones: 'Vacaciones'
+    vacaciones: 'Vacaciones',
+    sin_marcar: 'Sin Marcar'
   };
 
   const rows = REAL_OPERATORS.map(op => {

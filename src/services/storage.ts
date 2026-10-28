@@ -695,8 +695,12 @@ export function getAttendanceRecords(date?: string, shiftId?: string): Attendanc
       const overrides: AttendanceRecord[] = JSON.parse(raw);
       for (const ov of overrides) {
         if (date && ov.date !== date) continue;
-        // Map by operator for the target date regardless of shift filter mismatch
-        map.set(`${ov.date}_${ov.operatorId}`, ov);
+        if (ov.status === 'sin_marcar') {
+          map.delete(`${ov.date}_${ov.operatorId}`);
+        } else {
+          // Map by operator for the target date regardless of shift filter mismatch
+          map.set(`${ov.date}_${ov.operatorId}`, ov);
+        }
       }
     }
 
@@ -795,6 +799,53 @@ export function getAllAttendanceOverrides(): AttendanceRecord[] {
   }
 }
 
+export function unmarkAttendance(operatorId: string, date: string): void {
+  try {
+    // 1. Guardar tombstone en LocalStorage para ocultar registro histórico o previo
+    const raw = localStorage.getItem(KEYS.ATTENDANCE);
+    const overrides: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
+
+    const tombstone: AttendanceRecord = {
+      id: `att-tombstone-${operatorId}-${date}`,
+      date,
+      shiftId: 'turno-1',
+      shiftName: 'Turno 1 (Mañana 07:00 - 15:00)',
+      operatorId,
+      operatorName: '',
+      status: 'sin_marcar',
+      updatedAt: new Date().toISOString(),
+      registeredBy: 'usuario'
+    };
+
+    const existingIdx = overrides.findIndex(r => r.operatorId === operatorId && r.date === date);
+    if (existingIdx >= 0) {
+      overrides[existingIdx] = tombstone;
+    } else {
+      overrides.push(tombstone);
+    }
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(overrides));
+
+    // 2. Eliminar de Supabase Cloud para que no figure marcado
+    void (async () => {
+      try {
+        const { error } = await supabase
+          .from('zona_verde_attendance')
+          .delete()
+          .eq('id', `${operatorId}_${date}`);
+        if (error) {
+          console.warn('[ZonaVerde] Error al desmarcar en Supabase:', error.message);
+        } else {
+          console.log(`[ZonaVerde] ✅ Registro desmarcado en Supabase: ${operatorId}_${date}`);
+        }
+      } catch (e) {
+        console.warn('[ZonaVerde] Excepción al desmarcar en Supabase:', e);
+      }
+    })();
+  } catch (e) {
+    console.error('Error unmarking attendance:', e);
+  }
+}
+
 export function removeAttendanceOverride(operatorId: string, date: string): void {
   try {
     // 1. LocalStorage
@@ -846,18 +897,26 @@ export async function syncAttendanceFromCloud(): Promise<AttendanceRecord[]> {
       
       const mergedMap = new Map<string, AttendanceRecord>();
       
-      // Local first
+      // Local first (respetando desmarcados)
       for (const loc of localOverrides) {
-        mergedMap.set(`${loc.operatorId}_${loc.date}`, loc);
+        if (loc.status === 'sin_marcar') {
+          mergedMap.delete(`${loc.operatorId}_${loc.date}`);
+        } else {
+          mergedMap.set(`${loc.operatorId}_${loc.date}`, loc);
+        }
       }
       
       // Cloud overrides
       for (const cld of cloudRecords) {
+        const loc = localOverrides.find(l => l.operatorId === cld.operatorId && l.date === cld.date);
+        if (loc?.status === 'sin_marcar') {
+          continue; // Desmarcado localmente, no resucitar
+        }
         mergedMap.set(`${cld.operatorId}_${cld.date}`, cld);
       }
 
       // Check if any local overrides need to be synced to cloud
-      const unSynced = localOverrides.filter(loc => !cloudRecords.some(c => c.operatorId === loc.operatorId && c.date === loc.date));
+      const unSynced = localOverrides.filter(loc => loc.status !== 'sin_marcar' && !cloudRecords.some(c => c.operatorId === loc.operatorId && c.date === loc.date));
       if (unSynced.length > 0) {
         void (async () => {
           try {

@@ -50,6 +50,7 @@ import {
   exportToCsv,
   getAllAttendanceOverrides,
   removeAttendanceOverride,
+  unmarkAttendance,
   syncAttendanceFromCloud
 } from '../services/storage';
 import { 
@@ -161,6 +162,17 @@ const STATUS_CONFIG: Record<AttendanceStatus, {
     badgeClass: 'bg-teal-100 text-teal-800 border-teal-300',
     borderClass: 'border-l-4 border-l-teal-500',
     matrixClass: 'bg-teal-100 text-teal-800 border border-teal-300 font-black'
+  },
+  sin_marcar: {
+    label: 'Sin Marcar',
+    shortLabel: 'Pendiente',
+    code: '—',
+    icon: Clock,
+    activeClass: 'bg-slate-200 text-slate-700',
+    inactiveClass: 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200',
+    badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+    borderClass: 'border-l-4 border-l-slate-300',
+    matrixClass: 'bg-slate-100 text-slate-400 font-bold'
   }
 };
 
@@ -440,7 +452,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     const key = `${operator.id}_${dateKey}`;
     const override = overridesMap.get(key);
     const tuple = HISTORICAL_ATTENDANCE_COMPACT[operator.id]?.[dateKey];
-    const currentSt = override ? override.status : (tuple ? tuple[0] : null);
+    const currentSt = override ? (override.status === 'sin_marcar' ? null : override.status) : (tuple ? tuple[0] : null);
     const currentNt = override ? override.notes : (tuple && tuple.length > 1 ? tuple[1] : '');
 
     setMatrixEditModal({
@@ -531,7 +543,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   const handleRemoveMatrixOverride = () => {
     if (!matrixEditModal) return;
-    removeAttendanceOverride(matrixEditModal.operator.id, matrixEditModal.dateKey);
+    unmarkAttendance(matrixEditModal.operator.id, matrixEditModal.dateKey);
     loadData();
     setMatrixEditModal(null);
     showToast(`Restablecido día ${matrixEditModal.dateKey} para ${matrixEditModal.operator.name}`);
@@ -723,7 +735,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
       for (const dt of evaluatedDates) {
         const ov = overridesMap.get(`${op.id}_${dt}`);
-        const statusVal = ov ? ov.status : opHist[dt]?.[0];
+        const statusVal = ov ? (ov.status === 'sin_marcar' ? null : ov.status) : opHist[dt]?.[0];
         if (!statusVal) continue;
         totalMarks++;
         if (statusVal === 'presente') presentes++;
@@ -770,11 +782,19 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return result;
   }, [selectedMonth]);
 
-  // 1-Click Status toggle in Daily View
+  // 1-Click Status toggle in Daily View (click to select, click again to uncheck / desclickear)
   const handleStatusClick = (operator: OperatorItem, status: AttendanceStatus) => {
     const existingRec = recordMap.get(operator.id);
     const opShift = operator.shiftId || (selectedShiftId === 'todos' ? 'turno-1' : selectedShiftId);
     const shiftObj = SHIFT_OPTIONS.find(s => s.id === opShift) || SHIFT_OPTIONS[0];
+
+    // Si ya está marcado con este mismo estado -> DESCLICKEAR / DESMARCAR (TOGGLE OFF)
+    if (existingRec && existingRec.status === status) {
+      unmarkAttendance(operator.id, selectedDate);
+      loadData();
+      showToast(`↩️ ${operator.name}: desmarcado (vuelto a pendiente)`);
+      return;
+    }
 
     const newRecord: AttendanceRecord = {
       id: existingRec?.id || `att-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -2173,7 +2193,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                         {matrixDates.map(d => {
                           const override = overridesMap.get(`${operator.id}_${d.key}`);
                           const tuple = opHist[d.key];
-                          const status = override ? override.status : (tuple ? tuple[0] : null);
+                          const status = override ? (override.status === 'sin_marcar' ? null : override.status) : (tuple ? tuple[0] : null);
                           const notes = override ? override.notes : (tuple && tuple.length > 1 ? tuple[1] : undefined);
                           const cfg = status ? STATUS_CONFIG[status] : null;
                           const isToday = d.key === todayStr;
@@ -2766,20 +2786,37 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 ))}
               </datalist>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setNoteModalData(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/30"
-                >
-                  Guardar Detalle
-                </button>
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-100">
+                {noteModalData?.record ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unmarkAttendance(noteModalData.operator.id, selectedDate);
+                      loadData();
+                      setNoteModalData(null);
+                      showToast(`↩️ ${noteModalData.operator.name}: asistencia desmarcada`);
+                    }}
+                    className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+                  >
+                    Desmarcar Asistencia
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNoteModalData(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/30 cursor-pointer"
+                  >
+                    Guardar Detalle
+                  </button>
+                </div>
               </div>
 
             </form>

@@ -284,7 +284,8 @@ export type AttendanceStatus =
   | 'ausente'
   | 'licencia'
   | 'justificada'
-  | 'vacaciones';
+  | 'vacaciones'
+  | 'sin_marcar';
 
 export interface OperatorItem {
   id: string;
