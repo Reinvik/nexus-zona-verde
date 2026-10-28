@@ -26,10 +26,12 @@ import {
   FileSpreadsheet,
   X,
   FileCheck2,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { 
   LupItem, 
+  LupPractice,
   CharlaSession, 
   OperatorItem, 
   ShiftId, 
@@ -114,6 +116,10 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   const [selectedOperatorIds, setSelectedOperatorIds] = useState<string[]>([]);
   const [presentOperatorsInShift, setPresentOperatorsInShift] = useState<{ operatorId: string; operatorName: string; role?: string; area?: string }[]>([]);
 
+  // Modal: Ver LUP Completo
+  const [viewingLupModal, setViewingLupModal] = useState<LupItem | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+
   // Modal: Nuevo LUP de Seguridad
   const [showNewSafetyLupModal, setShowNewSafetyLupModal] = useState<boolean>(false);
   const [newCode, setNewCode] = useState<string>('');
@@ -123,13 +129,30 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   const [newSummary, setNewSummary] = useState<string>('');
   const [newObjective, setNewObjective] = useState<string>('');
   const [newSelectedEpp, setNewSelectedEpp] = useState<string[]>([COMMON_EPP_LIST[0], COMMON_EPP_LIST[1]]);
-  const [newDoTitle, setNewDoTitle] = useState<string>('');
-  const [newDoDesc, setNewDoDesc] = useState<string>('');
-  const [newDoPhoto, setNewDoPhoto] = useState<string | null>(null);
-  const [newDontTitle, setNewDontTitle] = useState<string>('');
-  const [newDontDesc, setNewDontDesc] = useState<string>('');
-  const [newDontPhoto, setNewDontPhoto] = useState<string | null>(null);
   const [newSafetyWarning, setNewSafetyWarning] = useState<string>('');
+
+  // Múltiples Qué SÍ hacer y Qué NO hacer
+  const [doPracticesList, setDoPracticesList] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    pointsText: string;
+    photoUrl: string | null;
+    photoSizeKb?: number;
+  }[]>([
+    { id: 'do-1', title: '', description: '', pointsText: '', photoUrl: null }
+  ]);
+
+  const [dontPracticesList, setDontPracticesList] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    pointsText: string;
+    photoUrl: string | null;
+    photoSizeKb?: number;
+  }[]>([
+    { id: 'dont-1', title: '', description: '', pointsText: '', photoUrl: null }
+  ]);
 
   // Operator Search in Kardex
   const [operatorSearch, setOperatorSearch] = useState<string>('');
@@ -244,6 +267,66 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     }
   };
 
+  // Practice handlers for multiple DO
+  const handleAddDoPractice = () => {
+    setDoPracticesList(prev => [
+      ...prev,
+      { id: `do-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, title: '', description: '', pointsText: '', photoUrl: null }
+    ]);
+  };
+
+  const handleRemoveDoPractice = (index: number) => {
+    if (doPracticesList.length <= 1) return;
+    setDoPracticesList(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateDoPractice = (index: number, field: string, value: any) => {
+    setDoPracticesList(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  // Practice handlers for multiple DONT
+  const handleAddDontPractice = () => {
+    setDontPracticesList(prev => [
+      ...prev,
+      { id: `dont-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, title: '', description: '', pointsText: '', photoUrl: null }
+    ]);
+  };
+
+  const handleRemoveDontPractice = (index: number) => {
+    if (dontPracticesList.length <= 1) return;
+    setDontPracticesList(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateDontPractice = (index: number, field: string, value: any) => {
+    setDontPracticesList(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handlePhotoUploadForPractice = async (e: React.ChangeEvent<HTMLInputElement>, isDo: boolean, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 800, quality: 0.65 });
+        if (isDo) {
+          handleUpdateDoPractice(index, 'photoUrl', dataUrl);
+          handleUpdateDoPractice(index, 'photoSizeKb', sizeKb);
+        } else {
+          handleUpdateDontPractice(index, 'photoUrl', dataUrl);
+          handleUpdateDontPractice(index, 'photoSizeKb', sizeKb);
+        }
+      } catch (err) {
+        console.error('Error al comprimir imagen:', err);
+      }
+    }
+  };
+
   // Create new Safety LUP
   const handleCreateSafetyLup = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +334,26 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
       showToast('El código y el título son obligatorios.', 'error');
       return;
     }
+
+    const formattedDoPractices: LupPractice[] = doPracticesList.map((item, idx) => ({
+      title: item.title.trim() || `Práctica Segura Recomendada #${idx + 1}`,
+      description: item.description.trim() || 'Seguir siempre los controles establecidos.',
+      points: item.pointsText.split('\n').map(p => p.trim()).filter(Boolean).length > 0
+        ? item.pointsText.split('\n').map(p => p.trim()).filter(Boolean)
+        : ['Inspeccionar antes de operar', 'Usar el EPP normado', 'Reportar condición subestándar'],
+      photoUrl: item.photoUrl || undefined,
+      photoSizeKb: item.photoSizeKb
+    }));
+
+    const formattedDontPractices: LupPractice[] = dontPracticesList.map((item, idx) => ({
+      title: item.title.trim() || `Práctica Insegura Prohibida #${idx + 1}`,
+      description: item.description.trim() || 'No cometer actos subestándar que comprometan la integridad física.',
+      points: item.pointsText.split('\n').map(p => p.trim()).filter(Boolean).length > 0
+        ? item.pointsText.split('\n').map(p => p.trim()).filter(Boolean)
+        : ['❌ Nunca omitir el EPP', '❌ No saltarse procedimientos', '❌ No operar equipos con fallas'],
+      photoUrl: item.photoUrl || undefined,
+      photoSizeKb: item.photoSizeKb
+    }));
 
     const newLup: LupItem = {
       id: `lup-sso-${Date.now()}`,
@@ -268,18 +371,10 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
       criticalRisk: newCriticalRisk,
       mandatoryEpp: newSelectedEpp,
       safetyWarning: newSafetyWarning.trim() || '¡Incumplir este estándar eleva el potencial de incidentes graves!',
-      doPractice: {
-        title: newDoTitle.trim() || 'Práctica Segura Recomendada',
-        description: newDoDesc.trim() || 'Seguir siempre los controles establecidos.',
-        points: ['Inspeccionar antes de operar', 'Usar el EPP normado', 'Reportar cualquier condición subestándar'],
-        photoUrl: newDoPhoto || undefined
-      },
-      dontPractice: {
-        title: newDontTitle.trim() || 'Práctica Insegura Prohibida',
-        description: newDontDesc.trim() || 'No cometer actos subestándar que comprometan la integridad física.',
-        points: ['❌ Nunca omitir el EPP', '❌ No saltarse los procedimientos de seguridad', '❌ No operar equipos con fallas'],
-        photoUrl: newDontPhoto || undefined
-      },
+      doPractice: formattedDoPractices[0],
+      dontPractice: formattedDontPractices[0],
+      doPractices: formattedDoPractices,
+      dontPractices: formattedDontPractices,
       keyPoints: [
         'Respetar siempre las vías y demarcaciones de seguridad.',
         'Contacto visual previo obligatorio.',
@@ -295,13 +390,9 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     setNewTitle('');
     setNewSummary('');
     setNewObjective('');
-    setNewDoTitle('');
-    setNewDoDesc('');
-    setNewDoPhoto(null);
-    setNewDontTitle('');
-    setNewDontDesc('');
-    setNewDontPhoto(null);
     setNewSafetyWarning('');
+    setDoPracticesList([{ id: 'do-1', title: '', description: '', pointsText: '', photoUrl: null }]);
+    setDontPracticesList([{ id: 'dont-1', title: '', description: '', pointsText: '', photoUrl: null }]);
     loadData();
   };
 
@@ -310,19 +401,6 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
       setNewSelectedEpp(newSelectedEpp.filter(item => item !== epp));
     } else {
       setNewSelectedEpp([...newSelectedEpp, epp]);
-    }
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isDo: boolean) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const { dataUrl } = await compressImageFile(file, { maxWidth: 800, quality: 0.65 });
-        if (isDo) setNewDoPhoto(dataUrl);
-        else setNewDontPhoto(dataUrl);
-      } catch (err) {
-        console.error('Error al comprimir imagen:', err);
-      }
     }
   };
 
@@ -1004,7 +1082,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
             {safetyLups.map(lup => (
               <div 
                 key={lup.id}
-                className="bg-white rounded-3xl p-5 border-2 border-amber-300 shadow-xs hover:border-amber-400 transition flex flex-col justify-between"
+                onClick={() => setViewingLupModal(lup)}
+                className="bg-white rounded-3xl p-5 border-2 border-amber-300 shadow-xs hover:border-amber-400 hover:shadow-md transition flex flex-col justify-between cursor-pointer group"
               >
                 <div>
                   {/* Badge SSO Header */}
@@ -1016,7 +1095,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                     <span className="text-xs font-black text-slate-500">{lup.code}</span>
                   </div>
 
-                  <h3 className="text-sm font-black text-slate-900 mb-1.5 line-clamp-2">
+                  <h3 className="text-sm font-black text-slate-900 mb-1.5 line-clamp-2 group-hover:text-amber-700 transition">
                     {lup.title}
                   </h3>
 
@@ -1066,21 +1145,34 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                         ))}
                       </div>
                       <span className="text-[10px] text-amber-800 font-bold block text-center mt-1">
-                        📸 4 Fotos del Estándar
+                        📸 4 Fotos del Estándar (Click para ver LUP)
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-400 font-semibold">{lup.area}</span>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingLupModal(lup);
+                    }}
+                    className="text-emerald-700 font-bold hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-xl border border-emerald-200 transition cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver LUP Completo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (onNavigateToLup) onNavigateToLup(lup.id);
                       setSelectedCoverageLupId(lup.id);
                       setActivePortalTab('cobertura');
                     }}
-                    className="text-amber-700 font-black hover:text-amber-800 flex items-center gap-1 cursor-pointer"
+                    className="text-amber-700 font-black hover:text-amber-800 flex items-center gap-1 cursor-pointer py-1.5 px-2 rounded-xl hover:bg-amber-50 transition"
                   >
                     <span>Ver Cobertura</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1404,69 +1496,219 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                 </div>
               </div>
 
-              {/* Qué SÍ hacer vs Qué NO hacer */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              {/* Qué SÍ hacer vs Qué NO hacer (Múltiples prácticas) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
                 
-                {/* DO */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
-                  <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Qué SÍ Hacer (Estándar)</span>
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Título ej: Colocar cuña antes de abrir rampa"
-                    value={newDoTitle}
-                    onChange={(e) => setNewDoTitle(e.target.value)}
-                    className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-xs font-bold"
-                  />
-                  <textarea
-                    rows={2}
-                    placeholder="Descripción de la acción segura..."
-                    value={newDoDesc}
-                    onChange={(e) => setNewDoDesc(e.target.value)}
-                    className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-xs"
-                  />
-                  <div>
-                    <label className="text-[10px] font-bold text-emerald-800 block mb-1">Foto Caso Correcto (Opcional):</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePhotoUpload(e, true)}
-                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-emerald-600 file:text-white"
-                    />
+                {/* LISTA QUÉ SÍ HACER */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Qué SÍ Hacer ({doPracticesList.length})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddDoPractice}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Agregar otro Qué Hacer</span>
+                    </button>
                   </div>
+
+                  {doPracticesList.map((item, idx) => (
+                    <div key={item.id} className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-300 space-y-2 relative">
+                      <div className="flex items-center justify-between pb-1 border-b border-emerald-200/70">
+                        <span className="text-[11px] font-black text-emerald-900">
+                          #{idx + 1} Caso Seguro Recomendado
+                        </span>
+                        {doPracticesList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDoPractice(idx)}
+                            className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-100/60 transition cursor-pointer"
+                            title="Eliminar este Qué Hacer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Título ej: Colocar cuña antes de abrir rampa"
+                        value={item.title}
+                        onChange={(e) => handleUpdateDoPractice(idx, 'title', e.target.value)}
+                        className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+
+                      <textarea
+                        rows={2}
+                        placeholder="Descripción detallada de la acción segura..."
+                        value={item.description}
+                        onChange={(e) => handleUpdateDoPractice(idx, 'description', e.target.value)}
+                        className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+
+                      <textarea
+                        rows={2}
+                        placeholder="Puntos clave de seguridad (uno por línea)..."
+                        value={item.pointsText}
+                        onChange={(e) => handleUpdateDoPractice(idx, 'pointsText', e.target.value)}
+                        className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+
+                      <div>
+                        <label className="text-[10px] font-bold text-emerald-800 block mb-1">
+                          Foto Caso Correcto (Opcional):
+                        </label>
+                        {item.photoUrl ? (
+                          <div className="flex items-center gap-2 bg-emerald-100/70 p-1.5 rounded-xl border border-emerald-300">
+                            <img src={item.photoUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-emerald-400" />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[10px] font-bold text-emerald-900 block truncate">Foto adjunta</span>
+                              {item.photoSizeKb && (
+                                <span className="text-[9px] text-emerald-700 font-mono block">Tamaño: {item.photoSizeKb} KB</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateDoPractice(idx, 'photoUrl', null);
+                                handleUpdateDoPractice(idx, 'photoSizeKb', undefined);
+                              }}
+                              className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg hover:bg-rose-100 transition cursor-pointer"
+                              title="Quitar foto"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUploadForPractice(e, true, idx)}
+                            className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddDoPractice}
+                    className="w-full py-2 border-2 border-dashed border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50 text-emerald-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar otro Qué SÍ Hacer</span>
+                  </button>
                 </div>
 
-                {/* DONT */}
-                <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200 space-y-2">
-                  <span className="text-xs font-black text-rose-800 uppercase flex items-center gap-1">
-                    <XCircle className="w-4 h-4 text-rose-600" />
-                    <span>Qué NO Hacer (Peligro)</span>
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Título ej: Ingresar transpaleta sin cuña puesta"
-                    value={newDontTitle}
-                    onChange={(e) => setNewDontTitle(e.target.value)}
-                    className="w-full bg-white border border-rose-200 rounded-xl px-3 py-1.5 text-xs font-bold"
-                  />
-                  <textarea
-                    rows={2}
-                    placeholder="Descripción de la conducta peligrosa..."
-                    value={newDontDesc}
-                    onChange={(e) => setNewDontDesc(e.target.value)}
-                    className="w-full bg-white border border-rose-200 rounded-xl px-3 py-1.5 text-xs"
-                  />
-                  <div>
-                    <label className="text-[10px] font-bold text-rose-800 block mb-1">Foto Caso Incorrecto (Opcional):</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePhotoUpload(e, false)}
-                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-rose-600 file:text-white"
-                    />
+                {/* LISTA QUÉ NO HACER */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-rose-800 uppercase flex items-center gap-1.5">
+                      <XCircle className="w-4 h-4 text-rose-600" />
+                      <span>Qué NO Hacer ({dontPracticesList.length})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddDontPractice}
+                      className="text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Agregar otro Qué NO Hacer</span>
+                    </button>
                   </div>
+
+                  {dontPracticesList.map((item, idx) => (
+                    <div key={item.id} className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-300 space-y-2 relative">
+                      <div className="flex items-center justify-between pb-1 border-b border-rose-200/70">
+                        <span className="text-[11px] font-black text-rose-900">
+                          #{idx + 1} Caso Inseguro Prohibido
+                        </span>
+                        {dontPracticesList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDontPractice(idx)}
+                            className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-100/60 transition cursor-pointer"
+                            title="Eliminar este Qué NO Hacer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Título ej: Ingresar transpaleta sin cuña puesta"
+                        value={item.title}
+                        onChange={(e) => handleUpdateDontPractice(idx, 'title', e.target.value)}
+                        className="w-full bg-white border border-rose-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      />
+
+                      <textarea
+                        rows={2}
+                        placeholder="Descripción de la conducta peligrosa o desviación..."
+                        value={item.description}
+                        onChange={(e) => handleUpdateDontPractice(idx, 'description', e.target.value)}
+                        className="w-full bg-white border border-rose-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      />
+
+                      <textarea
+                        rows={2}
+                        placeholder="Puntos clave de prohibición (uno por línea)..."
+                        value={item.pointsText}
+                        onChange={(e) => handleUpdateDontPractice(idx, 'pointsText', e.target.value)}
+                        className="w-full bg-white border border-rose-200 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      />
+
+                      <div>
+                        <label className="text-[10px] font-bold text-rose-800 block mb-1">
+                          Foto Caso Incorrecto (Opcional):
+                        </label>
+                        {item.photoUrl ? (
+                          <div className="flex items-center gap-2 bg-rose-100/70 p-1.5 rounded-xl border border-rose-300">
+                            <img src={item.photoUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-rose-400" />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[10px] font-bold text-rose-900 block truncate">Foto adjunta</span>
+                              {item.photoSizeKb && (
+                                <span className="text-[9px] text-rose-700 font-mono block">Tamaño: {item.photoSizeKb} KB</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateDontPractice(idx, 'photoUrl', null);
+                                handleUpdateDontPractice(idx, 'photoSizeKb', undefined);
+                              }}
+                              className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg hover:bg-rose-100 transition cursor-pointer"
+                              title="Quitar foto"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUploadForPractice(e, false, idx)}
+                            className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-rose-600 file:text-white cursor-pointer"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddDontPractice}
+                    className="w-full py-2 border-2 border-dashed border-rose-300 hover:border-rose-500 hover:bg-rose-50 text-rose-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar otro Qué NO Hacer</span>
+                  </button>
                 </div>
 
               </div>
@@ -1502,6 +1744,356 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: VER LUP COMPLETO */}
+      {viewingLupModal && (
+        <div 
+          className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 z-50 animate-fade-in"
+          onClick={() => setViewingLupModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-7 shadow-2xl border border-amber-300 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header LUP */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span className="bg-amber-100 text-amber-900 font-black text-xs px-3 py-1 rounded-full border border-amber-300 font-mono">
+                    {viewingLupModal.code}
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300">
+                    {viewingLupModal.category}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                    Área: {viewingLupModal.area}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    {viewingLupModal.durationMinutes || 5} Minutos
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                  {viewingLupModal.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium mt-1.5">
+                  <span>
+                    👤 Creado por: <strong className="text-slate-800">{viewingLupModal.author || viewingLupModal.createdBy || 'Prevención SSO'}</strong>
+                  </span>
+                  {viewingLupModal.createdAt && (
+                    <span>
+                      📅 Fecha: <strong className="text-slate-800">{new Date(viewingLupModal.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingLupModal(null)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-2xl hover:bg-slate-100 transition cursor-pointer shrink-0"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Riesgo Crítico y EPP Obligatorio */}
+            {(viewingLupModal.criticalRisk || (viewingLupModal.mandatoryEpp && viewingLupModal.mandatoryEpp.length > 0)) && (
+              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 space-y-2">
+                {viewingLupModal.criticalRisk && (
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span className="text-xs font-black text-amber-950 uppercase tracking-wide">
+                      Riesgo Crítico Asociado:
+                    </span>
+                    <span className="text-xs font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-lg border border-amber-300">
+                      {viewingLupModal.criticalRisk}
+                    </span>
+                  </div>
+                )}
+                {viewingLupModal.mandatoryEpp && viewingLupModal.mandatoryEpp.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-slate-600 mr-1">EPP Obligatorio:</span>
+                    {viewingLupModal.mandatoryEpp.map((epp, idx) => (
+                      <span key={idx} className="text-[11px] font-bold bg-white text-slate-800 px-2 py-0.5 rounded-lg border border-slate-300 shadow-2xs">
+                        {epp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Fotos Estándar 4 cuadrantes (si existen) */}
+            {viewingLupModal.photos && viewingLupModal.photos.length > 0 && (
+              <div>
+                <h4 className="text-xs font-black text-slate-700 uppercase mb-2 flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-amber-600" />
+                  <span>Estándar Fotográfico de Inspección ({viewingLupModal.photos.length} Fotos)</span>
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {viewingLupModal.photos.map((p, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => setViewingPhoto({
+                        url: p.url,
+                        title: p.caption || `Foto #${idx + 1} del Estándar`,
+                        subtitle: viewingLupModal.title
+                      })}
+                      className="relative rounded-2xl overflow-hidden border-2 border-slate-200 hover:border-amber-400 h-28 sm:h-36 bg-slate-100 group cursor-pointer shadow-xs transition"
+                    >
+                      <img 
+                        src={p.url} 
+                        alt={p.caption || 'Foto estándar'} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="bg-black/75 text-white text-[10px] font-bold px-2 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1">
+                          <Eye className="w-3.5 h-3.5" /> Ampliar
+                        </span>
+                      </div>
+                      {p.caption && (
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5">
+                          <span className="text-[10px] text-white font-bold block truncate drop-shadow-xs">
+                            {p.caption}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Objetivo */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+              <h4 className="text-xs font-black text-slate-800 uppercase mb-1 flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-emerald-600" />
+                <span>Objetivo Operacional</span>
+              </h4>
+              <p className="text-xs sm:text-sm font-semibold text-slate-700 italic">
+                "{viewingLupModal.objective}"
+              </p>
+            </div>
+
+            {/* Prácticas: Qué SÍ Hacer vs Qué NO Hacer (Múltiples) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* QUÉ SÍ HACER */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <h4 className="font-black text-sm text-emerald-950 uppercase tracking-wide">
+                    CASO CORRECTO (QUÉ SÍ HACER)
+                  </h4>
+                </div>
+
+                {((viewingLupModal.doPractices && viewingLupModal.doPractices.length > 0)
+                  ? viewingLupModal.doPractices
+                  : (viewingLupModal.doPractice ? [viewingLupModal.doPractice] : [])
+                ).map((practice, pIdx) => (
+                  <div key={pIdx} className="bg-emerald-50/70 border-2 border-emerald-400 rounded-2xl p-4 shadow-xs space-y-3">
+                    {practice.photoUrl && (
+                      <div 
+                        onClick={() => setViewingPhoto({
+                          url: practice.photoUrl!,
+                          title: practice.title,
+                          subtitle: `Caso Correcto • ${viewingLupModal.code}`
+                        })}
+                        className="relative rounded-xl overflow-hidden border-2 border-emerald-300 h-44 sm:h-52 bg-emerald-100/50 group cursor-pointer shadow-xs"
+                      >
+                        <img 
+                          src={practice.photoUrl} 
+                          alt="Caso Correcto" 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                            <Eye className="w-4 h-4" /> Ampliar Fotografía
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h5 className="text-sm sm:text-base font-black text-emerald-950 mb-1">
+                        {practice.title}
+                      </h5>
+                      <p className="text-xs text-emerald-900 font-medium leading-relaxed">
+                        {practice.description}
+                      </p>
+                    </div>
+
+                    {practice.points && practice.points.length > 0 && (
+                      <ul className="space-y-1.5 text-xs text-emerald-900 pt-1 border-t border-emerald-200/80">
+                        {practice.points.map((pt, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-emerald-600 font-bold">•</span>
+                            <span>{pt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* QUÉ NO HACER */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <h4 className="font-black text-sm text-rose-950 uppercase tracking-wide">
+                    CASO INCORRECTO (QUÉ NO HACER)
+                  </h4>
+                </div>
+
+                {((viewingLupModal.dontPractices && viewingLupModal.dontPractices.length > 0)
+                  ? viewingLupModal.dontPractices
+                  : (viewingLupModal.dontPractice ? [viewingLupModal.dontPractice] : [])
+                ).map((practice, pIdx) => (
+                  <div key={pIdx} className="bg-rose-50/70 border-2 border-rose-400 rounded-2xl p-4 shadow-xs space-y-3">
+                    {practice.photoUrl && (
+                      <div 
+                        onClick={() => setViewingPhoto({
+                          url: practice.photoUrl!,
+                          title: practice.title,
+                          subtitle: `Caso Incorrecto • ${viewingLupModal.code}`
+                        })}
+                        className="relative rounded-xl overflow-hidden border-2 border-rose-300 h-44 sm:h-52 bg-rose-100/50 group cursor-pointer shadow-xs"
+                      >
+                        <img 
+                          src={practice.photoUrl} 
+                          alt="Caso Incorrecto" 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <span className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                            <Eye className="w-4 h-4" /> Ampliar Fotografía
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h5 className="text-sm sm:text-base font-black text-rose-950 mb-1">
+                        {practice.title}
+                      </h5>
+                      <p className="text-xs text-rose-900 font-medium leading-relaxed">
+                        {practice.description}
+                      </p>
+                    </div>
+
+                    {practice.points && practice.points.length > 0 && (
+                      <ul className="space-y-1.5 text-xs text-rose-900 pt-1 border-t border-rose-200/80">
+                        {practice.points.map((pt, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-rose-600 font-bold">•</span>
+                            <span>{pt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+            {/* Advertencia de Seguridad */}
+            {viewingLupModal.safetyWarning && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-2xl flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs font-semibold text-amber-950">
+                  <span className="font-black uppercase text-amber-800">Advertencia Crítica: </span>
+                  {viewingLupModal.safetyWarning}
+                </p>
+              </div>
+            )}
+
+            {/* Puntos Clave */}
+            {viewingLupModal.keyPoints && viewingLupModal.keyPoints.length > 0 && (
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
+                <h5 className="text-xs font-black text-slate-800 uppercase mb-2">Puntos Clave a Recordar</h5>
+                <ul className="space-y-1 text-xs text-slate-700">
+                  {viewingLupModal.keyPoints.map((kp, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-amber-500 font-bold">✔</span>
+                      <span>{kp}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Footer Modal Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setViewingLupModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const id = viewingLupModal.id;
+                  setViewingLupModal(null);
+                  if (onNavigateToLup) onNavigateToLup(id);
+                  setSelectedCoverageLupId(id);
+                  setActivePortalTab('cobertura');
+                }}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-md cursor-pointer flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                <span>Ver Cobertura del LUP</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* LIGHTBOX DE FOTO */}
+      {viewingPhoto && (
+        <div 
+          onClick={() => setViewingPhoto(null)}
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in cursor-zoom-out"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col cursor-default"
+          >
+            <div className="flex items-center justify-between p-4 bg-slate-950 border-b border-slate-800">
+              <div>
+                <h4 className="text-white font-black text-sm">{viewingPhoto.title}</h4>
+                {viewingPhoto.subtitle && (
+                  <p className="text-slate-400 text-xs font-medium">{viewingPhoto.subtitle}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingPhoto(null)}
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[75vh] flex items-center justify-center bg-black/60 p-2">
+              <img 
+                src={viewingPhoto.url} 
+                alt={viewingPhoto.title} 
+                className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl"
+              />
+            </div>
+            <div className="p-3 bg-slate-950 border-t border-slate-800 text-center">
+              <span className="text-[11px] text-slate-400 font-semibold">Fotografía en alta resolución del Estándar Operacional</span>
+            </div>
           </div>
         </div>
       )}

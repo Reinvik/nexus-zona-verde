@@ -43,8 +43,10 @@ export interface LupItem {
   summary: string;
   objective: string;
   durationMinutes: number; // typically 5
-  doPractice: LupPractice; // ✅ Qué SÍ hacer
-  dontPractice: LupPractice; // ❌ Qué NO hacer
+  doPractice: LupPractice; // ✅ Qué SÍ hacer (primer caso o caso principal)
+  dontPractice: LupPractice; // ❌ Qué NO hacer (primer caso o caso principal)
+  doPractices?: LupPractice[]; // Soporte para múltiples Qué SÍ hacer
+  dontPractices?: LupPractice[]; // Soporte para múltiples Qué NO hacer
   keyPoints: string[];
   safetyWarning?: string;
   imageUrl?: string;
