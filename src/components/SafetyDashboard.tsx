@@ -52,7 +52,9 @@ import {
   getLupTrainingCoverage, 
   getDailyShiftsSafetyStatus,
   exportToCsv,
-  ShiftSafetyStatus
+  ShiftSafetyStatus,
+  getShiftTeamPhoto,
+  saveShiftTeamPhoto
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 
@@ -115,6 +117,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   const [assignNotes, setAssignNotes] = useState<string>('');
   const [selectedOperatorIds, setSelectedOperatorIds] = useState<string[]>([]);
   const [presentOperatorsInShift, setPresentOperatorsInShift] = useState<{ operatorId: string; operatorName: string; role?: string; area?: string }[]>([]);
+  const [assignPhotoUrl, setAssignPhotoUrl] = useState<string | null>(null);
+  const [assignPhotoSizeKb, setAssignPhotoSizeKb] = useState<number | null>(null);
 
   // Modal: Ver LUP Completo
   const [viewingLupModal, setViewingLupModal] = useState<LupItem | null>(null);
@@ -203,6 +207,12 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     setPresentOperatorsInShift(presentList);
     // Default to all selected
     setSelectedOperatorIds(presentList.map(p => p.operatorId));
+
+    // Load existing team photo for this shift if already taken in Asistencia
+    const existingPhoto = getShiftTeamPhoto(selectedDate, shiftId);
+    setAssignPhotoUrl(existingPhoto ? existingPhoto.photoUrl : null);
+    setAssignPhotoSizeKb(existingPhoto ? (existingPhoto.photoSizeKb || null) : null);
+
     setShowAssignModal(true);
   };
 
@@ -218,6 +228,23 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     }));
     setPresentOperatorsInShift(presentList);
     setSelectedOperatorIds(presentList.map(p => p.operatorId));
+
+    const existingPhoto = getShiftTeamPhoto(selectedDate, newShiftId);
+    setAssignPhotoUrl(existingPhoto ? existingPhoto.photoUrl : null);
+    setAssignPhotoSizeKb(existingPhoto ? (existingPhoto.photoSizeKb || null) : null);
+  };
+
+  const handleAssignPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 900, quality: 0.7 });
+        setAssignPhotoUrl(dataUrl);
+        setAssignPhotoSizeKb(sizeKb);
+      } catch (err) {
+        console.error('Error al comprimir foto:', err);
+      }
+    }
   };
 
   const handleToggleSelectAllOperators = () => {
@@ -255,12 +282,16 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
         supervisor: assignSupervisor || currentUser?.name || 'Supervisor de Turno',
         facilitator: assignFacilitator || assignSupervisor,
         selectedOperatorIds: selectedOperatorIds,
-        notes: assignNotes
+        notes: assignNotes,
+        photoUrl: assignPhotoUrl || undefined,
+        photoSizeKb: assignPhotoSizeKb || undefined
       });
 
       showToast(`✅ LUP registrado para ${shiftInfo.label} con ${session.attendeesCount} colaboradores capacitados.`);
       setShowAssignModal(false);
       setAssignNotes('');
+      setAssignPhotoUrl(null);
+      setAssignPhotoSizeKb(null);
       loadData();
     } catch (err: any) {
       showToast('Error al registrar la charla: ' + (err?.message || 'Error desconocido'), 'error');
@@ -712,6 +743,22 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                         <p className="text-[11px] text-slate-600 pt-1 border-t border-emerald-200/60">
                           Supervisor: <strong className="text-slate-800">{charla.supervisor}</strong>
                         </p>
+                        {charla.photoUrl && (
+                          <div 
+                            onClick={() => setViewingPhoto({
+                              url: charla.photoUrl!,
+                              title: `Evidencia Turno • ${shift.label}`,
+                              subtitle: `${charla.lupCode} - ${charla.lupTitle}`
+                            })}
+                            className="flex items-center gap-2 p-1.5 bg-emerald-100/80 hover:bg-emerald-200 rounded-xl cursor-pointer border border-emerald-300 transition mt-2 shadow-2xs"
+                          >
+                            <img src={charla.photoUrl} alt="Foto equipo" className="w-8 h-8 rounded-lg object-cover" />
+                            <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
+                              <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Ver Foto del Equipo ({charla.attendeesCount} pers.)</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/70 text-xs text-amber-900">
@@ -1346,6 +1393,94 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                   placeholder="Ej: Se reforzó el uso de silbato en cruces de andén y contacto visual con grueros..."
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
+              </div>
+
+              {/* Foto de Evidencia del Equipo */}
+              <div className="bg-amber-50/70 border border-amber-300 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-700" />
+                    <span>Foto de Evidencia del Equipo en Terreno</span>
+                  </span>
+                  {assignPhotoSizeKb && (
+                    <span className="text-[10px] text-amber-800 font-mono font-bold bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
+                      📸 {assignPhotoSizeKb} KB
+                    </span>
+                  )}
+                </div>
+
+                {assignPhotoUrl ? (
+                  <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-amber-300 shadow-2xs">
+                    <img 
+                      src={assignPhotoUrl} 
+                      alt="Foto del equipo" 
+                      className="w-16 h-16 object-cover rounded-xl border border-amber-400 cursor-pointer hover:opacity-90 transition"
+                      onClick={() => setViewingPhoto({
+                        url: assignPhotoUrl!,
+                        title: `Evidencia Turno • ${SHIFT_MAP[assignShiftId]?.label}`,
+                        subtitle: `${selectedDate} • Dotación Presente`
+                      })}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-black text-slate-800 block truncate">
+                        Foto grupal adjunta con éxito
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-bold block">
+                        ✓ Quedará vinculada a la charla de seguridad
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-xl cursor-pointer transition">
+                        Cambiar
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleAssignPhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssignPhotoUrl(null);
+                          setAssignPhotoSizeKb(null);
+                        }}
+                        className="text-rose-600 hover:text-rose-800 p-1.5 rounded-xl hover:bg-rose-50 transition cursor-pointer"
+                        title="Quitar foto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="border-2 border-dashed border-amber-400 hover:border-amber-600 bg-white hover:bg-amber-100/50 rounded-2xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
+                      <Camera className="w-5 h-5 text-amber-700 mb-1" />
+                      <span className="text-xs font-bold text-slate-800">Tomar Foto con Cámara</span>
+                      <span className="text-[10px] text-slate-500 font-medium">Abre cámara trasera del celular</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleAssignPhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <label className="border border-slate-300 hover:border-amber-500 bg-white hover:bg-slate-50 rounded-2xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
+                      <ImageIcon className="w-5 h-5 text-slate-500 mb-1" />
+                      <span className="text-xs font-bold text-slate-800">Subir desde Galería</span>
+                      <span className="text-[10px] text-slate-500 font-medium">Cargar imagen guardada</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAssignPhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">

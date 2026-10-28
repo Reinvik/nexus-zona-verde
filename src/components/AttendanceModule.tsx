@@ -38,7 +38,9 @@ import {
   RefreshCw,
   Compass,
   Tag,
-  Eye
+  Eye,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType, AppUser } from '../types';
 import { 
@@ -52,8 +54,13 @@ import {
   getAllAttendanceOverrides,
   removeAttendanceOverride,
   unmarkAttendance,
-  syncAttendanceFromCloud
+  syncAttendanceFromCloud,
+  getShiftTeamPhoto,
+  saveShiftTeamPhoto,
+  deleteShiftTeamPhoto,
+  ShiftTeamPhoto
 } from '../services/storage';
+import { compressImageFile } from '../utils/imageCompressor';
 import { 
   HISTORICAL_DATE_KEYS, 
   HISTORICAL_HEADER_DAYS, 
@@ -340,6 +347,9 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   // Modals
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showTeamPhotoModal, setShowTeamPhotoModal] = useState<boolean>(false);
+  const [shiftTeamPhoto, setShiftTeamPhoto] = useState<ShiftTeamPhoto | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
   const [editingOperator, setEditingOperator] = useState<OperatorItem | null>(null);
   const [noteModalData, setNoteModalData] = useState<{
     operator: OperatorItem;
@@ -417,6 +427,49 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
       supabase.removeChannel(channel);
     };
   }, [selectedDate, selectedShiftId]);
+
+  // Load team photo for current date and shift
+  useEffect(() => {
+    const shiftKey: ShiftId = selectedShiftId === 'todos' ? 'turno-1' : selectedShiftId;
+    setShiftTeamPhoto(getShiftTeamPhoto(selectedDate, shiftKey));
+  }, [selectedDate, selectedShiftId]);
+
+  const handleTeamPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const { dataUrl, sizeKb } = await compressImageFile(file, { maxWidth: 900, quality: 0.7 });
+      const shiftKey: ShiftId = selectedShiftId === 'todos' ? 'turno-1' : selectedShiftId;
+      const presentCount = getAttendanceRecords(selectedDate, shiftKey).filter(r => r.status === 'presente' || r.status === 'tarde').length;
+      const photoData: ShiftTeamPhoto = {
+        date: selectedDate,
+        shiftId: shiftKey,
+        photoUrl: dataUrl,
+        photoSizeKb: sizeKb,
+        takenAt: new Date().toISOString(),
+        takenBy: currentUser?.name || currentUserEmail || 'Supervisor de Turno',
+        attendeesCount: presentCount
+      };
+
+      saveShiftTeamPhoto(photoData);
+      setShiftTeamPhoto(photoData);
+      showToast('📸 Foto del equipo guardada y vinculada a la charla de seguridad');
+    } catch (err) {
+      console.error('Error al subir foto:', err);
+      showToast('Error al procesar la foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeleteTeamPhoto = () => {
+    const shiftKey: ShiftId = selectedShiftId === 'todos' ? 'turno-1' : selectedShiftId;
+    deleteShiftTeamPhoto(selectedDate, shiftKey);
+    setShiftTeamPhoto(null);
+    showToast('Foto del equipo eliminada');
+  };
 
   // Handler for manual cloud sync button
   const handleManualSync = async () => {
@@ -1138,6 +1191,21 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     >
                       <CloudUpload className="w-4 h-4 text-white" />
                       Guardar en Cloud
+                    </button>
+
+                    {/* Botón Foto Evidencia del Equipo de Turno */}
+                    <button
+                      type="button"
+                      onClick={() => setShowTeamPhotoModal(true)}
+                      className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm border transition-all active:scale-95 cursor-pointer shadow-md ${
+                        shiftTeamPhoto
+                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/20'
+                          : 'bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm'
+                      }`}
+                      title="Tomar o ver la foto de evidencia del equipo para este turno"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>{shiftTeamPhoto ? '📸 Foto Equipo (1)' : '📸 Foto Equipo'}</span>
                     </button>
                   </>
                 )}
@@ -2879,6 +2947,171 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGISTRO FOTOGRÁFICO DEL EQUIPO DE TURNO */}
+      {showTeamPhotoModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowTeamPhotoModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black">Evidencia Fotográfica del Equipo</h3>
+                  <p className="text-xs text-emerald-200">
+                    {selectedDate} • {currentShift.name.split(' (')[0]}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTeamPhotoModal(false)}
+                className="text-white/70 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Resumen del Turno */}
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-slate-500 font-semibold block">Dotación Presente Registrada:</span>
+                  <span className="font-black text-slate-900 text-sm">{kpis.presentes} Colaboradores</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 font-semibold block">Turno:</span>
+                  <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg">
+                    {currentShift.name.split(' (')[0]}
+                  </span>
+                </div>
+              </div>
+
+              {/* Foto si ya existe */}
+              {shiftTeamPhoto ? (
+                <div className="space-y-4">
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-400 bg-slate-900 shadow-md">
+                    <img 
+                      src={shiftTeamPhoto.photoUrl} 
+                      alt="Foto del equipo" 
+                      className="w-full max-h-72 object-contain mx-auto"
+                    />
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-xs text-white text-[11px] p-2 rounded-xl flex items-center justify-between">
+                      <span>📸 Tomada: {new Date(shiftTeamPhoto.takenAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} hrs</span>
+                      {shiftTeamPhoto.photoSizeKb && (
+                        <span className="font-mono text-emerald-300 font-bold">{shiftTeamPhoto.photoSizeKb} KB</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Esta fotografía ya está vinculada a la asistencia y a la charla de seguridad SSO de este turno.</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={handleDeleteTeamPhoto}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Eliminar Foto</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <label className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Tomar Otra</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleTeamPhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowTeamPhotoModal(false)}
+                        className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer"
+                      >
+                        Listo
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-emerald-300 rounded-3xl p-6 text-center bg-emerald-50/40 space-y-4">
+                    <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
+                      <Camera className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800">
+                        Tomar Foto a la Dotación del Turno
+                      </h4>
+                      <p className="text-xs text-slate-600 max-w-sm mx-auto mt-1 leading-relaxed">
+                        Reúne al equipo frente a Zona Verde y captura la evidencia del inicio de turno. Quedará vinculada a la asistencia y a la charla de seguridad.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-600/20 cursor-pointer transition active:scale-95">
+                        <Camera className="w-4 h-4" />
+                        <span>{uploadingPhoto ? 'Procesando...' : 'Abrir Cámara del Celular'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleTeamPhotoUpload}
+                          disabled={uploadingPhoto}
+                          className="hidden"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs border border-slate-300 shadow-2xs cursor-pointer transition active:scale-95">
+                        <ImageIcon className="w-4 h-4 text-slate-500" />
+                        <span>Subir desde Galería</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleTeamPhotoUpload}
+                          disabled={uploadingPhoto}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 text-center font-medium">
+                    ⚡ La foto se comprime automáticamente (&lt;80 KB) para máxima rapidez y bajo consumo de datos móviles.
+                  </p>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowTeamPhotoModal(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}

@@ -31,7 +31,8 @@ const KEYS = {
   ATTENDANCE: 'cial_zv_attendance_overrides_v2',
   USERS: 'cial_zv_users_v1',
   ANDENES: 'cial_zv_andenes_v1',
-  GRUA_CHECKLISTS: 'cial_zv_grua_checklists_v1'
+  GRUA_CHECKLISTS: 'cial_zv_grua_checklists_v1',
+  SHIFT_TEAM_PHOTOS: 'cial_zv_shift_team_photos_v1'
 };
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
@@ -1165,6 +1166,60 @@ export interface RegisterShiftLupParams {
   notes?: string;
   keyAgreements?: string;
   photoUrl?: string;
+  photoSizeKb?: number;
+}
+
+export interface ShiftTeamPhoto {
+  date: string;
+  shiftId: ShiftId;
+  photoUrl: string;
+  photoSizeKb?: number;
+  takenAt: string;
+  takenBy?: string;
+  attendeesCount?: number;
+}
+
+export function getShiftTeamPhotos(): Record<string, ShiftTeamPhoto> {
+  return safeGet<Record<string, ShiftTeamPhoto>>(KEYS.SHIFT_TEAM_PHOTOS, {});
+}
+
+export function getShiftTeamPhoto(date: string, shiftId: ShiftId): ShiftTeamPhoto | null {
+  const all = getShiftTeamPhotos();
+  const key = `${date}_${shiftId}`;
+  return all[key] || null;
+}
+
+export function saveShiftTeamPhoto(photo: ShiftTeamPhoto): void {
+  const all = getShiftTeamPhotos();
+  const key = `${photo.date}_${photo.shiftId}`;
+  all[key] = photo;
+  safeSet(KEYS.SHIFT_TEAM_PHOTOS, all);
+
+  // Si ya existe una Charla registrada para esta fecha y turno, actualizar su photoUrl automáticamente
+  const charlas = getCharlas();
+  let updated = false;
+  const newCharlas = charlas.map(c => {
+    if (c.date === photo.date && c.shiftId === photo.shiftId) {
+      updated = true;
+      return {
+        ...c,
+        photoUrl: photo.photoUrl,
+        photoSizeKb: photo.photoSizeKb
+      };
+    }
+    return c;
+  });
+
+  if (updated) {
+    safeSet(KEYS.CHARLAS, newCharlas);
+  }
+}
+
+export function deleteShiftTeamPhoto(date: string, shiftId: ShiftId): void {
+  const all = getShiftTeamPhotos();
+  const key = `${date}_${shiftId}`;
+  delete all[key];
+  safeSet(KEYS.SHIFT_TEAM_PHOTOS, all);
 }
 
 export function registerShiftLupTraining(params: RegisterShiftLupParams): CharlaSession {
@@ -1197,6 +1252,11 @@ export function registerShiftLupTraining(params: RegisterShiftLupParams): Charla
 
   const isSafety = lup.isSafety ?? (lup.category === 'Seguridad SSO');
 
+  // Si no se proporcionó foto directa, verificar si existe una foto del equipo tomada en Asistencia
+  const existingShiftPhoto = getShiftTeamPhoto(params.date, params.shiftId);
+  const finalPhotoUrl = params.photoUrl || existingShiftPhoto?.photoUrl;
+  const finalPhotoSizeKb = params.photoSizeKb || existingShiftPhoto?.photoSizeKb;
+
   const newSession: CharlaSession = {
     id: `charla-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     lupId: lup.id,
@@ -1214,12 +1274,27 @@ export function registerShiftLupTraining(params: RegisterShiftLupParams): Charla
     attendeesList: attendeesList,
     attendeesNotes: params.notes,
     keyAgreements: params.keyAgreements,
-    photoUrl: params.photoUrl,
+    photoUrl: finalPhotoUrl,
+    photoSizeKb: finalPhotoSizeKb,
     isSafetyLup: isSafety,
     createdAt: now.toISOString()
   };
 
   saveCharla(newSession);
+
+  // Si se envió una foto nueva al registrar, guardar también en el registro de fotos de turno
+  if (params.photoUrl) {
+    saveShiftTeamPhoto({
+      date: params.date,
+      shiftId: params.shiftId,
+      photoUrl: params.photoUrl,
+      photoSizeKb: params.photoSizeKb,
+      takenAt: now.toISOString(),
+      takenBy: params.supervisor,
+      attendeesCount: attendeesList.length
+    });
+  }
+
   return newSession;
 }
 

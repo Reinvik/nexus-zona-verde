@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LupItem, CharlaSession, ShiftType, ShiftId } from '../types';
-import { saveCharla } from '../services/storage';
+import { saveCharla, saveShiftTeamPhoto } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import { Camera, Image as ImageIcon, X } from 'lucide-react';
 
@@ -242,6 +242,19 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
     };
 
     saveCharla(session);
+
+    if (photoPreview) {
+      saveShiftTeamPhoto({
+        date: session.date,
+        shiftId: session.shiftId,
+        photoUrl: photoPreview,
+        photoSizeKb: photoSizeKb || undefined,
+        takenAt: now.toISOString(),
+        takenBy: supervisor || 'Supervisor de Turno',
+        attendeesCount: attendeesCount
+      });
+    }
+
     setShowSaveModal(false);
     setPhotoPreview(null);
     setPhotoSizeKb(null);
@@ -342,13 +355,34 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
               </button>
             </div>
 
-            {/* Direct Register Button */}
-            <button
-              onClick={handleFinishEarly}
-              className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer whitespace-nowrap active:scale-95"
-            >
-              Registrar Charla
-            </button>
+            {/* Direct Register Button & Quick Camera Capture */}
+            <div className="flex items-center gap-1.5">
+              <label 
+                className={`text-xs font-black px-3 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap ${
+                  photoPreview 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white' 
+                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700'
+                }`}
+                title="Tomar foto al equipo durante la charla (Cámara del Celular)"
+              >
+                <Camera className="w-4 h-4" />
+                <span>{photoPreview ? '📸 Foto Lista' : '📸 Foto Equipo'}</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={handlePhotoUpload} 
+                  className="hidden" 
+                />
+              </label>
+
+              <button
+                onClick={handleFinishEarly}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer whitespace-nowrap active:scale-95"
+              >
+                Registrar Charla
+              </button>
+            </div>
           </div>
 
         </div>
