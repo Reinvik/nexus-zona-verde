@@ -66,10 +66,10 @@ interface AttendanceModuleProps {
 }
 
 const SHIFT_OPTIONS: { id: ShiftId | 'todos'; name: string; hours: string; defaultArrival: string }[] = [
-  { id: 'turno-1', name: 'Turno 1 (Mañana 07:00 - 15:00)', hours: '07:00 - 15:00', defaultArrival: '07:15' },
-  { id: 'turno-2', name: 'Turno 2 (Tarde 15:00 - 23:00)', hours: '15:00 - 23:00', defaultArrival: '15:15' },
-  { id: 'turno-3', name: 'Turno 3 (Noche 23:00 - 07:00)', hours: '23:00 - 07:00', defaultArrival: '23:15' },
-  { id: 'todos', name: 'Todos los Turnos (Dotación 102)', hours: '24 Horas / Todos los Turnos', defaultArrival: '07:00' }
+  { id: 'turno-1', name: 'Turno 1', hours: 'Turno Rotativo', defaultArrival: '07:15' },
+  { id: 'turno-2', name: 'Turno 2', hours: 'Turno Rotativo', defaultArrival: '15:15' },
+  { id: 'turno-3', name: 'Turno 3', hours: 'Turno Rotativo', defaultArrival: '23:15' },
+  { id: 'todos', name: 'Todos los Turnos (Dotación 102)', hours: 'Todos los Turnos', defaultArrival: '07:00' }
 ];
 
 const MONTH_TABS = [
@@ -521,7 +521,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
         id: `att-${dateStr}-${op.id}`,
         date: dateStr,
         shiftId: op.shiftId || 'turno-1',
-        shiftName: 'Turno 1 (Mañana 07:00 - 15:00)',
+        shiftName: 'Turno 1',
         operatorId: op.id,
         operatorName: op.name,
         operatorRole: op.role,
@@ -2354,9 +2354,9 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                     onChange={(e) => setFormShiftId(e.target.value as ShiftId)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
                   >
-                    <option value="turno-1">Turno 1 (Mañana)</option>
-                    <option value="turno-2">Turno 2 (Tarde)</option>
-                    <option value="turno-3">Turno 3 (Noche)</option>
+                    <option value="turno-1">Turno 1</option>
+                    <option value="turno-2">Turno 2</option>
+                    <option value="turno-3">Turno 3</option>
                   </select>
                 </div>
 

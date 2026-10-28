@@ -665,7 +665,7 @@ function fromDbRow(row: DbAttendanceRow): AttendanceRecord {
     id: row.id,
     date: row.date,
     shiftId: (row.shift_id || 'turno-1') as any,
-    shiftName: (row.shift_name || 'Turno 1 (Mañana 07:00 - 15:00)') as any,
+    shiftName: (row.shift_name || 'Turno 1') as any,
     operatorId: row.operator_id,
     operatorName: row.operator_name,
     operatorRole: row.operator_role || undefined,
@@ -809,7 +809,7 @@ export function unmarkAttendance(operatorId: string, date: string): void {
       id: `att-tombstone-${operatorId}-${date}`,
       date,
       shiftId: 'turno-1',
-      shiftName: 'Turno 1 (Mañana 07:00 - 15:00)',
+      shiftName: 'Turno 1',
       operatorId,
       operatorName: '',
       status: 'sin_marcar',
@@ -1271,9 +1271,9 @@ export interface ShiftSafetyStatus {
 
 export function getDailyShiftsSafetyStatus(date: string): ShiftSafetyStatus[] {
   const SHIFTS: { id: ShiftId; name: ShiftType; label: string }[] = [
-    { id: 'turno-1', name: 'Turno 1 (Mañana 07:00 - 15:00)', label: 'Turno 1' },
-    { id: 'turno-2', name: 'Turno 2 (Tarde 15:00 - 23:00)', label: 'Turno 2' },
-    { id: 'turno-3', name: 'Turno 3 (Noche 23:00 - 07:00)', label: 'Turno 3' }
+    { id: 'turno-1', name: 'Turno 1', label: 'Turno 1' },
+    { id: 'turno-2', name: 'Turno 2', label: 'Turno 2' },
+    { id: 'turno-3', name: 'Turno 3', label: 'Turno 3' }
   ];
 
   const charlas = getCharlas().filter(c => c.date === date);
@@ -1325,7 +1325,7 @@ export const INITIAL_ANDENES: AndenInspection[] = Array.from({ length: 34 }, (_,
     levelerNotes: isAnden19 ? 'Fuga de aceite en cilindro hidráulico principal' : undefined,
     lastInspectedAt: '2026-10-28T07:30:00Z',
     inspectedBy: 'Walter Sánchez (Supervisor)',
-    shift: 'Turno 1 (Mañana 07:00 - 15:00)',
+    shift: 'Turno 1',
     isBlocked: isAnden5 || isAnden28
   };
 });
@@ -1405,7 +1405,7 @@ export const INITIAL_GRUA_CHECKLISTS: GruaChecklistReport[] = [
     equipmentType: 'Transpaleta Eléctrica Hombre a Bordo',
     area: 'Despacho',
     date: '2026-10-27',
-    shift: 'Turno 1 (Mañana 07:00 - 15:00)',
+    shift: 'Turno 1',
     evaluatorName: 'Bryan Mariño',
     supervisorName: 'Walter Sánchez',
     evaluations: DEFAULT_GRUA_CHECKLIST_ITEMS.map(item => ({
@@ -1413,7 +1413,7 @@ export const INITIAL_GRUA_CHECKLISTS: GruaChecklistReport[] = [
       value: 'cumple' as const,
       observacion: item.itemId === 'chasis_golpes' ? 'Rayadura sección' : undefined
     })),
-    comments: 'Equipo operativo y liberado para operaciones de despacho turno mañana.',
+    comments: 'Equipo operativo y liberado para operaciones de despacho Turno 1.',
     finalStatus: 'aprobado',
     createdAt: '2026-10-27T07:15:00Z'
   }

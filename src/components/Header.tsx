@@ -37,8 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [santiagoTime, setSantiagoTime] = useState<string>('');
   const [currentShift, setCurrentShift] = useState<{ name: ShiftType; label: string; badgeColor: string }>({
-    name: 'Turno 1 (Mañana 07:00 - 15:00)',
-    label: 'Turno 1 • Mañana',
+    name: 'Turno 1',
+    label: 'Turno 1',
     badgeColor: 'bg-emerald-500 text-white'
   });
 
@@ -59,20 +59,20 @@ export const Header: React.FC<HeaderProps> = ({
       const hour = now.getHours();
       if (hour >= 7 && hour < 15) {
         setCurrentShift({
-          name: 'Turno 1 (Mañana 07:00 - 15:00)',
-          label: 'Turno 1 (07:00 - 15:00)',
+          name: 'Turno 1',
+          label: 'Turno 1',
           badgeColor: 'bg-emerald-600 text-emerald-50 border-emerald-400'
         });
       } else if (hour >= 15 && hour < 23) {
         setCurrentShift({
-          name: 'Turno 2 (Tarde 15:00 - 23:00)',
-          label: 'Turno 2 (15:00 - 23:00)',
+          name: 'Turno 2',
+          label: 'Turno 2',
           badgeColor: 'bg-amber-600 text-amber-50 border-amber-400'
         });
       } else {
         setCurrentShift({
-          name: 'Turno 3 (Noche 23:00 - 07:00)',
-          label: 'Turno 3 (23:00 - 07:00)',
+          name: 'Turno 3',
+          label: 'Turno 3',
           badgeColor: 'bg-indigo-600 text-indigo-50 border-indigo-400'
         });
       }

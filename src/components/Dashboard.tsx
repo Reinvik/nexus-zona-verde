@@ -174,7 +174,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div>
                 <span className="text-[10px] font-black uppercase text-slate-500 block">
-                  Turno Mañana (07:00 - 15:00)
+                  Turno 1
                 </span>
                 <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
                   {charlaManana ? `[${charlaManana.lupCode}] ${charlaManana.lupTitle}` : 'Sin registro aún'}
@@ -211,7 +211,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div>
                 <span className="text-[10px] font-black uppercase text-slate-500 block">
-                  Turno Tarde (15:00 - 23:00)
+                  Turno 2
                 </span>
                 <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
                   {charlaTarde ? `[${charlaTarde.lupCode}] ${charlaTarde.lupTitle}` : 'Sin registro aún'}
@@ -248,7 +248,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div>
                 <span className="text-[10px] font-black uppercase text-slate-500 block">
-                  Turno Noche (23:00 - 07:00)
+                  Turno 3
                 </span>
                 <span className="text-xs font-black text-slate-900 block truncate max-w-[170px]">
                   {charlaNoche ? `[${charlaNoche.lupCode}] ${charlaNoche.lupTitle}` : 'Sin registro aún'}

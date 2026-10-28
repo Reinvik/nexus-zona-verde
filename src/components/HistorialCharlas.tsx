@@ -56,7 +56,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
   const [selectedLupId, setSelectedLupId] = useState<string>(lups[0]?.id || '');
   const [regSupervisor, setRegSupervisor] = useState<string>('Carlos Venegas');
   const [regFacilitator, setRegFacilitator] = useState<string>('');
-  const [regShift, setRegShift] = useState<ShiftType>('Turno 1 (Mañana 07:00 - 15:00)');
+  const [regShift, setRegShift] = useState<ShiftType>('Turno 1');
   const [regArea, setRegArea] = useState<string>('Andenes de Despacho');
   const [regAttendeesCount, setRegAttendeesCount] = useState<number>(8);
   const [regAgreements, setRegAgreements] = useState<string>('');
@@ -99,15 +99,15 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
   const handleOpenDirectRegister = (shiftId: ShiftId) => {
     setDefaultShiftForModal(shiftId);
     if (shiftId === 'manana') {
-      setRegShift('Turno 1 (Mañana 07:00 - 15:00)');
+      setRegShift('Turno 1');
       setRegSupervisor('Carlos Venegas');
       setRegArea('Andenes de Despacho');
     } else if (shiftId === 'tarde') {
-      setRegShift('Turno 2 (Tarde 15:00 - 23:00)');
+      setRegShift('Turno 2');
       setRegSupervisor('Rodrigo Morales');
       setRegArea('Cámara Frigorífica P2');
     } else {
-      setRegShift('Turno 3 (Noche 23:00 - 07:00)');
+      setRegShift('Turno 3');
       setRegSupervisor('Cristian Castro');
       setRegArea('Almacenamiento y Reposición');
     }
@@ -121,7 +121,11 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
     const lup = lups.find(l => l.id === selectedLupId) || lups[0];
     if (!lup) return;
 
-    const shiftId: ShiftId = regShift.includes('Mañana') ? 'manana' : regShift.includes('Tarde') ? 'tarde' : 'noche';
+    const shiftId: ShiftId = (regShift.includes('Mañana') || regShift.includes('1'))
+      ? 'manana'
+      : (regShift.includes('Tarde') || regShift.includes('2'))
+        ? 'tarde'
+        : 'noche';
     const now = new Date();
 
     const newSession: CharlaSession = {
@@ -164,9 +168,9 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
 
   // Turnos for the selected date
   const charlasForDate = charlas.filter(c => c.date === selectedDate);
-  const charlaManana = charlasForDate.find(c => c.shiftId === 'manana' || c.shift.includes('Mañana'));
-  const charlaTarde = charlasForDate.find(c => c.shiftId === 'tarde' || c.shift.includes('Tarde'));
-  const charlaNoche = charlasForDate.find(c => c.shiftId === 'noche' || c.shift.includes('Noche'));
+  const charlaManana = charlasForDate.find(c => c.shiftId === 'manana' || c.shift.includes('Mañana') || c.shift.includes('Turno 1') || c.shift.includes('1'));
+  const charlaTarde = charlasForDate.find(c => c.shiftId === 'tarde' || c.shift.includes('Tarde') || c.shift.includes('Turno 2') || c.shift.includes('2'));
+  const charlaNoche = charlasForDate.find(c => c.shiftId === 'noche' || c.shift.includes('Noche') || c.shift.includes('Turno 3') || c.shift.includes('3'));
 
   const completedTurnosCount = (charlaManana ? 1 : 0) + (charlaTarde ? 1 : 0) + (charlaNoche ? 1 : 0);
   const dayCompletionPercent = Math.round((completedTurnosCount / 3) * 100);
@@ -179,7 +183,11 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
       c.facilitator.toLowerCase().includes(search.toLowerCase()) ||
       (c.supervisor && c.supervisor.toLowerCase().includes(search.toLowerCase())) ||
       c.area.toLowerCase().includes(search.toLowerCase());
-    const matchesShift = filterShift === 'todos' || c.shift.includes(filterShift);
+    const matchesShift = filterShift === 'todos' || 
+      (filterShift === 'Turno 1' ? (c.shift.includes('Turno 1') || c.shift.includes('Mañana')) :
+       filterShift === 'Turno 2' ? (c.shift.includes('Turno 2') || c.shift.includes('Tarde')) :
+       filterShift === 'Turno 3' ? (c.shift.includes('Turno 3') || c.shift.includes('Noche')) :
+       c.shift.includes(filterShift));
     const matchesSupervisor = filterSupervisor === 'todos' || c.supervisor === filterSupervisor;
     return matchesSearch && matchesShift && matchesSupervisor;
   });
@@ -219,7 +227,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-              Historial de Charlas LUP por Turno (Mañana, Tarde y Noche)
+              Historial de Charlas LUP por Turno (Turno 1, Turno 2 y Turno 3)
             </h2>
             <p className="text-xs text-slate-500 font-medium">
               Cada turno debe contar con su charla de 5 minutos, supervisor a cargo y foto liviana de evidencia en la Zona Verde.
@@ -312,10 +320,10 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 leading-tight">
-                    Turno Mañana
+                    Turno 1
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    07:00 - 15:00
+                    Turno Rotativo
                   </span>
                 </div>
               </div>
@@ -373,14 +381,14 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                   <div 
                     onClick={() => setViewingPhoto({
                       url: charlaManana.photoUrl!,
-                      title: `Turno Mañana • ${charlaManana.lupCode}`,
+                      title: `Turno 1 • ${charlaManana.lupCode}`,
                       subtitle: `Supervisor a cargo: ${charlaManana.supervisor} | ${charlaManana.date} ${charlaManana.time}`
                     })}
                     className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/50 h-32 bg-slate-100 group cursor-pointer"
                   >
                     <img 
                       src={charlaManana.photoUrl} 
-                      alt="Evidencia Mañana" 
+                      alt="Evidencia Turno 1" 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -408,7 +416,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
               <div className="py-8 text-center space-y-3">
                 <Sun className="w-10 h-10 text-amber-400 mx-auto opacity-70" />
                 <p className="text-xs text-slate-500 font-medium">
-                  No se ha registrado la charla del Turno Mañana para este día.
+                  No se ha registrado la charla del Turno 1 para este día.
                 </p>
               </div>
             )}
@@ -421,7 +429,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 className="w-full bg-[#008744] hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Registrar Charla Mañana</span>
+                <span>Registrar Charla Turno 1</span>
               </button>
             ) : (
               <div className="text-[11px] text-center font-bold text-emerald-700">
@@ -445,10 +453,10 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 leading-tight">
-                    Turno Tarde
+                    Turno 2
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    15:00 - 23:00
+                    Turno Rotativo
                   </span>
                 </div>
               </div>
@@ -506,14 +514,14 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                   <div 
                     onClick={() => setViewingPhoto({
                       url: charlaTarde.photoUrl!,
-                      title: `Turno Tarde • ${charlaTarde.lupCode}`,
+                      title: `Turno 2 • ${charlaTarde.lupCode}`,
                       subtitle: `Supervisor a cargo: ${charlaTarde.supervisor} | ${charlaTarde.date} ${charlaTarde.time}`
                     })}
                     className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/50 h-32 bg-slate-100 group cursor-pointer"
                   >
                     <img 
                       src={charlaTarde.photoUrl} 
-                      alt="Evidencia Tarde" 
+                      alt="Evidencia Turno 2" 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -541,7 +549,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
               <div className="py-8 text-center space-y-3">
                 <Sunset className="w-10 h-10 text-orange-400 mx-auto opacity-70" />
                 <p className="text-xs text-slate-500 font-medium">
-                  No se ha registrado la charla del Turno Tarde para este día.
+                  No se ha registrado la charla del Turno 2 para este día.
                 </p>
               </div>
             )}
@@ -554,7 +562,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 className="w-full bg-[#008744] hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Registrar Charla Tarde</span>
+                <span>Registrar Charla Turno 2</span>
               </button>
             ) : (
               <div className="text-[11px] text-center font-bold text-emerald-700">
@@ -578,10 +586,10 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 leading-tight">
-                    Turno Noche
+                    Turno 3
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    23:00 - 07:00
+                    Turno Rotativo
                   </span>
                 </div>
               </div>
@@ -639,14 +647,14 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                   <div 
                     onClick={() => setViewingPhoto({
                       url: charlaNoche.photoUrl!,
-                      title: `Turno Noche • ${charlaNoche.lupCode}`,
+                      title: `Turno 3 • ${charlaNoche.lupCode}`,
                       subtitle: `Supervisor a cargo: ${charlaNoche.supervisor} | ${charlaNoche.date} ${charlaNoche.time}`
                     })}
                     className="relative rounded-2xl overflow-hidden border-2 border-emerald-500/50 h-32 bg-slate-100 group cursor-pointer"
                   >
                     <img 
                       src={charlaNoche.photoUrl} 
-                      alt="Evidencia Noche" 
+                      alt="Evidencia Turno 3" 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -674,7 +682,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
               <div className="py-8 text-center space-y-3">
                 <Moon className="w-10 h-10 text-indigo-400 mx-auto opacity-70" />
                 <p className="text-xs text-slate-500 font-medium">
-                  No se ha registrado la charla del Turno Noche para este día.
+                  No se ha registrado la charla del Turno 3 para este día.
                 </p>
               </div>
             )}
@@ -687,7 +695,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 className="w-full bg-[#008744] hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Registrar Charla Noche</span>
+                <span>Registrar Charla Turno 3</span>
               </button>
             ) : (
               <div className="text-[11px] text-center font-bold text-emerald-700">
@@ -742,9 +750,9 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
             {[
               { id: 'todos', label: 'Todos los Turnos' },
-              { id: 'Mañana', label: '☀️ Turno Mañana' },
-              { id: 'Tarde', label: '🌇 Turno Tarde' },
-              { id: 'Noche', label: '🌙 Turno Noche' }
+              { id: 'Turno 1', label: 'Turno 1' },
+              { id: 'Turno 2', label: 'Turno 2' },
+              { id: 'Turno 3', label: 'Turno 3' }
             ].map(t => (
               <button
                 key={t.id}
@@ -898,9 +906,9 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                     onChange={(e) => setRegShift(e.target.value as ShiftType)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                   >
-                    <option value="Turno 1 (Mañana 07:00 - 15:00)">☀️ Turno 1 (Mañana)</option>
-                    <option value="Turno 2 (Tarde 15:00 - 23:00)">🌇 Turno 2 (Tarde)</option>
-                    <option value="Turno 3 (Noche 23:00 - 07:00)">🌙 Turno 3 (Noche)</option>
+                    <option value="Turno 1">Turno 1</option>
+                    <option value="Turno 2">Turno 2</option>
+                    <option value="Turno 3">Turno 3</option>
                   </select>
                 </div>
 

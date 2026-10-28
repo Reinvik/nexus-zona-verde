@@ -95,7 +95,7 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
   // Registration Form State
   const [facilitator, setFacilitator] = useState<string>('');
   const [supervisor, setSupervisor] = useState<string>('Carlos Venegas (Supervisor Turno)');
-  const [shift, setShift] = useState<ShiftType>('Turno 1 (Mañana 07:00 - 15:00)');
+  const [shift, setShift] = useState<ShiftType>('Turno 1');
   const [area, setArea] = useState<string>('Andenes de Despacho');
   const [attendeesCount, setAttendeesCount] = useState<number>(6);
   const [attendeesNotes, setAttendeesNotes] = useState<string>('');
@@ -629,9 +629,9 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                     onChange={(e) => setShift(e.target.value as ShiftType)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                   >
-                    <option value="Turno 1 (Mañana 07:00 - 15:00)">Turno 1 (Mañana)</option>
-                    <option value="Turno 2 (Tarde 15:00 - 23:00)">Turno 2 (Tarde)</option>
-                    <option value="Turno 3 (Noche 23:00 - 07:00)">Turno 3 (Noche)</option>
+                    <option value="Turno 1">Turno 1</option>
+                    <option value="Turno 2">Turno 2</option>
+                    <option value="Turno 3">Turno 3</option>
                   </select>
                 </div>
 

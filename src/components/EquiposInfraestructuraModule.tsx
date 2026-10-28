@@ -90,7 +90,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
   const [andenLevelerNotes, setAndenLevelerNotes] = useState<string>('');
   const [andenIsBlocked, setAndenIsBlocked] = useState<boolean>(false);
   const [andenInspectedBy, setAndenInspectedBy] = useState<string>('');
-  const [andenShift, setAndenShift] = useState<string>('Turno 1 (Mañana 07:00 - 15:00)');
+  const [andenShift, setAndenShift] = useState<string>('Turno 1');
   const [andenPhoto, setAndenPhoto] = useState<string | null>(null);
 
   // Grua Checklist State & Modals
@@ -104,7 +104,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
   const [equipmentType, setEquipmentType] = useState<string>('Transpaleta Eléctrica Hombre a Bordo');
   const [area, setArea] = useState<string>('Despacho');
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [formShift, setFormShift] = useState<string>('Turno 1 (Mañana 07:00 - 15:00)');
+  const [formShift, setFormShift] = useState<string>('Turno 1');
   const [evaluatorName, setEvaluadorName] = useState<string>(currentUser?.name || 'Bryan Mariño');
   const [supervisorName, setSupervisorName] = useState<string>('Walter Sánchez');
   const [comments, setComments] = useState<string>('');
@@ -145,7 +145,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
     setAndenLevelerNotes(anden.levelerNotes || '');
     setAndenIsBlocked(anden.isBlocked);
     setAndenInspectedBy(currentUser?.name || anden.inspectedBy || 'Supervisor de Terreno');
-    setAndenShift(anden.shift || 'Turno 1 (Mañana 07:00 - 15:00)');
+    setAndenShift(anden.shift || 'Turno 1');
     setAndenPhoto(anden.photoUrl || null);
     setShowAndenModal(true);
   };
@@ -242,7 +242,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
     setEquipmentType('Transpaleta Eléctrica Hombre a Bordo');
     setArea('Despacho');
     setFormDate(new Date().toISOString().slice(0, 10));
-    setFormShift('Turno 1 (Mañana 07:00 - 15:00)');
+    setFormShift('Turno 1');
     setEvaluadorName(currentUser?.name || 'Bryan Mariño');
     setSupervisorName('Walter Sánchez');
     setComments('');
@@ -1257,9 +1257,9 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                         onChange={e => setAndenShift(e.target.value)}
                         className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white"
                       >
-                        <option value="Turno 1 (Mañana 07:00 - 15:00)">Turno 1 (Mañana 07:00 - 15:00)</option>
-                        <option value="Turno 2 (Tarde 15:00 - 23:00)">Turno 2 (Tarde 15:00 - 23:00)</option>
-                        <option value="Turno 3 (Noche 23:00 - 07:00)">Turno 3 (Noche 23:00 - 07:00)</option>
+                        <option value="Turno 1">Turno 1</option>
+                        <option value="Turno 2">Turno 2</option>
+                        <option value="Turno 3">Turno 3</option>
                       </select>
                     </div>
                   </div>
@@ -1553,9 +1553,9 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                         onChange={e => setFormShift(e.target.value)}
                         className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-medium"
                       >
-                        <option value="Turno 1 (Mañana 07:00 - 15:00)">Turno 1 (07:00 - 15:00)</option>
-                        <option value="Turno 2 (Tarde 15:00 - 23:00)">Turno 2 (15:00 - 23:00)</option>
-                        <option value="Turno 3 (Noche 23:00 - 07:00)">Turno 3 (23:00 - 07:00)</option>
+                        <option value="Turno 1">Turno 1</option>
+                        <option value="Turno 2">Turno 2</option>
+                        <option value="Turno 3">Turno 3</option>
                       </select>
                     </div>
                     <div className="sm:col-span-2">

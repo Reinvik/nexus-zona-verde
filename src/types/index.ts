@@ -64,7 +64,13 @@ export interface LupItem {
 
 export type ShiftId = 'manana' | 'tarde' | 'noche' | 'turno-1' | 'turno-2' | 'turno-3';
 
-export type ShiftType = 'Turno 1 (Mañana 07:00 - 15:00)' | 'Turno 2 (Tarde 15:00 - 23:00)' | 'Turno 3 (Noche 23:00 - 07:00)';
+export type ShiftType = 
+  | 'Turno 1' 
+  | 'Turno 2' 
+  | 'Turno 3'
+  | 'Turno 1 (Mañana 07:00 - 15:00)' 
+  | 'Turno 2 (Tarde 15:00 - 23:00)' 
+  | 'Turno 3 (Noche 23:00 - 07:00)';
 
 export interface CharlaAttendee {
   operatorId: string;

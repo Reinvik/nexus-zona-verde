@@ -92,7 +92,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -105,7 +105,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -118,7 +118,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -131,7 +131,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -157,7 +157,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -183,7 +183,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -209,7 +209,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -261,7 +261,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -274,7 +274,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -313,7 +313,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -326,7 +326,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -339,7 +339,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -352,7 +352,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -365,7 +365,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -378,7 +378,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -391,7 +391,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -417,7 +417,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -430,7 +430,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -443,7 +443,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -469,7 +469,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -482,7 +482,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -495,7 +495,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -521,7 +521,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -547,7 +547,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -560,7 +560,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -599,7 +599,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -612,7 +612,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -625,7 +625,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -638,7 +638,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -690,7 +690,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -703,7 +703,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -729,7 +729,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -846,7 +846,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Claudio Sepulveda",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -950,7 +950,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1028,7 +1028,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1158,7 +1158,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1210,7 +1210,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1249,7 +1249,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1262,7 +1262,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1275,7 +1275,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1301,7 +1301,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Cristian Hernandez",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -1314,7 +1314,7 @@ export const REAL_OPERATORS: OperatorItem[] = [
     "active": true,
     "createdAt": "2026-01-01T07:00:00Z",
     "supervisor": "Nelson Brito",
-    "jefeTurno": "Ariel Mella / Turno Mañana",
+    "jefeTurno": "Ariel Mella / Turno 1",
     "company": "Cial Alimentos"
   },
   {
@@ -53677,9 +53677,9 @@ export const HISTORICAL_ATTENDANCE_COMPACT: Record<string, Record<string, Compac
 };
 
 const SHIFT_NAMES: Record<string, ShiftType> = {
-  'turno-1': 'Turno 1 (Mañana 07:00 - 15:00)',
-  'turno-2': 'Turno 2 (Tarde 15:00 - 23:00)',
-  'turno-3': 'Turno 3 (Noche 23:00 - 07:00)'
+  'turno-1': 'Turno 1',
+  'turno-2': 'Turno 2',
+  'turno-3': 'Turno 3'
 };
 
 export function getHistoricalAttendanceForDate(date: string, shiftId?: string): AttendanceRecord[] {
@@ -53701,7 +53701,7 @@ export function getHistoricalAttendanceForDate(date: string, shiftId?: string): 
         id: `att-hist-${op.id}-${date}`,
         date,
         shiftId: opShift,
-        shiftName: SHIFT_NAMES[opShift] || 'Turno 1 (Mañana 07:00 - 15:00)',
+        shiftName: SHIFT_NAMES[opShift] || 'Turno 1',
         operatorId: op.id,
         operatorName: op.name,
         operatorRole: op.role,

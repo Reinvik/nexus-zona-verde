@@ -82,12 +82,12 @@ const COMMON_EPP_LIST = [
 ];
 
 const SHIFT_MAP: Record<ShiftId, { label: string; name: ShiftType; hours: string }> = {
-  'turno-1': { label: 'Turno 1', name: 'Turno 1 (Mañana 07:00 - 15:00)', hours: 'Ciclo Operativo 1' },
-  'turno-2': { label: 'Turno 2', name: 'Turno 2 (Tarde 15:00 - 23:00)', hours: 'Ciclo Operativo 2' },
-  'turno-3': { label: 'Turno 3', name: 'Turno 3 (Noche 23:00 - 07:00)', hours: 'Ciclo Operativo 3' },
-  'manana': { label: 'Turno 1', name: 'Turno 1 (Mañana 07:00 - 15:00)', hours: 'Ciclo Operativo 1' },
-  'tarde': { label: 'Turno 2', name: 'Turno 2 (Tarde 15:00 - 23:00)', hours: 'Ciclo Operativo 2' },
-  'noche': { label: 'Turno 3', name: 'Turno 3 (Noche 23:00 - 07:00)', hours: 'Ciclo Operativo 3' }
+  'turno-1': { label: 'Turno 1', name: 'Turno 1', hours: 'Turno Rotativo' },
+  'turno-2': { label: 'Turno 2', name: 'Turno 2', hours: 'Turno Rotativo' },
+  'turno-3': { label: 'Turno 3', name: 'Turno 3', hours: 'Turno Rotativo' },
+  'manana': { label: 'Turno 1', name: 'Turno 1', hours: 'Turno Rotativo' },
+  'tarde': { label: 'Turno 2', name: 'Turno 2', hours: 'Turno Rotativo' },
+  'noche': { label: 'Turno 3', name: 'Turno 3', hours: 'Turno Rotativo' }
 };
 
 export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, onNavigateToLup }) => {
@@ -1133,9 +1133,9 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                     onChange={(e) => handleAssignShiftChange(e.target.value as ShiftId)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
-                    <option value="turno-1">Turno 1 (Ciclo Operativo 1)</option>
-                    <option value="turno-2">Turno 2 (Ciclo Operativo 2)</option>
-                    <option value="turno-3">Turno 3 (Ciclo Operativo 3)</option>
+                    <option value="turno-1">Turno 1</option>
+                    <option value="turno-2">Turno 2</option>
+                    <option value="turno-3">Turno 3</option>
                   </select>
                 </div>
 
