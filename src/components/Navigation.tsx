@@ -14,6 +14,16 @@ import {
 } from 'lucide-react';
 import { MainTab, AppUser } from '../types';
 
+interface NavTabItem {
+  id: MainTab;
+  label: string;
+  shortLabel: string;
+  icon: any;
+  badge?: string | null;
+  badgeColor?: string;
+  highlight?: boolean;
+}
+
 interface NavigationProps {
   activeTab: MainTab;
   onTabChange: (tab: MainTab) => void;
@@ -31,7 +41,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const canManageUsers = currentUser?.permissions?.canManageUsers ?? true;
 
-  const tabs = [
+  const tabs: NavTabItem[] = [
     {
       id: 'dashboard' as MainTab,
       label: 'Zona Verde',
@@ -52,14 +62,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       label: 'Catálogo LUPs',
       shortLabel: 'LUPs',
       icon: BookOpen,
-      badge: '5 Min'
-    },
-    {
-      id: 'charla-timer' as MainTab,
-      label: 'Cronómetro 5 Min',
-      shortLabel: 'Charla',
-      icon: Timer,
-      highlight: true
+      badge: 'SSO'
     },
     {
       id: 'transpaletas' as MainTab,

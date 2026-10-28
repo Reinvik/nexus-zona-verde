@@ -649,9 +649,10 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 <button
                   onClick={() => onSelectForCharla(lup.id)}
                   className="flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+                  title="Asignar e impartir lección al turno de hoy"
                 >
-                  <Timer className="w-3.5 h-3.5 fill-current" />
-                  <span>Dar Charla</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Impartir LUP</span>
                 </button>
               </div>
             </div>
@@ -989,8 +990,8 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                   }}
                   className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md transition cursor-pointer flex items-center gap-2"
                 >
-                  <Timer className="w-4 h-4 fill-current" />
-                  <span>Iniciar Charla de 5 Min</span>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Asignar a Turno (SSO)</span>
                 </button>
               </div>
             </div>

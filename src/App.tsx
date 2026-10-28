@@ -110,12 +110,12 @@ export default function App() {
 
   const handleStartCharlaWithLup = (lupId: string) => {
     setSelectedLupId(lupId);
-    setActiveTab('charla-timer');
+    setActiveTab('portal-prevencion');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleStartCharlaQuick = () => {
-    setActiveTab('charla-timer');
+    setActiveTab('portal-prevencion');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

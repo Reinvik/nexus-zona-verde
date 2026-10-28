@@ -106,11 +106,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </button>
 
             <button
-              onClick={() => onNavigate('charla-timer', featuredLup?.id)}
+              onClick={() => onNavigate('portal-prevencion', featuredLup?.id)}
               className="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
             >
-              <Timer className="w-4 h-4 fill-current text-slate-950" />
-              <span>Iniciar Charla de 5 Minutos</span>
+              <ShieldCheck className="w-4 h-4 text-slate-950" />
+              <span>Impartir LUP de Seguridad</span>
             </button>
 
             <a
@@ -344,29 +344,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Card 1: Dar Charla 5m */}
+          {/* Card 1: Prevención SSO */}
           <div 
-            onClick={() => onNavigate('charla-timer')}
+            onClick={() => onNavigate('portal-prevencion')}
             className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-amber-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Timer className="w-6 h-6" />
+                <ShieldCheck className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                5 Minutos
+                SSO
               </span>
             </div>
             <div>
               <h3 className="text-base font-black text-slate-800 group-hover:text-amber-600 transition-colors">
-                Modo Charla 5 Min
+                Portal Prevención SSO
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                Cronómetro visual y guía de puntos clave para explicar frente al equipo.
+                Monitoreo diario de turnos, cruce con asistencia y seguimiento de LUPs.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
-              <span>Iniciar Cronómetro</span>
+              <span>Ver Métricas SSO</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -518,11 +518,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Duración recomendada: <strong>5 minutos</strong>
             </span>
             <button
-              onClick={() => onNavigate('charla-timer', featuredLup?.id)}
+              onClick={() => onNavigate('portal-prevencion', featuredLup?.id)}
               className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
             >
-              <Timer className="w-4 h-4 fill-current" />
-              <span>Explicar esta LUP</span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>Asignar esta LUP</span>
             </button>
           </div>
         </div>
