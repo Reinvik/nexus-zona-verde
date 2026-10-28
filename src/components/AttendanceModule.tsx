@@ -1090,7 +1090,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 }`}
               >
                 <UserCheck className="w-4 h-4" />
-                Pase Diario
+                Asistencia
               </button>
               <button
                 type="button"
@@ -1102,7 +1102,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 }`}
               >
                 <TableProperties className="w-4 h-4" />
-                Matriz Historial (Ene-Oct)
+                Historial
               </button>
             </div>
 
