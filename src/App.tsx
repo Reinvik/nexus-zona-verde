@@ -206,6 +206,7 @@ export default function App() {
         {activeTab === 'asistencia' && (
           <AttendanceModule
             currentUserEmail={user?.email || 'ariel.mella@cial.cl'}
+            currentUser={userProfile || undefined}
           />
         )}
 
@@ -215,9 +216,9 @@ export default function App() {
             onSelectForCharla={handleStartCharlaWithLup}
             onLupsUpdated={loadData}
             currentUserEmail={user?.email || 'colaborador@cial.cl'}
-            canDeleteLup={userProfile?.permissions?.canDeleteLup ?? (userProfile?.role === 'jefatura')}
-            canEditLup={userProfile?.permissions?.canEditLup ?? true}
-            canCreateLup={userProfile?.permissions?.canCreateLup ?? true}
+            canDeleteLup={userProfile?.role === 'prevencion' ? false : (userProfile?.permissions?.canDeleteLup ?? (userProfile?.role === 'jefatura'))}
+            canEditLup={userProfile?.role === 'prevencion' ? false : (userProfile?.permissions?.canEditLup ?? true)}
+            canCreateLup={userProfile?.role === 'prevencion' ? false : (userProfile?.permissions?.canCreateLup ?? true)}
             userRole={userProfile?.role}
           />
         )}

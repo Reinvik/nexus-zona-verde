@@ -166,17 +166,19 @@ export const Header: React.FC<HeaderProps> = ({
             {user && (
               <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/20">
                 <div 
-                  onClick={onNavigateToUsers}
+                  onClick={userProfile?.permissions?.canManageUsers ? onNavigateToUsers : undefined}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs max-w-[210px] truncate transition ${
-                    onNavigateToUsers ? 'cursor-pointer hover:bg-black/35' : ''
+                    userProfile?.permissions?.canManageUsers && onNavigateToUsers ? 'cursor-pointer hover:bg-black/35' : ''
                   } ${
                     userProfile?.role === 'jefatura'
                       ? 'bg-emerald-950/70 border-emerald-400/40 text-emerald-100'
                       : userProfile?.role === 'supervisor'
                         ? 'bg-indigo-950/70 border-indigo-400/40 text-indigo-100'
-                        : 'bg-black/25 border-white/10 text-emerald-100'
+                        : userProfile?.role === 'prevencion'
+                          ? 'bg-amber-950/70 border-amber-400/40 text-amber-100'
+                          : 'bg-black/25 border-white/10 text-emerald-100'
                   }`}
-                  title={`${user.email} (${userProfile?.role?.toUpperCase() || 'Colaborador'}) - Click para gestionar usuarios`}
+                  title={`${user.email} (${userProfile?.role === 'prevencion' ? 'Prevención SSO' : userProfile?.role?.toUpperCase() || 'Colaborador'})`}
                 >
                   <User className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
                   <span className="truncate font-semibold">{user.email?.split('@')[0]}</span>
@@ -189,9 +191,11 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'bg-emerald-400 text-slate-950'
                           : userProfile.role === 'supervisor'
                             ? 'bg-indigo-300 text-slate-950'
-                            : 'bg-slate-300 text-slate-900'
+                            : userProfile.role === 'prevencion'
+                              ? 'bg-amber-400 text-slate-950 font-black'
+                              : 'bg-slate-300 text-slate-900'
                     }`}>
-                      {userProfile.isSuperAdmin ? 'Admin' : userProfile.role}
+                      {userProfile.isSuperAdmin ? 'Admin' : userProfile.role === 'prevencion' ? 'SSO' : userProfile.role}
                     </span>
                   )}
                 </div>

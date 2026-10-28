@@ -37,9 +37,10 @@ import {
   Boxes,
   RefreshCw,
   Compass,
-  Tag
+  Tag,
+  Eye
 } from 'lucide-react';
-import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType } from '../types';
+import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType, AppUser } from '../types';
 import { 
   getOperators, 
   saveOperator, 
@@ -63,6 +64,7 @@ import {
 
 interface AttendanceModuleProps {
   currentUserEmail?: string;
+  currentUser?: AppUser;
 }
 
 const SHIFT_OPTIONS: { id: ShiftId | 'todos'; name: string; hours: string; defaultArrival: string }[] = [
@@ -286,8 +288,10 @@ export const getOperatorGroup = (op: OperatorItem): OperationalGroupInfo => {
 };
 
 export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
-  currentUserEmail = 'ariel.mella@cial.cl'
+  currentUserEmail = 'ariel.mella@cial.cl',
+  currentUser
 }) => {
+  const canManageAttendance = currentUser?.permissions?.canManageAttendance ?? (currentUser?.role !== 'prevencion');
   // Current date in YYYY-MM-DD
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -449,6 +453,11 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   // Helper to open Matrix Edit Modal
   const handleOpenMatrixEditModal = (operator: OperatorItem, dateKey: string) => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede modificar asistencia');
+      return;
+    }
+
     const key = `${operator.id}_${dateKey}`;
     const override = overridesMap.get(key);
     const tuple = HISTORICAL_ATTENDANCE_COMPACT[operator.id]?.[dateKey];
@@ -784,6 +793,11 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   // 1-Click Status toggle in Daily View (click to select, click again to uncheck / desclickear)
   const handleStatusClick = (operator: OperatorItem, status: AttendanceStatus) => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede modificar asistencia');
+      return;
+    }
+
     const existingRec = recordMap.get(operator.id);
     const opShift = operator.shiftId || (selectedShiftId === 'todos' ? 'turno-1' : selectedShiftId);
     const shiftObj = SHIFT_OPTIONS.find(s => s.id === opShift) || SHIFT_OPTIONS[0];
@@ -819,6 +833,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   // Open note/detail modal for an operator
   const handleOpenNoteModal = (operator: OperatorItem) => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede editar observaciones');
+      return;
+    }
     const rec = recordMap.get(operator.id);
     const initialStatus = rec?.status || 'tarde';
     setNoteModalData({
@@ -864,6 +882,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   // Mark all visible operators as "Presente"
   const handleMarkAllPresent = () => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede modificar asistencia');
+      return;
+    }
     if (filteredOperators.length === 0) return;
 
     const bulk: AttendanceRecord[] = filteredOperators.map(op => {
@@ -937,6 +959,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   };
 
   const handleEditOperator = (op: OperatorItem) => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede editar colaboradores');
+      return;
+    }
     setEditingOperator(op);
     setFormName(op.name);
     setFormRut(op.rut || '');
@@ -950,6 +976,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   };
 
   const handleDeleteOperator = (op: OperatorItem) => {
+    if (!canManageAttendance) {
+      showToast('⚠️ Permisos de solo lectura: Prevención no puede eliminar colaboradores');
+      return;
+    }
     if (window.confirm(`¿Seguro que deseas eliminar al colaborador "${op.name}" de la nómina?`)) {
       deleteOperator(op.id);
       loadData();
@@ -1005,6 +1035,28 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
         </div>
       )}
 
+      {/* Read-Only Notice for Prevención SSO */}
+      {!canManageAttendance && (
+        <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 shadow-xs mb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-black shadow-xs">
+              <Eye className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-950 flex items-center gap-2">
+                <span>Modo de Consulta • Prevención de Riesgos SSO</span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300">
+                  Solo Lectura
+                </span>
+              </p>
+              <p className="text-xs text-amber-900/90 font-medium mt-0.5">
+                Tienes permisos para auditar la dotación y reportes históricos de asistencia. Las modificaciones al pase de lista y dotación están reservadas para Jefatura y Supervisores.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-[#063d25] via-[#095735] to-[#042818] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-emerald-600/30">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -1056,35 +1108,39 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
             {viewMode === 'diario' ? (
               <>
-                <button
-                  onClick={handleMarkAllPresent}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
-                  title="Marcar todos los operadores visibles como Presentes"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  Marcar Presentes
-                </button>
+                {canManageAttendance && (
+                  <>
+                    <button
+                      onClick={handleMarkAllPresent}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
+                      title="Marcar todos los operadores visibles como Presentes"
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      Marcar Presentes
+                    </button>
 
-                <button
-                  onClick={() => {
-                    setEditingOperator(null);
-                    resetForm();
-                    setShowAddModal(true);
-                  }}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all active:scale-95 backdrop-blur-sm"
-                >
-                  <UserPlus className="w-4 h-4 text-emerald-300" />
-                  + Colaborador
-                </button>
+                    <button
+                      onClick={() => {
+                        setEditingOperator(null);
+                        resetForm();
+                        setShowAddModal(true);
+                      }}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all active:scale-95 backdrop-blur-sm"
+                    >
+                      <UserPlus className="w-4 h-4 text-emerald-300" />
+                      + Colaborador
+                    </button>
 
-                <button
-                  onClick={handleManualSync}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm border border-emerald-400 shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
-                  title="Guardar y asegurar persistencia en Supabase Cloud"
-                >
-                  <CloudUpload className="w-4 h-4 text-white" />
-                  Guardar en Cloud
-                </button>
+                    <button
+                      onClick={handleManualSync}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm border border-emerald-400 shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
+                      title="Guardar y asegurar persistencia en Supabase Cloud"
+                    >
+                      <CloudUpload className="w-4 h-4 text-white" />
+                      Guardar en Cloud
+                    </button>
+                  </>
+                )}
 
                 <button
                   onClick={handleExportAttendanceCsv}
@@ -1815,25 +1871,28 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                             <MessageSquare className="w-4 h-4" />
                           </button>
 
-                          {/* Edit Operator */}
-                          <button
-                            type="button"
-                            onClick={() => handleEditOperator(operator)}
-                            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all text-xs"
-                            title="Editar datos del colaborador"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
+                          {/* Edit & Delete Operator (Hidden for Prevención SSO) */}
+                          {canManageAttendance && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditOperator(operator)}
+                                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all text-xs"
+                                title="Editar datos del colaborador"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
 
-                          {/* Delete Operator */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteOperator(operator)}
-                            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs"
-                            title="Eliminar de la nómina"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteOperator(operator)}
+                                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs"
+                                title="Eliminar de la nómina"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
 
                         </div>
 

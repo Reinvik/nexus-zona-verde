@@ -28,11 +28,13 @@ import {
 interface PalletJackModuleProps {
   pallets: PalletJackReport[];
   onPalletsUpdated: () => void;
+  readOnly?: boolean;
 }
 
 export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   pallets,
-  onPalletsUpdated
+  onPalletsUpdated,
+  readOnly = false
 }) => {
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -114,6 +116,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   };
 
   const handleUpdateStatus = (pallet: PalletJackReport, newStatus: EquipmentStatus) => {
+    if (readOnly) return;
     const now = new Date().toISOString();
     const updated: PalletJackReport = {
       ...pallet,
@@ -244,13 +247,15 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               <span className="hidden sm:inline">Exportar CSV</span>
             </button>
 
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="bg-[#008744] hover:bg-emerald-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Levantar Transpaleta</span>
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="bg-[#008744] hover:bg-emerald-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Levantar Transpaleta</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -376,7 +381,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   Ver Ficha / Trazabilidad
                 </button>
 
-                {pallet.status !== 'reparada' ? (
+                {!readOnly && pallet.status !== 'reparada' ? (
                   <button
                     onClick={() => handleUpdateStatus(pallet, 'reparada')}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
@@ -386,7 +391,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   </button>
                 ) : (
                   <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Operativa
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {pallet.status === 'reparada' ? 'Operativa' : 'En Gestión'}
                   </span>
                 )}
               </div>
@@ -665,56 +670,64 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               </div>
 
               {/* Status Update Flow */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Actualizar Estado de Ciclo de Vida:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleUpdateStatus(activePalletDetail, 'retirada_proveedor')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activePalletDetail.status === 'retirada_proveedor'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                    }`}
-                  >
-                    1. Retirada por Proveedor
-                  </button>
+              {!readOnly ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Actualizar Estado de Ciclo de Vida:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleUpdateStatus(activePalletDetail, 'retirada_proveedor')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activePalletDetail.status === 'retirada_proveedor'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      1. Retirada por Proveedor
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activePalletDetail, 'en_taller')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activePalletDetail.status === 'en_taller'
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
-                    }`}
-                  >
-                    2. En Taller / Reparando
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activePalletDetail, 'en_taller')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activePalletDetail.status === 'en_taller'
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
+                      }`}
+                    >
+                      2. En Taller / Reparando
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activePalletDetail, 'reparada')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activePalletDetail.status === 'reparada'
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-                    }`}
-                  >
-                    3. Reparada y Operativa
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activePalletDetail, 'reparada')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activePalletDetail.status === 'reparada'
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      3. Reparada y Operativa
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activePalletDetail, 'de_baja')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activePalletDetail.status === 'de_baja'
-                        ? 'bg-slate-800 text-white border-slate-800'
-                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                    }`}
-                  >
-                    4. Dar de Baja
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activePalletDetail, 'de_baja')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activePalletDetail.status === 'de_baja'
+                          ? 'bg-slate-800 text-white border-slate-800'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      4. Dar de Baja
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-center">
+                  <span className="text-xs font-semibold text-slate-500">
+                    Modo solo lectura: El cambio de estado operativo está reservado para Supervisores de Operaciones.
+                  </span>
+                </div>
+              )}
 
             </div>
 

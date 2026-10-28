@@ -26,11 +26,13 @@ import {
 interface RfScannerModuleProps {
   rfs: RfScannerReport[];
   onRfsUpdated: () => void;
+  readOnly?: boolean;
 }
 
 export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
   rfs,
-  onRfsUpdated
+  onRfsUpdated,
+  readOnly = false
 }) => {
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -114,6 +116,7 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
   };
 
   const handleUpdateStatus = (rf: RfScannerReport, newStatus: EquipmentStatus) => {
+    if (readOnly) return;
     const now = new Date().toISOString();
     const updated: RfScannerReport = {
       ...rf,
@@ -245,13 +248,15 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
               <span className="hidden sm:inline">Exportar CSV</span>
             </button>
 
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Reportar Pistola RF</span>
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Reportar Pistola RF</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -377,7 +382,7 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
                   Ver Ficha Técnica
                 </button>
 
-                {rf.status !== 'reparada' ? (
+                {!readOnly && rf.status !== 'reparada' ? (
                   <button
                     onClick={() => handleUpdateStatus(rf, 'reparada')}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
@@ -387,7 +392,7 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
                   </button>
                 ) : (
                   <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> En Operación
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {rf.status === 'reparada' ? 'En Operación' : 'En Gestión'}
                   </span>
                 )}
               </div>
@@ -682,56 +687,64 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
               </div>
 
               {/* Status Update Flow */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Actualizar Estado de Ciclo de Vida:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleUpdateStatus(activeRfDetail, 'retirada_proveedor')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activeRfDetail.status === 'retirada_proveedor'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                    }`}
-                  >
-                    1. Entregado a Soporte TI
-                  </button>
+              {!readOnly ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Actualizar Estado de Ciclo de Vida:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleUpdateStatus(activeRfDetail, 'retirada_proveedor')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activeRfDetail.status === 'retirada_proveedor'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      1. Entregado a Soporte TI
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activeRfDetail, 'en_taller')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activeRfDetail.status === 'en_taller'
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
-                    }`}
-                  >
-                    2. En Laboratorio Técnico
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activeRfDetail, 'en_taller')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activeRfDetail.status === 'en_taller'
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
+                      }`}
+                    >
+                      2. En Laboratorio Técnico
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activeRfDetail, 'reparada')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activeRfDetail.status === 'reparada'
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-                    }`}
-                  >
-                    3. Reparada y Operativa
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activeRfDetail, 'reparada')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activeRfDetail.status === 'reparada'
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      3. Reparada y Operativa
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(activeRfDetail, 'de_baja')}
-                    className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
-                      activeRfDetail.status === 'de_baja'
-                        ? 'bg-slate-800 text-white border-slate-800'
-                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                    }`}
-                  >
-                    4. Dar de Baja
-                  </button>
+                    <button
+                      onClick={() => handleUpdateStatus(activeRfDetail, 'de_baja')}
+                      className={`p-2.5 rounded-xl font-bold border text-xs cursor-pointer transition ${
+                        activeRfDetail.status === 'de_baja'
+                          ? 'bg-slate-800 text-white border-slate-800'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      4. Dar de Baja
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-center">
+                  <span className="text-xs font-semibold text-slate-500">
+                    Modo solo lectura: El cambio de estado técnico está reservado para Supervisores y Soporte TI.
+                  </span>
+                </div>
+              )}
 
             </div>
 

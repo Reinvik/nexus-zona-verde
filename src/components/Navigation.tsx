@@ -40,7 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   pendingRfsCount,
   currentUser
 }) => {
-  const canManageUsers = currentUser?.permissions?.canManageUsers ?? true;
+  const canManageUsers = currentUser?.permissions?.canManageUsers ?? (currentUser ? currentUser.role === 'jefatura' : true);
 
   const tabs: NavTabItem[] = [
     {

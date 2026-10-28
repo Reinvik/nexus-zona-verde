@@ -59,13 +59,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
   },
   prevencion: {
     canDeleteLup: false,
-    canEditLup: true,
-    canCreateLup: true,
-    canManageAttendance: false,
+    canEditLup: false, // En apps operacionales solo ver y no editar
+    canCreateLup: false, // En apps operacionales solo ver y no editar
+    canManageAttendance: false, // No mover la lista de asistencia
     canManageUsers: false,
-    canManageEquipment: false,
-    canViewSsoPortal: true,
-    canManageSsoLups: true,
+    canManageEquipment: false, // En equipos entran con permisos mínimos para ver y no editar
+    canViewSsoPortal: true, // Poder absoluto en pestaña de prevención
+    canManageSsoLups: true, // Crear/editar LUPs SSO en portal de prevención
     canExportSsoReports: true
   },
   operador: {
@@ -159,6 +159,26 @@ export const INITIAL_USERS: AppUser[] = [
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-27T10:00:00Z'
+  },
+  {
+    id: 'user-mariana-vega',
+    email: 'mariana.vega@cial.cl',
+    name: 'Mariana Vega',
+    role: 'prevencion',
+    area: 'Prevención de Riesgos SSO',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
+    createdAt: '2026-10-28T09:00:00Z',
+    updatedAt: '2026-10-28T09:00:00Z'
+  },
+  {
+    id: 'user-fernando-albornoz',
+    email: 'ext.fernando.albornoz@cial.cl',
+    name: 'Fernando Albornoz',
+    role: 'prevencion',
+    area: 'Prevención de Riesgos SSO (Externo)',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
+    createdAt: '2026-10-28T09:00:00Z',
+    updatedAt: '2026-10-28T09:00:00Z'
   },
   {
     id: 'user-cristian-hernandez',
@@ -978,6 +998,35 @@ export function getAppUsers(): AppUser[] {
     }
   }
 
+  // Garantizar que profesionales de Prevención existan y conserven su rol y restricciones
+  const ensurePrevencionUser = (email: string, name: string, area: string) => {
+    const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    if (idx === -1) {
+      users.push({
+        id: `user-${email.split('@')[0].replace(/\./g, '-')}`,
+        email,
+        name,
+        role: 'prevencion',
+        area,
+        permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
+        createdAt: '2026-10-28T09:00:00Z',
+        updatedAt: '2026-10-28T09:00:00Z'
+      });
+      safeSet(KEYS.USERS, users);
+    } else if (users[idx].role !== 'prevencion' || users[idx].permissions.canManageAttendance) {
+      users[idx] = {
+        ...users[idx],
+        role: 'prevencion',
+        permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
+        updatedAt: new Date().toISOString()
+      };
+      safeSet(KEYS.USERS, users);
+    }
+  };
+
+  ensurePrevencionUser('mariana.vega@cial.cl', 'Mariana Vega', 'Prevención de Riesgos SSO');
+  ensurePrevencionUser('ext.fernando.albornoz@cial.cl', 'Fernando Albornoz', 'Prevención de Riesgos SSO (Externo)');
+
   return users;
 }
 
@@ -997,21 +1046,29 @@ export function getAppUserByEmail(email?: string): AppUser {
   }
 
   // Si no está registrado en el sistema, creamos un registro inicial para el colaborador
-  const isJefaturaEmail = normalized === 'ariel.mella@cial.cl' ||
+  const isPrevencionEmail = normalized === 'mariana.vega@cial.cl' ||
+    normalized === 'ext.fernando.albornoz@cial.cl' ||
+    normalized.includes('prevencion');
+
+  const isJefaturaEmail = !isPrevencionEmail && (
+    normalized === 'ariel.mella@cial.cl' ||
     normalized.includes('francisco.lara') || 
     normalized.includes('euro.velasquez') ||
     normalized.includes('supervisorcd') ||
-    normalized.includes('jefe');
+    normalized.includes('jefe')
+  );
     
-  const isSupervisorEmail = isJefaturaEmail ||
+  const isSupervisorEmail = !isPrevencionEmail && (
+    isJefaturaEmail ||
     normalized.includes('walter.sanchez') || 
     normalized.includes('mayckell') || 
     normalized.includes('claudio.sepulveda') || 
     normalized.includes('cristian.hernandez') ||
     normalized.includes('supervisor') ||
-    normalized.includes('cial');
+    normalized.includes('cial')
+  );
 
-  const role: UserRole = isJefaturaEmail ? 'jefatura' : (isSupervisorEmail ? 'supervisor' : 'operador');
+  const role: UserRole = isPrevencionEmail ? 'prevencion' : (isJefaturaEmail ? 'jefatura' : (isSupervisorEmail ? 'supervisor' : 'operador'));
 
   const displayName = normalized.split('@')[0].split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 
@@ -1020,7 +1077,7 @@ export function getAppUserByEmail(email?: string): AppUser {
     email: normalized,
     name: displayName,
     role,
-    area: role === 'jefatura' ? 'Jefatura de Operaciones' : (role === 'supervisor' ? 'Supervisión de Turno' : 'Operaciones CD'),
+    area: role === 'prevencion' ? 'Prevención de Riesgos SSO' : (role === 'jefatura' ? 'Jefatura de Operaciones' : (role === 'supervisor' ? 'Supervisión de Turno' : 'Operaciones CD')),
     permissions: { ...DEFAULT_ROLE_PERMISSIONS[role] },
     isSuperAdmin: normalized === 'ariel.mella@cial.cl',
     createdAt: new Date().toISOString(),

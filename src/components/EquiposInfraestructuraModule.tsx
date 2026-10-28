@@ -23,7 +23,8 @@ import {
   Layers,
   ArrowUpDown,
   Columns2,
-  List
+  List,
+  Eye
 } from 'lucide-react';
 import { 
   PalletJackReport, 
@@ -68,6 +69,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
   initialSubTab = 'transpaletas',
   currentUser
 }) => {
+  const canManageEquipment = currentUser?.permissions?.canManageEquipment ?? (currentUser?.role !== 'prevencion');
   const [subTab, setSubTab] = useState<EquiposSubTab>(initialSubTab);
 
   // Data for Andenes & Gruas
@@ -152,7 +154,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
 
   const handleSaveAnden = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAnden) return;
+    if (!canManageEquipment || !selectedAnden) return;
 
     // Check if critical blocker
     const isCritical = andenDoorStatus === 'trabada' || 
@@ -238,6 +240,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
   // CHECKLIST GRÚAS HANDLERS
   // ---------------------------------------------
   const handleOpenNewChecklist = () => {
+    if (!canManageEquipment) return;
     setEquipmentNumber('7315');
     setEquipmentType('Transpaleta Eléctrica Hombre a Bordo');
     setArea('Despacho');
@@ -275,6 +278,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
 
   const handleSaveChecklistForm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageEquipment) return;
 
     const newReport: GruaChecklistReport = {
       id: `chk-${Date.now()}`,
@@ -330,6 +334,28 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
   return (
     <div className="space-y-6 pb-12">
       
+      {/* Banner de solo lectura para Prevención SSO */}
+      {!canManageEquipment && (
+        <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 shadow-xs mb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-black shadow-xs">
+              <Eye className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-950 flex items-center gap-2">
+                <span>Modo de Visualización • Prevención de Riesgos SSO</span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300">
+                  Solo Lectura
+                </span>
+              </p>
+              <p className="text-xs text-amber-900/90 font-medium mt-0.5">
+                Acceso de solo lectura para auditar estado de andenes, checklists de grúas, transpaletas y pistolas RF. Edición reservada para Operaciones.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Banner del Módulo Consolidado */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#063d25] rounded-3xl p-6 text-white shadow-xl border border-slate-700/60 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
@@ -462,7 +488,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
       {/* ========================================================================= */}
       {subTab === 'transpaletas' && (
         <div>
-          <PalletJackModule pallets={pallets} onPalletsUpdated={onPalletsUpdated} />
+          <PalletJackModule pallets={pallets} onPalletsUpdated={onPalletsUpdated} readOnly={!canManageEquipment} />
         </div>
       )}
 
@@ -471,7 +497,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
       {/* ========================================================================= */}
       {subTab === 'pistolas-rf' && (
         <div>
-          <RfScannerModule rfs={rfs} onRfsUpdated={onRfsUpdated} />
+          <RfScannerModule rfs={rfs} onRfsUpdated={onRfsUpdated} readOnly={!canManageEquipment} />
         </div>
       )}
 
@@ -1271,14 +1297,20 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       onClick={() => setShowAndenModal(false)}
                       className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                     >
-                      Cancelar
+                      {canManageEquipment ? 'Cancelar' : 'Cerrar Ficha'}
                     </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2.5 rounded-xl bg-[#008744] text-white font-bold text-xs hover:bg-emerald-700 transition cursor-pointer shadow-md"
-                    >
-                      Guardar Estado del Andén
-                    </button>
+                    {canManageEquipment ? (
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 rounded-xl bg-[#008744] text-white font-bold text-xs hover:bg-emerald-700 transition cursor-pointer shadow-md"
+                      >
+                        Guardar Estado del Andén
+                      </button>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
+                        Solo Lectura (Prevención SSO)
+                      </span>
+                    )}
                   </div>
 
                 </form>
@@ -1329,13 +1361,15 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                 <span>Exportar CSV</span>
               </button>
 
-              <button
-                onClick={handleOpenNewChecklist}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#008744] text-white font-bold text-xs hover:bg-emerald-700 transition cursor-pointer shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Nuevo Check List FOR-27</span>
-              </button>
+              {canManageEquipment && (
+                <button
+                  onClick={handleOpenNewChecklist}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#008744] text-white font-bold text-xs hover:bg-emerald-700 transition cursor-pointer shadow-md"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Nuevo Check List FOR-27</span>
+                </button>
+              )}
             </div>
           </div>
 
