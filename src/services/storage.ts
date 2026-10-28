@@ -12,7 +12,10 @@ import {
   UserRole,
   UserPermissions,
   ShiftId,
-  ShiftType
+  ShiftType,
+  AndenInspection,
+  GruaChecklistReport,
+  GruaChecklistEvaluation
 } from '../types';
 import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
 import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
@@ -26,7 +29,9 @@ const KEYS = {
   RFS: 'cial_zv_rfs_v1',
   OPERATORS: 'cial_zv_operators_v3',
   ATTENDANCE: 'cial_zv_attendance_overrides_v2',
-  USERS: 'cial_zv_users_v1'
+  USERS: 'cial_zv_users_v1',
+  ANDENES: 'cial_zv_andenes_v1',
+  GRUA_CHECKLISTS: 'cial_zv_grua_checklists_v1'
 };
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
@@ -1236,4 +1241,122 @@ export function getDailyShiftsSafetyStatus(date: string): ShiftSafetyStatus[] {
       trainedCount
     };
   });
+}
+
+// ==========================================
+// ANDENES (REJAS & PUERTAS SECCIONALES)
+// ==========================================
+
+export const INITIAL_ANDENES: AndenInspection[] = Array.from({ length: 12 }, (_, i) => {
+  const num = i + 1;
+  const isAnden3 = num === 3;
+  const isAnden5 = num === 5;
+  return {
+    id: `anden-${num}`,
+    andenNumber: num,
+    andenCode: `ANDÉN-${num.toString().padStart(2, '0')}`,
+    area: num <= 8 ? 'Andenes de Despacho (1 al 8)' : 'Andenes de Recepción Inbound (9 al 12)',
+    doorStatus: isAnden5 ? 'falla_sensor' : 'operativa',
+    gateStatus: isAnden3 ? 'traba_rota' : 'operativa',
+    levelerStatus: isAnden5 ? 'fuera_servicio' : 'operativo',
+    doorNotes: isAnden5 ? 'Sensor fotoeléctrico inferior descalibrado, cortina no desciende' : undefined,
+    gateNotes: isAnden3 ? 'Traba mecánica lateral trabada con desgaste' : undefined,
+    lastInspectedAt: '2026-10-27T08:00:00Z',
+    inspectedBy: 'Walter Sánchez (Supervisor)',
+    shift: 'Turno 1 (Mañana 07:00 - 15:00)',
+    isBlocked: isAnden5
+  };
+});
+
+export function getAndenes(): AndenInspection[] {
+  const data = safeGet<AndenInspection[]>(KEYS.ANDENES, []);
+  if (!data || data.length === 0) {
+    safeSet(KEYS.ANDENES, INITIAL_ANDENES);
+    return INITIAL_ANDENES;
+  }
+  return data;
+}
+
+export function saveAndenInspection(anden: AndenInspection): void {
+  const current = getAndenes();
+  const existsIdx = current.findIndex(a => a.id === anden.id || a.andenNumber === anden.andenNumber);
+  let updatedList: AndenInspection[];
+  if (existsIdx >= 0) {
+    updatedList = [...current];
+    updatedList[existsIdx] = anden;
+  } else {
+    updatedList = [...current, anden];
+  }
+  safeSet(KEYS.ANDENES, updatedList);
+}
+
+// ==========================================
+// CHECKLIST GRÚAS & TRANSPALETAS ELÉCTRICAS
+// Formato Oficial CIAL: CIAL-PR&MA-FOR-27
+// ==========================================
+
+export const DEFAULT_GRUA_CHECKLIST_ITEMS: {
+  itemId: string;
+  label: string;
+  section: 'general' | 'visual' | 'operacional';
+  isCritical?: boolean;
+}[] = [
+  // 1. INSPECCION GENERAL
+  { itemId: 'curso_operador', section: 'general', label: 'Operador tiene curso de operador de equipos móviles', isCritical: true },
+  { itemId: 'autorizacion_manejo', section: 'general', label: 'Operador tiene autorización para manejo (nombre de quien autoriza)', isCritical: true },
+  { itemId: 'bocina', section: 'general', label: 'Bocina funciona correctamente' },
+  { itemId: 'clave_unica', section: 'general', label: 'Operador posee clave única de operación' },
+  { itemId: 'bateria_estado', section: 'general', label: 'Batería en buen estado' },
+
+  // 2. INSPECCION VISUAL
+  { itemId: 'plataforma', section: 'visual', label: 'Plataforma en correcto estado' },
+  { itemId: 'brazos_apoyo', section: 'visual', label: 'Brazos de apoyo en buen estado' },
+  { itemId: 'pernos_tuercas', section: 'visual', label: 'Pernos y tuercas en buen estado' },
+  { itemId: 'chasis_golpes', section: 'visual', label: 'Chasis sin golpes considerables' },
+  { itemId: 'limpieza', section: 'visual', label: 'Cuidado y limpieza' },
+
+  // 3. REVISION OPERACIONAL
+  { itemId: 'frenos', section: 'operacional', label: 'Sistema de frenos funciona correctamente', isCritical: true },
+  { itemId: 'direccion', section: 'operacional', label: 'Sistema de dirección operativo y en buen estado (comando)', isCritical: true },
+  { itemId: 'ruedas', section: 'operacional', label: 'Ruedas en buen estado' },
+  { itemId: 'elevacion_horquillas', section: 'operacional', label: 'Elevación de las horquillas operativa' },
+  { itemId: 'seguro_horquillas', section: 'operacional', label: 'Seguro de horquillas operativas' },
+  { itemId: 'indicador_bateria', section: 'operacional', label: 'Indicador carga de batería operativo' }
+];
+
+export const INITIAL_GRUA_CHECKLISTS: GruaChecklistReport[] = [
+  {
+    id: 'chk-7315-seed',
+    code: 'CHK-7315-01',
+    formCode: 'CIAL-PR&MA-FOR-27',
+    equipmentNumber: '7315',
+    equipmentType: 'Transpaleta Eléctrica Hombre a Bordo',
+    area: 'Despacho',
+    date: '2026-10-27',
+    shift: 'Turno 1 (Mañana 07:00 - 15:00)',
+    evaluatorName: 'Bryan Mariño',
+    supervisorName: 'Walter Sánchez',
+    evaluations: DEFAULT_GRUA_CHECKLIST_ITEMS.map(item => ({
+      ...item,
+      value: 'cumple' as const,
+      observacion: item.itemId === 'chasis_golpes' ? 'Rayadura sección' : undefined
+    })),
+    comments: 'Equipo operativo y liberado para operaciones de despacho turno mañana.',
+    finalStatus: 'aprobado',
+    createdAt: '2026-10-27T07:15:00Z'
+  }
+];
+
+export function getGruaChecklists(): GruaChecklistReport[] {
+  const data = safeGet<GruaChecklistReport[]>(KEYS.GRUA_CHECKLISTS, []);
+  if (!data || data.length === 0) {
+    safeSet(KEYS.GRUA_CHECKLISTS, INITIAL_GRUA_CHECKLISTS);
+    return INITIAL_GRUA_CHECKLISTS;
+  }
+  return data;
+}
+
+export function saveGruaChecklist(report: GruaChecklistReport): void {
+  const current = getGruaChecklists();
+  safeSet(KEYS.GRUA_CHECKLISTS, [report, ...current]);
 }

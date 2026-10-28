@@ -10,7 +10,8 @@ import {
   ClipboardCheck,
   AlertTriangle,
   KeyRound,
-  ShieldCheck
+  ShieldCheck,
+  Layers
 } from 'lucide-react';
 import { MainTab, AppUser } from '../types';
 
@@ -65,20 +66,12 @@ export const Navigation: React.FC<NavigationProps> = ({
       badge: 'SSO'
     },
     {
-      id: 'transpaletas' as MainTab,
-      label: 'Transpaletas Manuales',
-      shortLabel: 'Transpaletas',
-      icon: Truck,
-      badge: pendingPalletsCount > 0 ? `${pendingPalletsCount}` : null,
+      id: 'equipos-infraestructura' as MainTab,
+      label: 'Equipos e Infraestructura',
+      shortLabel: 'Equipos e Infra.',
+      icon: Layers,
+      badge: (pendingPalletsCount + pendingRfsCount) > 0 ? `${pendingPalletsCount + pendingRfsCount}` : null,
       badgeColor: 'bg-rose-500 text-white'
-    },
-    {
-      id: 'pistolas-rf' as MainTab,
-      label: 'Pistolas RF',
-      shortLabel: 'Pistolas RF',
-      icon: ScanBarcode,
-      badge: pendingRfsCount > 0 ? `${pendingRfsCount}` : null,
-      badgeColor: 'bg-indigo-600 text-white'
     },
     {
       id: 'reportes-sla' as MainTab,

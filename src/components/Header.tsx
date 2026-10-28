@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-emerald-100/90 font-medium tracking-wide">
-                  Charlas 5 Min LUP • Control Transpaletas & Pistolas RF
+                  Charlas 5 Min LUP • Equipos e Infraestructura • Prevención SSO
                 </p>
               </div>
             </div>

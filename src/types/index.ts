@@ -176,10 +176,72 @@ export type MainTab =
   | 'charla-timer' 
   | 'historial-charlas' 
   | 'portal-prevencion'
+  | 'equipos-infraestructura'
   | 'transpaletas' 
   | 'pistolas-rf' 
   | 'reportes-sla'
   | 'usuarios';
+
+// ==========================================
+// ANDENES (REJAS & PUERTAS SECCIONALES)
+// ==========================================
+
+export type AndenDoorStatus = 'operativa' | 'trabada' | 'falla_sensor' | 'mantenimiento';
+export type AndenGateStatus = 'operativa' | 'desrielada' | 'traba_rota' | 'daniada';
+export type AndenLevelerStatus = 'operativo' | 'fuga_hidraulica' | 'desnivel' | 'fuera_servicio';
+
+export interface AndenInspection {
+  id: string;
+  andenNumber: number; // 1..12
+  andenCode: string; // e.g. "ANDÉN-01"
+  area: string; // "Andenes Despacho", "Andenes Recepción"
+  doorStatus: AndenDoorStatus;
+  gateStatus: AndenGateStatus;
+  levelerStatus: AndenLevelerStatus;
+  doorNotes?: string;
+  gateNotes?: string;
+  levelerNotes?: string;
+  photoUrl?: string;
+  lastInspectedAt: string;
+  inspectedBy: string;
+  shift: string;
+  isBlocked: boolean; // Si el andén no puede operar por falla crítica
+}
+
+// ==========================================
+// CHECKLIST GRÚAS & TRANSPALETAS ELÉCTRICAS
+// Formato Oficial CIAL: CIAL-PR&MA-FOR-27
+// ==========================================
+
+export type ChecklistValue = 'cumple' | 'no_cumple' | 'no_aplica';
+
+export interface GruaChecklistEvaluation {
+  itemId: string;
+  label: string;
+  section: 'general' | 'visual' | 'operacional';
+  value: ChecklistValue;
+  observacion?: string;
+  isCritical?: boolean;
+}
+
+export interface GruaChecklistReport {
+  id: string;
+  code: string; // e.g. "CHK-7315-20261027-1"
+  formCode: string; // "CIAL-PR&MA-FOR-27"
+  equipmentNumber: string; // e.g. "7315"
+  equipmentType: string; // "Transpaleta Eléctrica Hombre a Bordo", "Grúa Horquilla Linde", "Apilador Crown"
+  area: string; // "Despacho", "Picking", "Cámara Frío"
+  date: string; // "YYYY-MM-DD"
+  shift: string; // "Turno 1 (Mañana 07:00 - 15:00)"
+  evaluatorName: string; // e.g. "Bryan Mariño"
+  supervisorName: string; // e.g. "Walter Sánchez"
+  evaluatorSignature?: string;
+  supervisorSignature?: string;
+  evaluations: GruaChecklistEvaluation[];
+  comments?: string;
+  finalStatus: 'aprobado' | 'rechazado';
+  createdAt: string;
+}
 
 // ========================
 // ROLES, USUARIOS & PERMISOS

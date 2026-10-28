@@ -22,6 +22,7 @@ import { LupCatalog } from './components/LupCatalog';
 import { CharlaTimer } from './components/CharlaTimer';
 import { PalletJackModule } from './components/PalletJackModule';
 import { RfScannerModule } from './components/RfScannerModule';
+import { EquiposInfraestructuraModule, EquiposSubTab } from './components/EquiposInfraestructuraModule';
 import { SlaDashboard } from './components/SlaDashboard';
 import { HistorialCharlas } from './components/HistorialCharlas';
 import { SafetyDashboard } from './components/SafetyDashboard';
@@ -41,6 +42,7 @@ export default function App() {
   const [pallets, setPallets] = useState<PalletJackReport[]>([]);
   const [rfs, setRfs] = useState<RfScannerReport[]>([]);
   const [selectedLupId, setSelectedLupId] = useState<string | undefined>(undefined);
+  const [equiposSubTab, setEquiposSubTab] = useState<EquiposSubTab>('transpaletas');
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
 
   // Authentication lifecycle with Nexus Supabase
@@ -120,11 +122,15 @@ export default function App() {
   };
 
   const handleOpenPalletReport = () => {
-    setActiveTab('transpaletas');
+    setEquiposSubTab('transpaletas');
+    setActiveTab('equipos-infraestructura');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleOpenRfReport = () => {
-    setActiveTab('pistolas-rf');
+    setEquiposSubTab('pistolas-rf');
+    setActiveTab('equipos-infraestructura');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const pendingPalletsCount = pallets.filter(p => p.status === 'pendiente').length;
@@ -228,17 +234,36 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'transpaletas' && (
-          <PalletJackModule
+        {activeTab === 'equipos-infraestructura' && (
+          <EquiposInfraestructuraModule
             pallets={pallets}
             onPalletsUpdated={loadData}
+            rfs={rfs}
+            onRfsUpdated={loadData}
+            initialSubTab={equiposSubTab}
+            currentUser={userProfile || undefined}
+          />
+        )}
+
+        {activeTab === 'transpaletas' && (
+          <EquiposInfraestructuraModule
+            pallets={pallets}
+            onPalletsUpdated={loadData}
+            rfs={rfs}
+            onRfsUpdated={loadData}
+            initialSubTab="transpaletas"
+            currentUser={userProfile || undefined}
           />
         )}
 
         {activeTab === 'pistolas-rf' && (
-          <RfScannerModule
+          <EquiposInfraestructuraModule
+            pallets={pallets}
+            onPalletsUpdated={loadData}
             rfs={rfs}
             onRfsUpdated={loadData}
+            initialSubTab="pistolas-rf"
+            currentUser={userProfile || undefined}
           />
         )}
 

@@ -19,7 +19,9 @@ import {
   Sun,
   Sunset,
   Moon,
-  UserCheck
+  UserCheck,
+  Layers,
+  ClipboardCheck
 } from 'lucide-react';
 import { LupItem, CharlaSession, PalletJackReport, RfScannerReport, MainTab } from '../types';
 import { ARIEL_ONEDRIVE_URL } from '../data/seedData';
@@ -371,56 +373,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Levantar Transpaleta */}
+          {/* Card 2: Equipos e Infraestructura */}
           <div 
-            onClick={() => onNavigate('transpaletas')}
+            onClick={() => onNavigate('equipos-infraestructura')}
             className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Truck className="w-6 h-6" />
+                <Layers className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                {pendingPallets.length} Pendientes
+                {pendingPallets.length + pendingRfs.length} Pendientes
               </span>
             </div>
             <div>
               <h3 className="text-base font-black text-slate-800 group-hover:text-[#008744] transition-colors">
-                Transpaletas Manuales
+                Equipos e Infraestructura
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                Levantar fallas de aceite, ruedas o timón y medir tiempo de respuesta del proveedor.
+                Transpaletas manuales, pistolas RF y estado de andenes (rejas y puertas 1-12).
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-              <span>Reportar / Ver Estado</span>
+              <span>Gestionar Módulo</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
 
-          {/* Card 3: Reportar Pistola RF */}
+          {/* Card 3: Checklist Grúas CIAL FOR-27 */}
           <div 
-            onClick={() => onNavigate('pistolas-rf')}
-            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-indigo-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+            onClick={() => onNavigate('equipos-infraestructura')}
+            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-amber-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ScanBarcode className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <ClipboardCheck className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full">
-                {pendingRfs.length} Pendientes
+              <span className="text-[10px] font-extrabold bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                FOR-27 CIAL
               </span>
             </div>
             <div>
-              <h3 className="text-base font-black text-slate-800 group-hover:text-indigo-600 transition-colors">
-                Pistolas RF Zebra/HW
+              <h3 className="text-base font-black text-slate-800 group-hover:text-amber-700 transition-colors">
+                Checklist Grúas CIAL
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                Reportar pantallas rotas, gatillos trabados o fallas Wi-Fi con foto adjunta.
+                Inspección pre-operacional de 16 puntos críticos (Frenos, Dirección, Batería).
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
-              <span>Reportar / Ver Estado</span>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
+              <span>Registrar / Ver Historial</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
