@@ -24,6 +24,7 @@ import { PalletJackModule } from './components/PalletJackModule';
 import { RfScannerModule } from './components/RfScannerModule';
 import { SlaDashboard } from './components/SlaDashboard';
 import { HistorialCharlas } from './components/HistorialCharlas';
+import { SafetyDashboard } from './components/SafetyDashboard';
 import { UserManagementModule } from './components/UserManagementModule';
 import { LoginPage } from './components/LoginPage';
 import { supabase } from './lib/supabase';
@@ -254,6 +255,13 @@ export default function App() {
             lups={lups}
             onCharlasUpdated={loadData}
             onNavigateToTimer={handleStartCharlaWithLup}
+          />
+        )}
+
+        {activeTab === 'portal-prevencion' && (
+          <SafetyDashboard
+            currentUser={userProfile || undefined}
+            onNavigateToLup={handleStartCharlaWithLup}
           />
         )}
 

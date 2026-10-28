@@ -322,7 +322,7 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
 
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
           <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Filtrar:</span>
-          {(['todos', 'jefatura', 'supervisor', 'operador'] as const).map(role => (
+          {(['todos', 'jefatura', 'prevencion', 'supervisor', 'operador'] as const).map(role => (
             <button
               key={role}
               onClick={() => setRoleFilter(role)}
@@ -351,7 +351,9 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
             const roleBadgeStyle = 
               u.role === 'jefatura' 
                 ? 'bg-emerald-100 text-emerald-900 border-emerald-300' 
-                : (u.role === 'supervisor' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-800 border-slate-300');
+                : (u.role === 'prevencion' 
+                    ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                    : (u.role === 'supervisor' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-800 border-slate-300'));
 
             return (
               <div 
@@ -365,7 +367,9 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border ${
                       u.role === 'jefatura' 
                         ? 'bg-emerald-600 text-white border-emerald-700' 
-                        : (u.role === 'supervisor' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-700 text-white border-slate-800')
+                        : (u.role === 'prevencion'
+                            ? 'bg-amber-600 text-white border-amber-700'
+                            : (u.role === 'supervisor' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-700 text-white border-slate-800'))
                     }`}>
                       {u.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -410,6 +414,7 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
                       }`}
                     >
                       <option value="jefatura">Jefatura (Acceso Total)</option>
+                      <option value="prevencion">Prevención de Riesgos (SSO)</option>
                       <option value="supervisor">Supervisor de Turno</option>
                       <option value="operador">Operador CD</option>
                     </select>
@@ -647,6 +652,7 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="jefatura">Jefatura (Elimina LUPs)</option>
+                    <option value="prevencion">Prevención de Riesgos (SSO)</option>
                     <option value="supervisor">Supervisor de Turno</option>
                     <option value="operador">Operador CD</option>
                   </select>

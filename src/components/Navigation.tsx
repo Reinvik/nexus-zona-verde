@@ -9,7 +9,8 @@ import {
   BarChart3, 
   ClipboardCheck,
   AlertTriangle,
-  KeyRound
+  KeyRound,
+  ShieldCheck
 } from 'lucide-react';
 import { MainTab, AppUser } from '../types';
 
@@ -89,6 +90,14 @@ export const Navigation: React.FC<NavigationProps> = ({
       shortLabel: 'Historial',
       icon: ClipboardCheck,
       badge: null
+    },
+    {
+      id: 'portal-prevencion' as MainTab,
+      label: 'Portal Prevención SSO',
+      shortLabel: 'Prevención SSO',
+      icon: ShieldCheck,
+      badge: 'SSO',
+      badgeColor: 'bg-amber-400 text-slate-950 font-black'
     },
     ...(canManageUsers ? [{
       id: 'usuarios' as MainTab,

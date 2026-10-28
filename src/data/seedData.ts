@@ -5,6 +5,81 @@ export const ARIEL_ONEDRIVE_URL = "https://grupocial-my.sharepoint.com/:f:/g/per
 
 export const INITIAL_LUPS: LupItem[] = [
   {
+    id: 'lup-sso-robot-film',
+    code: 'LUP-SSO-004',
+    title: 'Manipulación Segura y Operación de Robot de Enfilmar (Robot Film Nº02)',
+    category: 'Seguridad SSO',
+    summary: 'Procedimiento seguro para la operación, desatasco de film y corte manual del Robot de Enfilmar Nº02, prohibiendo intervenciones eléctricas sin autorización y cortes con el pie.',
+    objective: 'Prevenir cortes por roces con cintas de amarre eléctrico, golpes por parachoques en movimiento y atrapamientos mecánicos durante el ajuste o atasco de film en el Robot Nº02.',
+    durationMinutes: 5,
+    area: 'Inbound & Almacenamiento / Despacho',
+    author: 'Prevención de Riesgos CIAL / Administrativo de Operaciones',
+    createdBy: 'prevencion@cial.cl',
+    createdAt: '2026-10-27T08:15:00Z',
+    isSafety: true,
+    criticalRisk: 'Corte por amarre plástico, atrapamiento en rodillos y golpe por desplazamiento',
+    mandatoryEpp: [
+      'Guantes de Seguridad Anticorte',
+      'Zapatos de Seguridad con Puntera',
+      'Chaleco Reflectante Alta Visibilidad'
+    ],
+    safetyWarning: '¡PROHIBIDO intervenir componentes internos ni cableados eléctricos sin autorización! Si el sensor se descalibra, avisar de inmediato a Mantención o Jefatura.',
+    doPractice: {
+      title: 'Operación estándar: conducir de frente, botón verde y corte manual tenso',
+      description: 'Posicionar el equipo a la izquierda del pallet, amarrar film a la carga, pulsar botón verde (2 pitidos) y cortar con ambas manos.',
+      points: [
+        'Conducir siempre desde el frente del equipo y planificar giros (equipo tiene limitación hacia la izquierda).',
+        'En caso de atasco: abrir puerta trasera, pasar film entre cilindros con guantes y asegurar con manilla.',
+        'Para detener en emergencia: accionar el botón rojo tipo hongo de parada inmediata.'
+      ],
+      photoUrl: '/lups/robot_film/foto4_operacion_correcta.jpg',
+      photoSizeKb: 116
+    },
+    dontPractice: {
+      title: 'Prohibido: ajustar cables sin autorización, patear el film o frenar con empuñadura',
+      description: 'Nunca intervenir el cableado interno con cintas de amarre eléctrico ni detener el robot en giro con las manos o pies.',
+      points: [
+        '❌ NUNCA intervenir pieza amarilla interna ni cableados (riesgo de corte con amarres plásticos).',
+        '❌ NUNCA cortar el film con patadas ni tirones con el pie.',
+        '❌ PROHIBIDO detener el equipo con botones de empuñadura en pleno giro (riesgo de golpe fuerte con parachoques).'
+      ],
+      photoUrl: '/lups/robot_film/foto1_ajuste_no_intervenir.jpg',
+      photoSizeKb: 123
+    },
+    keyPoints: [
+      'Mantener área despejada antes de iniciar el giro horario.',
+      'En caso de atasco de film: abrir compuerta trasera y enhebrar entre cilindros con guantes.',
+      'Corte de film estrictamente manual con ambas manos aprovechando la tensión.',
+      'Frente a cualquier descalibración de sensor o falla, avisar inmediatamente al supervisor.'
+    ],
+    photos: [
+      {
+        url: '/lups/robot_film/foto1_ajuste_no_intervenir.jpg',
+        title: '1. Falla / Ajuste Interno: Prohibido Intervenir',
+        caption: 'Corte menor ocurrido por roce con cinta de amarre eléctrico al manipular sensor. Prohibido intervenir componentes internos sin autorización.',
+        type: 'dont'
+      },
+      {
+        url: '/lups/robot_film/foto2_atasco_compuerta.jpg',
+        title: '2. Desatasco Seguro de Film y Parada de Emergencia',
+        caption: 'Abrir compuerta trasera, pasar film entre cilindros usando guantes anticorte y asegurar con manilla. Para detener, usar botón rojo.',
+        type: 'do'
+      },
+      {
+        url: '/lups/robot_film/foto3_prohibido_patadas.jpg',
+        title: '3. Prohibido Cortar con Patadas y Frenar con Empuñadura',
+        caption: 'Nunca cortar el film con los pies ni detener el equipo con botones de empuñadura mientras enfila (riesgo de impacto fuerte con parachoques).',
+        type: 'dont'
+      },
+      {
+        url: '/lups/robot_film/foto4_operacion_correcta.jpg',
+        title: '4. Posicionamiento Correcto y Ciclo de Enfilmado',
+        caption: 'Posicionar equipo a la izquierda del pallet, amarrar film a la carga, pulsar botón verde (2 pitidos) y cortar con las manos cuando esté tenso.',
+        type: 'do'
+      }
+    ]
+  },
+  {
     id: 'lup-cial-01',
     code: 'LUP-DES-01',
     title: 'Estándar de Filmado y Consolidación de Pallets',

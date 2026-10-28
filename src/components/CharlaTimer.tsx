@@ -393,6 +393,42 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
               </p>
             </div>
 
+            {/* 4 FOTOS DEL ESTÁNDAR / CHARLA DE 5 MIN */}
+            {activeLup.photos && activeLup.photos.length >= 4 && (
+              <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-amber-400 text-xs sm:text-sm font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4" />
+                    4 Puntos Críticos del Estándar (Fotografías de Terreno)
+                  </span>
+                  <span className="text-xs text-amber-300 font-bold hidden sm:inline">
+                    Estándar de Seguridad CD CIAL
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {activeLup.photos.map((p, idx) => (
+                    <div key={idx} className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 flex flex-col justify-between shadow-sm">
+                      <div className="relative h-44 bg-slate-950">
+                        <img src={p.url} alt={p.title} className="w-full h-full object-cover" />
+                        <span className={`absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded shadow ${
+                          p.type === 'do' ? 'bg-emerald-600 text-white' : (p.type === 'dont' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-slate-950')
+                        }`}>
+                          {p.type === 'do' ? '✅ SÍ' : (p.type === 'dont' ? '❌ NO' : '⚠️ ALERTA')}
+                        </span>
+                      </div>
+                      <div className="p-3 text-xs space-y-1">
+                        <p className="font-black text-slate-100 line-clamp-1">{p.title}</p>
+                        {p.caption && (
+                          <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{p.caption}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* DUAL COMPARISON: CASO CORRECTO VS CASO INCORRECTO - FULL WIDTH & BIG PHOTOS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               

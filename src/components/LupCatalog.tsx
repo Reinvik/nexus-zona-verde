@@ -485,21 +485,34 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
 
       {/* LUP Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredLups.map((lup) => (
-          <div
-            key={lup.id}
-            className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-lg transition-all flex flex-col justify-between group"
-          >
-            <div>
-              {/* Card Header */}
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                  {lup.code}
-                </span>
-                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getCategoryColor(lup.category)}`}>
-                  {lup.category}
-                </span>
-              </div>
+        {filteredLups.map((lup) => {
+          const isSafety = lup.isSafety || lup.category === 'Seguridad SSO';
+          return (
+            <div
+              key={lup.id}
+              className={`bg-white rounded-2xl p-5 border transition-all flex flex-col justify-between group hover:shadow-lg ${
+                isSafety 
+                  ? 'border-amber-300 hover:border-amber-500 shadow-xs' 
+                  : 'border-slate-200 hover:border-emerald-500'
+              }`}
+            >
+              <div>
+                {/* Card Header */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                      {lup.code}
+                    </span>
+                    {isSafety && (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                        🛡️ SSO
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getCategoryColor(lup.category)}`}>
+                    {lup.category}
+                  </span>
+                </div>
 
               {/* Title & Area */}
               <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition line-clamp-2 mb-1.5">
@@ -511,8 +524,33 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 <span className="text-slate-400">⏱️ {lup.durationMinutes} min</span>
               </div>
 
-              {/* Photos Preview */}
-              {(lup.doPractice.photoUrl || lup.dontPractice.photoUrl) ? (
+              {/* Photos Preview (Supports 4 Photos or 2 Photos) */}
+              {lup.photos && lup.photos.length >= 4 ? (
+                <div className="mb-3">
+                  <div className="grid grid-cols-4 gap-1.5 h-20">
+                    {lup.photos.slice(0, 4).map((p, pIdx) => (
+                      <div 
+                        key={pIdx} 
+                        className={`relative rounded-xl overflow-hidden border h-full bg-slate-100 ${
+                          p.type === 'do' ? 'border-emerald-300' : (p.type === 'dont' ? 'border-rose-300' : 'border-amber-300')
+                        }`}
+                        title={p.title}
+                      >
+                        <img src={p.url} alt={p.title} className="w-full h-full object-cover" />
+                        <span className={`absolute bottom-0.5 left-0.5 text-[8px] font-black px-1 rounded shadow-xs ${
+                          p.type === 'do' ? 'bg-emerald-600 text-white' : (p.type === 'dont' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-slate-950')
+                        }`}>
+                          {pIdx + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-1 text-[10px] font-bold text-amber-800">
+                    <span>📸 4 Puntos Clave</span>
+                    <span className="text-slate-400">Ver detalle</span>
+                  </div>
+                </div>
+              ) : (lup.doPractice.photoUrl || lup.dontPractice.photoUrl) ? (
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="relative rounded-xl overflow-hidden border border-emerald-300 h-24 bg-emerald-50">
                     {lup.doPractice.photoUrl ? (
@@ -618,7 +656,8 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {filteredLups.length === 0 && (
@@ -703,6 +742,94 @@ export const LupCatalog: React.FC<LupCatalogProps> = ({
                 "{activeModalLup.objective}"
               </p>
             </div>
+
+            {/* Critical Risk & EPP for Safety LUPs */}
+            {(activeModalLup.criticalRisk || (activeModalLup.mandatoryEpp && activeModalLup.mandatoryEpp.length > 0)) && (
+              <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-4 mb-5 space-y-2">
+                {activeModalLup.criticalRisk && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-600 text-white">
+                      Peligro Crítico
+                    </span>
+                    <span className="text-xs font-bold text-rose-950">
+                      {activeModalLup.criticalRisk}
+                    </span>
+                  </div>
+                )}
+                {activeModalLup.mandatoryEpp && activeModalLup.mandatoryEpp.length > 0 && (
+                  <div className="pt-2 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black text-amber-900">EPP Obligatorio:</span>
+                    {activeModalLup.mandatoryEpp.map((epp, idx) => (
+                      <span key={idx} className="bg-white px-2.5 py-1 rounded-lg border border-amber-300 text-xs font-bold text-slate-800 shadow-2xs">
+                        🛡️ {epp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4 FOTOS DEL ESTÁNDAR (PREVENCIÓN DE RIESGOS) */}
+            {activeModalLup.photos && activeModalLup.photos.length >= 4 && (
+              <div className="mb-6 bg-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-400 text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5" />
+                      4 Puntos Clave en Fotografías Reales
+                    </span>
+                  </div>
+                  <span className="text-xs text-amber-300 font-bold">
+                    🔍 Clic en cualquier foto para pantalla completa
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {activeModalLup.photos.map((p, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => setZoomPhoto({
+                        url: p.url,
+                        title: p.title,
+                        subtitle: p.caption || ''
+                      })}
+                      className="group cursor-pointer bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 hover:border-amber-400 transition-all flex flex-col justify-between shadow-xs"
+                    >
+                      <div className="relative h-44 bg-slate-950 overflow-hidden">
+                        <img 
+                          src={p.url} 
+                          alt={p.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                        />
+                        <span className={`absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-md shadow-md ${
+                          p.type === 'do' 
+                            ? 'bg-emerald-600 text-white' 
+                            : (p.type === 'dont' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-slate-950')
+                        }`}>
+                          {p.type === 'do' ? '✅ CORRECTO' : (p.type === 'dont' ? '❌ PROHIBIDO' : '⚠️ ALERTA')}
+                        </span>
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <span className="bg-black/75 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1">
+                            <Eye className="w-3.5 h-3.5" /> Ampliar
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 text-xs space-y-1">
+                        <h5 className="font-black text-slate-100 line-clamp-1 group-hover:text-amber-400 transition">
+                          {p.title}
+                        </h5>
+                        {p.caption && (
+                          <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">
+                            {p.caption}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* DUAL COMPARISON: CORRECT VS INCORRECT */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">

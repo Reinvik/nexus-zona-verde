@@ -3,13 +3,16 @@ import {
   LupItem, 
   LupAuditLog, 
   CharlaSession, 
+  CharlaAttendee,
   PalletJackReport, 
   RfScannerReport, 
   OperatorItem, 
   AttendanceRecord,
   AppUser,
   UserRole,
-  UserPermissions
+  UserPermissions,
+  ShiftId,
+  ShiftType
 } from '../types';
 import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
 import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
@@ -33,7 +36,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     canCreateLup: true,
     canManageAttendance: true,
     canManageUsers: true,
-    canManageEquipment: true
+    canManageEquipment: true,
+    canViewSsoPortal: true,
+    canManageSsoLups: true,
+    canExportSsoReports: true
   },
   supervisor: {
     canDeleteLup: true, // Supervisores y Jefaturas pueden eliminar LUPs
@@ -41,7 +47,21 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     canCreateLup: true,
     canManageAttendance: true,
     canManageUsers: false,
-    canManageEquipment: true
+    canManageEquipment: true,
+    canViewSsoPortal: true,
+    canManageSsoLups: true,
+    canExportSsoReports: true
+  },
+  prevencion: {
+    canDeleteLup: false,
+    canEditLup: true,
+    canCreateLup: true,
+    canManageAttendance: false,
+    canManageUsers: false,
+    canManageEquipment: false,
+    canViewSsoPortal: true,
+    canManageSsoLups: true,
+    canExportSsoReports: true
   },
   operador: {
     canDeleteLup: false,
@@ -49,7 +69,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     canCreateLup: false,
     canManageAttendance: false,
     canManageUsers: false,
-    canManageEquipment: false
+    canManageEquipment: false,
+    canViewSsoPortal: false,
+    canManageSsoLups: false,
+    canExportSsoReports: false
   }
 };
 
@@ -121,6 +144,16 @@ export const INITIAL_USERS: AppUser[] = [
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-prevencion-cial',
+    email: 'prevencion@cial.cl',
+    name: 'Prevención de Riesgos CD',
+    role: 'prevencion',
+    area: 'Seguridad y Salud Ocupacional (SSO)',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-27T10:00:00Z'
   },
   {
     id: 'user-cristian-hernandez',
@@ -239,18 +272,41 @@ export function getLups(): LupItem[] {
     return activeSeeds;
   }
   
-  // Sincronizar únicamente si faltan semillas activas que nunca fueron eliminadas
-  const existingIds = new Set(data.map(item => item.id));
-  const missingSeeds = activeSeeds.filter(seed => !existingIds.has(seed.id));
-  
-  if (missingSeeds.length > 0) {
-    const userCreated = data.filter(item => !deletedIds.has(item.id));
-    const merged = [...userCreated, ...missingSeeds];
-    safeSet(KEYS.LUPS, merged);
-    return merged;
+  // Sincronizar únicamente si faltan semillas activas o tienen nuevas fotos/campos
+  const existingMap = new Map<string, LupItem>(data.map(item => [item.id, item]));
+  let hasUpdates = false;
+
+  const mergedList: LupItem[] = activeSeeds.map(seed => {
+    const existing = existingMap.get(seed.id);
+    if (!existing) {
+      hasUpdates = true;
+      return seed;
+    }
+    // Si la semilla tiene fotos y el existente no las tiene o difieren
+    if (seed.photos && (!existing.photos || existing.photos.length !== seed.photos.length)) {
+      hasUpdates = true;
+      return { 
+        ...existing, 
+        photos: seed.photos, 
+        isSafety: seed.isSafety ?? existing.isSafety,
+        criticalRisk: seed.criticalRisk ?? existing.criticalRisk,
+        mandatoryEpp: seed.mandatoryEpp ?? existing.mandatoryEpp
+      };
+    }
+    return existing;
+  });
+
+  // Agregar los creados por usuarios que no sean semillas
+  const seedIds = new Set(activeSeeds.map(s => s.id));
+  const userCreated = data.filter(item => !seedIds.has(item.id) && !deletedIds.has(item.id));
+  const finalActiveList = [...mergedList, ...userCreated];
+
+  if (hasUpdates || finalActiveList.length !== data.length) {
+    safeSet(KEYS.LUPS, finalActiveList);
+    return finalActiveList;
   }
 
-  return data.filter(item => !deletedIds.has(item.id));
+  return finalActiveList;
 }
 
 export function saveLup(lup: LupItem, userEmail?: string, changeReason?: string): void {
@@ -961,4 +1017,223 @@ export function deleteAppUser(userId: string): { success: boolean; message?: str
   const updatedList = users.filter(u => u.id !== userId);
   safeSet(KEYS.USERS, updatedList);
   return { success: true };
+}
+
+// ==========================================
+// PREVENCIÓN DE RIESGOS (SSO) & ASISTENCIA ⇄ LUP
+// ==========================================
+
+export function getSafetyLups(): LupItem[] {
+  const allLups = getLups();
+  return allLups.filter(l => l.isSafety === true || l.category === 'Seguridad SSO');
+}
+
+export function getShiftAttendancePresent(date: string, shiftId: ShiftId): AttendanceRecord[] {
+  const records = getAttendanceRecords(date, shiftId);
+  return records.filter(r => r.status === 'presente' || r.status === 'tarde');
+}
+
+export interface RegisterShiftLupParams {
+  date: string;
+  shiftId: ShiftId;
+  shiftName: ShiftType;
+  lupId: string;
+  supervisor: string;
+  facilitator?: string;
+  selectedOperatorIds?: string[]; // Si no se envía o está vacío, se incluyen todos los presentes
+  notes?: string;
+  keyAgreements?: string;
+  photoUrl?: string;
+}
+
+export function registerShiftLupTraining(params: RegisterShiftLupParams): CharlaSession {
+  const allLups = getLups();
+  const lup = allLups.find(l => l.id === params.lupId) || allLups[0];
+  const allOperators = getOperators();
+  const opMap = new Map<string, OperatorItem>(allOperators.map(o => [o.id, o]));
+
+  // Obtener presentes de la asistencia del turno
+  const presentRecords = getShiftAttendancePresent(params.date, params.shiftId);
+
+  // Filtrar si el supervisor desmarcó a alguien
+  const eligibleRecords = params.selectedOperatorIds && params.selectedOperatorIds.length > 0
+    ? presentRecords.filter(r => params.selectedOperatorIds!.includes(r.operatorId))
+    : presentRecords;
+
+  const attendeesList: CharlaAttendee[] = eligibleRecords.map(r => {
+    const op = opMap.get(r.operatorId);
+    return {
+      operatorId: r.operatorId,
+      operatorName: r.operatorName,
+      rut: op?.rut,
+      role: r.operatorRole || op?.role,
+      area: r.operatorArea || op?.area
+    };
+  });
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+  const isSafety = lup.isSafety ?? (lup.category === 'Seguridad SSO');
+
+  const newSession: CharlaSession = {
+    id: `charla-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    lupId: lup.id,
+    lupCode: lup.code,
+    lupTitle: lup.title,
+    facilitator: params.facilitator || params.supervisor,
+    supervisor: params.supervisor,
+    shift: params.shiftName,
+    shiftId: params.shiftId,
+    area: lup.area || 'Todas las áreas',
+    date: params.date,
+    time: timeStr,
+    durationSeconds: 300,
+    attendeesCount: attendeesList.length,
+    attendeesList: attendeesList,
+    attendeesNotes: params.notes,
+    keyAgreements: params.keyAgreements,
+    photoUrl: params.photoUrl,
+    isSafetyLup: isSafety,
+    createdAt: now.toISOString()
+  };
+
+  saveCharla(newSession);
+  return newSession;
+}
+
+export interface OperatorSafetyRecord {
+  charla: CharlaSession;
+  lup?: LupItem;
+  date: string;
+  shift: string;
+  supervisor: string;
+}
+
+export function getOperatorSafetyHistory(operatorId: string): OperatorSafetyRecord[] {
+  const charlas = getCharlas();
+  const lups = getLups();
+  const lupMap = new Map<string, LupItem>(lups.map(l => [l.id, l]));
+
+  const history: OperatorSafetyRecord[] = [];
+
+  for (const c of charlas) {
+    let wasPresent = false;
+    if (c.attendeesList && c.attendeesList.length > 0) {
+      wasPresent = c.attendeesList.some(a => a.operatorId === operatorId);
+    } else {
+      // Fallback para charlas históricas sin attendeesList explícito: verificar si estaba presente en ese turno y fecha
+      const shiftRecords = getAttendanceRecords(c.date, c.shiftId);
+      const rec = shiftRecords.find(r => r.operatorId === operatorId);
+      if (rec && (rec.status === 'presente' || rec.status === 'tarde')) {
+        wasPresent = true;
+      }
+    }
+
+    if (wasPresent) {
+      history.push({
+        charla: c,
+        lup: lupMap.get(c.lupId),
+        date: c.date,
+        shift: c.shift,
+        supervisor: c.supervisor
+      });
+    }
+  }
+
+  return history.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export interface LupCoverageResult {
+  lup: LupItem;
+  totalOperators: number;
+  trainedCount: number;
+  percentage: number;
+  trainedOperators: OperatorItem[];
+  pendingOperators: OperatorItem[];
+}
+
+export function getLupTrainingCoverage(lupId: string): LupCoverageResult {
+  const allLups = getLups();
+  const lup = allLups.find(l => l.id === lupId) || allLups[0];
+  const allOperators = getOperators().filter(o => o.active !== false);
+  const charlas = getCharlas().filter(c => c.lupId === lupId);
+
+  const trainedIds = new Set<string>();
+
+  for (const c of charlas) {
+    if (c.attendeesList && c.attendeesList.length > 0) {
+      c.attendeesList.forEach(a => trainedIds.add(a.operatorId));
+    } else {
+      const records = getAttendanceRecords(c.date, c.shiftId);
+      records.filter(r => r.status === 'presente' || r.status === 'tarde').forEach(r => trainedIds.add(r.operatorId));
+    }
+  }
+
+  const trainedOperators: OperatorItem[] = [];
+  const pendingOperators: OperatorItem[] = [];
+
+  for (const op of allOperators) {
+    if (trainedIds.has(op.id)) {
+      trainedOperators.push(op);
+    } else {
+      pendingOperators.push(op);
+    }
+  }
+
+  const total = allOperators.length;
+  const trained = trainedOperators.length;
+  const percentage = total > 0 ? Math.round((trained / total) * 100) : 0;
+
+  return {
+    lup,
+    totalOperators: total,
+    trainedCount: trained,
+    percentage,
+    trainedOperators,
+    pendingOperators
+  };
+}
+
+export interface ShiftSafetyStatus {
+  shiftId: ShiftId;
+  shiftName: ShiftType;
+  label: string;
+  completed: boolean;
+  charla?: CharlaSession;
+  presentCount: number;
+  trainedCount: number;
+}
+
+export function getDailyShiftsSafetyStatus(date: string): ShiftSafetyStatus[] {
+  const SHIFTS: { id: ShiftId; name: ShiftType; label: string }[] = [
+    { id: 'turno-1', name: 'Turno 1 (Mañana 07:00 - 15:00)', label: 'Turno 1' },
+    { id: 'turno-2', name: 'Turno 2 (Tarde 15:00 - 23:00)', label: 'Turno 2' },
+    { id: 'turno-3', name: 'Turno 3 (Noche 23:00 - 07:00)', label: 'Turno 3' }
+  ];
+
+  const charlas = getCharlas().filter(c => c.date === date);
+
+  return SHIFTS.map(s => {
+    // Buscar si hay charla registrada para este turno y fecha
+    const session = charlas.find(c => c.shiftId === s.id || (s.id === 'turno-1' && c.shiftId === 'manana') || (s.id === 'turno-2' && c.shiftId === 'tarde') || (s.id === 'turno-3' && c.shiftId === 'noche'));
+    
+    // Obtener cantidad de operadores presentes en la asistencia
+    const presentRecords = getShiftAttendancePresent(date, s.id);
+    const presentCount = presentRecords.length;
+
+    const trainedCount = session 
+      ? (session.attendeesList ? session.attendeesList.length : session.attendeesCount || presentCount)
+      : 0;
+
+    return {
+      shiftId: s.id,
+      shiftName: s.name,
+      label: s.label,
+      completed: !!session,
+      charla: session,
+      presentCount,
+      trainedCount
+    };
+  });
 }

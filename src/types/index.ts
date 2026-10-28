@@ -16,6 +16,13 @@ export interface LupPractice {
   photoSizeKb?: number;
 }
 
+export interface LupPhoto {
+  url: string;
+  title: string;
+  caption?: string;
+  type?: 'do' | 'dont' | 'warning' | 'info';
+}
+
 export interface LupAuditLog {
   id: string;
   lupId: string;
@@ -49,11 +56,23 @@ export interface LupItem {
   lastModifiedBy?: string; // Correo del usuario que modificó por última vez
   lastModifiedAt?: string; // Fecha y hora de última modificación
   modificationCount?: number; // Contador de ediciones
+  isSafety?: boolean; // Identificación explícita de LUP de Seguridad SSO
+  criticalRisk?: string; // Peligro Crítico (ej. Atropello por Grúa, Frío Extremo, Caída en Altura)
+  mandatoryEpp?: string[]; // EPP Obligatorio requerido para esta lección
+  photos?: LupPhoto[]; // Soporte para 4 fotos o galería multi-foto
 }
 
 export type ShiftId = 'manana' | 'tarde' | 'noche' | 'turno-1' | 'turno-2' | 'turno-3';
 
 export type ShiftType = 'Turno 1 (Mañana 07:00 - 15:00)' | 'Turno 2 (Tarde 15:00 - 23:00)' | 'Turno 3 (Noche 23:00 - 07:00)';
+
+export interface CharlaAttendee {
+  operatorId: string;
+  operatorName: string;
+  rut?: string;
+  role?: string;
+  area?: string;
+}
 
 export interface CharlaSession {
   id: string;
@@ -70,6 +89,8 @@ export interface CharlaSession {
   durationSeconds: number; // e.g. 300 (5 min)
   attendeesCount: number;
   attendeesNotes?: string;
+  attendeesList?: CharlaAttendee[]; // Nómina nominal de presentes que vieron el LUP
+  isSafetyLup?: boolean; // Indica si fue sesión de LUP de Seguridad
   keyAgreements?: string; // Acuerdos tomados en la charla
   photoUrl?: string; // Foto liviana de evidencia de la charla
   photoSizeKb?: number; // Tamaño en KB (< 80 KB)
@@ -154,6 +175,7 @@ export type MainTab =
   | 'lups' 
   | 'charla-timer' 
   | 'historial-charlas' 
+  | 'portal-prevencion'
   | 'transpaletas' 
   | 'pistolas-rf' 
   | 'reportes-sla'
@@ -163,7 +185,7 @@ export type MainTab =
 // ROLES, USUARIOS & PERMISOS
 // ========================
 
-export type UserRole = 'jefatura' | 'supervisor' | 'operador';
+export type UserRole = 'jefatura' | 'supervisor' | 'operador' | 'prevencion';
 
 export interface UserPermissions {
   canDeleteLup: boolean;
@@ -172,6 +194,9 @@ export interface UserPermissions {
   canManageAttendance: boolean;
   canManageUsers: boolean;
   canManageEquipment: boolean;
+  canViewSsoPortal?: boolean;
+  canManageSsoLups?: boolean;
+  canExportSsoReports?: boolean;
 }
 
 export interface AppUser {
