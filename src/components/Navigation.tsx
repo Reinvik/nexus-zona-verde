@@ -51,7 +51,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'asistencia' as MainTab,
-      label: 'Pase de Lista',
+      label: 'Asistencia',
       shortLabel: 'Asistencia',
       icon: UserCheck,
       badge: 'Turno',

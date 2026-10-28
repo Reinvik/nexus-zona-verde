@@ -102,7 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
             >
               <UserCheck className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-              <span>Pase de Lista de Turno</span>
+              <span>Control de Asistencia</span>
             </button>
 
             <button
@@ -332,14 +332,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             <div>
               <h3 className="text-base font-black text-slate-800 group-hover:text-emerald-700 transition-colors">
-                Pase de Lista
+                Asistencia de Turno
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
                 Marcar presentes, atrasos, ausentes y licencias con 1 solo clic.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-              <span>Pasar Lista</span>
+              <span>Gestionar Asistencia</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
