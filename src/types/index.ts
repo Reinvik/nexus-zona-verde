@@ -192,7 +192,7 @@ export type AndenLevelerStatus = 'operativo' | 'fuga_hidraulica' | 'desnivel' | 
 
 export interface AndenInspection {
   id: string;
-  andenNumber: number; // 1..12
+  andenNumber: number; // 1..34
   andenCode: string; // e.g. "ANDÉN-01"
   area: string; // "Andenes Despacho", "Andenes Recepción"
   doorStatus: AndenDoorStatus;

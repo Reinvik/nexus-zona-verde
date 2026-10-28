@@ -391,7 +391,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Equipos e Infraestructura
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                Transpaletas manuales, pistolas RF y estado de andenes (rejas y puertas 1-12).
+                Transpaletas manuales, pistolas RF y estado de andenes (rejas y puertas 1-34).
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">

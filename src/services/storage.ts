@@ -1247,24 +1247,27 @@ export function getDailyShiftsSafetyStatus(date: string): ShiftSafetyStatus[] {
 // ANDENES (REJAS & PUERTAS SECCIONALES)
 // ==========================================
 
-export const INITIAL_ANDENES: AndenInspection[] = Array.from({ length: 12 }, (_, i) => {
+export const INITIAL_ANDENES: AndenInspection[] = Array.from({ length: 34 }, (_, i) => {
   const num = i + 1;
   const isAnden3 = num === 3;
   const isAnden5 = num === 5;
+  const isAnden19 = num === 19;
+  const isAnden28 = num === 28;
   return {
     id: `anden-${num}`,
     andenNumber: num,
     andenCode: `ANDÉN-${num.toString().padStart(2, '0')}`,
-    area: num <= 8 ? 'Andenes de Despacho (1 al 8)' : 'Andenes de Recepción Inbound (9 al 12)',
-    doorStatus: isAnden5 ? 'falla_sensor' : 'operativa',
+    area: num <= 20 ? 'Andenes de Despacho (1 al 20)' : 'Andenes de Recepción Inbound (21 al 34)',
+    doorStatus: isAnden5 ? 'falla_sensor' : isAnden28 ? 'trabada' : 'operativa',
     gateStatus: isAnden3 ? 'traba_rota' : 'operativa',
-    levelerStatus: isAnden5 ? 'fuera_servicio' : 'operativo',
-    doorNotes: isAnden5 ? 'Sensor fotoeléctrico inferior descalibrado, cortina no desciende' : undefined,
+    levelerStatus: isAnden5 ? 'fuera_servicio' : isAnden19 ? 'fuga_hidraulica' : 'operativo',
+    doorNotes: isAnden5 ? 'Sensor fotoeléctrico inferior descalibrado, cortina no desciende' : isAnden28 ? 'Cortina trabada a media altura' : undefined,
     gateNotes: isAnden3 ? 'Traba mecánica lateral trabada con desgaste' : undefined,
-    lastInspectedAt: '2026-10-27T08:00:00Z',
+    levelerNotes: isAnden19 ? 'Fuga de aceite en cilindro hidráulico principal' : undefined,
+    lastInspectedAt: '2026-10-28T07:30:00Z',
     inspectedBy: 'Walter Sánchez (Supervisor)',
     shift: 'Turno 1 (Mañana 07:00 - 15:00)',
-    isBlocked: isAnden5
+    isBlocked: isAnden5 || isAnden28
   };
 });
 
@@ -1273,6 +1276,16 @@ export function getAndenes(): AndenInspection[] {
   if (!data || data.length === 0) {
     safeSet(KEYS.ANDENES, INITIAL_ANDENES);
     return INITIAL_ANDENES;
+  }
+  // Si en localStorage había menos de 34 andenes (ej: versión anterior con 12), completar hasta 34
+  if (data.length < 34) {
+    const existingMap = new Map<number, AndenInspection>(data.map(a => [a.andenNumber, a]));
+    const mergedList: AndenInspection[] = INITIAL_ANDENES.map(seed => {
+      const existing = existingMap.get(seed.andenNumber);
+      return existing || seed;
+    });
+    safeSet(KEYS.ANDENES, mergedList);
+    return mergedList;
   }
   return data;
 }
