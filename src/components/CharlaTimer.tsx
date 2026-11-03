@@ -14,13 +14,16 @@ import {
   Volume2,
   VolumeX,
   Share2,
-  Printer
+  Printer,
+  PenTool
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { LupItem, CharlaSession, ShiftType, ShiftId } from '../types';
-import { saveCharla, saveShiftTeamPhoto } from '../services/storage';
+import { LupItem, CharlaSession, ShiftType, ShiftId, CharlaAttendee } from '../types';
+import { saveCharla, saveShiftTeamPhoto, getShiftAttendancePresent, getOperators } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import { Camera, Image as ImageIcon, X } from 'lucide-react';
+import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
+import { LupSignedActaModal } from './LupSignedActaModal';
 
 interface CharlaTimerProps {
   lups: LupItem[];
@@ -102,6 +105,56 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
   const [keyAgreements, setKeyAgreements] = useState<string>('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoSizeKb, setPhotoSizeKb] = useState<number | null>(null);
+
+  // Digital Signatures with Tablet Stylus
+  const [attendeesList, setAttendeesList] = useState<CharlaAttendee[]>([]);
+  const [showSignatureKiosk, setShowSignatureKiosk] = useState<boolean>(false);
+  const [actaCharlaModal, setActaCharlaModal] = useState<CharlaSession | null>(null);
+
+  // Load attendees whenever shift or kiosk is needed
+  const loadDefaultAttendees = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const shiftId: ShiftId = shift.includes('1') || shift.includes('Mañana') ? 'turno-1' : (shift.includes('2') || shift.includes('Tarde') ? 'turno-2' : 'turno-3');
+    const presentRecords = getShiftAttendancePresent(today, shiftId);
+    
+    if (presentRecords.length > 0) {
+      const allOps = getOperators();
+      const opMap = new Map(allOps.map(o => [o.id, o]));
+      const list: CharlaAttendee[] = presentRecords.map(r => {
+        const op = opMap.get(r.operatorId);
+        const existing = attendeesList.find(a => a.operatorId === r.operatorId);
+        return {
+          operatorId: r.operatorId,
+          operatorName: r.operatorName,
+          rut: op?.rut,
+          role: r.operatorRole || op?.role,
+          area: r.operatorArea || op?.area,
+          signatureUrl: existing?.signatureUrl,
+          signedAt: existing?.signedAt
+        };
+      });
+      setAttendeesList(list);
+      setAttendeesCount(list.length);
+    } else if (attendeesList.length === 0) {
+      const allOps = getOperators();
+      const shiftOps = allOps.filter(o => o.shiftId === shiftId || !o.shiftId).slice(0, 10);
+      const list: CharlaAttendee[] = shiftOps.map(op => ({
+        operatorId: op.id,
+        operatorName: op.name,
+        rut: op.rut,
+        role: op.role,
+        area: op.area
+      }));
+      setAttendeesList(list);
+      setAttendeesCount(list.length);
+    }
+  };
+
+  useEffect(() => {
+    loadDefaultAttendees();
+  }, [shift]);
+
+  const signedAttendeesCount = attendeesList.filter(a => !!a.signatureUrl).length;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -233,8 +286,9 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
       date: now.toISOString().slice(0, 10),
       time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
       durationSeconds: 300 - timeLeft,
-      attendeesCount: Math.max(1, attendeesCount),
+      attendeesCount: Math.max(1, attendeesList.length > 0 ? attendeesList.length : attendeesCount),
       attendeesNotes: attendeesNotes.trim() || undefined,
+      attendeesList: attendeesList.length > 0 ? attendeesList : undefined,
       keyAgreements: keyAgreements.trim() || undefined,
       photoUrl: photoPreview || undefined,
       photoSizeKb: photoSizeKb || undefined,
@@ -355,8 +409,25 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
               </button>
             </div>
 
-            {/* Direct Register Button & Quick Camera Capture */}
-            <div className="flex items-center gap-1.5">
+            {/* Direct Register Button, Quick Camera Capture & Tablet Signatures */}
+            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+              <button
+                type="button"
+                onClick={() => {
+                  loadDefaultAttendees();
+                  setShowSignatureKiosk(true);
+                }}
+                className={`text-xs font-black px-3.5 py-2 rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap ${
+                  signedAttendeesCount > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+                title="Abrir Kiosco de Firmas en Tablet con Lápiz"
+              >
+                <PenTool className="w-4 h-4" />
+                <span>{signedAttendeesCount > 0 ? `✍️ ${signedAttendeesCount}/${attendeesList.length} Firmas` : '✍️ Firmar con Lápiz'}</span>
+              </button>
+
               <label 
                 className={`text-xs font-black px-3 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap ${
                   photoPreview 
@@ -684,6 +755,34 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                 </div>
               </div>
 
+              {/* Firmas Digitales en Tablet con Stylus */}
+              <div className="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-black text-indigo-950 uppercase">
+                    <PenTool className="w-4 h-4 text-indigo-700" />
+                    <span>Firmas Digitales de Asistentes</span>
+                    <span className="bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">
+                      {signedAttendeesCount} de {attendeesList.length} firmaron
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-indigo-800 mt-0.5">
+                    Toma de conocimiento con lápiz en tablet para respaldo legal DS 40.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadDefaultAttendees();
+                    setShowSignatureKiosk(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span>{signedAttendeesCount > 0 ? 'Continuar Firmas' : 'Abrir Kiosco de Firmas'}</span>
+                </button>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                   N° de Asistentes al Encuentro
@@ -791,6 +890,34 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
 
           </div>
         </div>
+      )}
+
+      {/* KIOSCO DE FIRMAS DIGITALES EN TABLET */}
+      {showSignatureKiosk && activeLup && (
+        <CharlaSignatureKiosk
+          isOpen={showSignatureKiosk}
+          onClose={() => setShowSignatureKiosk(false)}
+          lup={activeLup}
+          shiftName={shift}
+          shiftId={shift.includes('1') || shift.includes('Mañana') ? 'turno-1' : (shift.includes('2') || shift.includes('Tarde') ? 'turno-2' : 'turno-3')}
+          date={new Date().toISOString().slice(0, 10)}
+          initialAttendees={attendeesList}
+          supervisorName={supervisor}
+          onSaveSignatures={(updated) => {
+            setAttendeesList(updated);
+            setAttendeesCount(updated.length);
+          }}
+        />
+      )}
+
+      {/* MODAL ACTA OFICIAL CON FIRMAS */}
+      {actaCharlaModal && (
+        <LupSignedActaModal
+          isOpen={!!actaCharlaModal}
+          onClose={() => setActaCharlaModal(null)}
+          charla={actaCharlaModal}
+          lup={activeLup}
+        />
       )}
 
     </div>

@@ -80,6 +80,8 @@ export interface CharlaAttendee {
   rut?: string;
   role?: string;
   area?: string;
+  signatureUrl?: string; // Firma digital en base64 capturada en tablet con stylus
+  signedAt?: string; // Hora exacta del estampado de la firma (HH:mm)
 }
 
 export interface CharlaSession {

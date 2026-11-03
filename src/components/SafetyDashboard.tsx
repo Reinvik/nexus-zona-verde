@@ -27,7 +27,9 @@ import {
   X,
   FileCheck2,
   Check,
-  Trash2
+  Trash2,
+  PenTool,
+  FileText
 } from 'lucide-react';
 import { 
   LupItem, 
@@ -58,6 +60,7 @@ import {
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import bannerPrevencion from '../assets/banner-prevencion.png';
+import { LupSignedActaModal } from './LupSignedActaModal';
 
 interface SafetyDashboardProps {
   currentUser?: AppUser | null;
@@ -124,6 +127,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   // Modal: Ver LUP Completo
   const [viewingLupModal, setViewingLupModal] = useState<LupItem | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+  const [viewingActaCharla, setViewingActaCharla] = useState<CharlaSession | null>(null);
 
   // Modal: Nuevo LUP de Seguridad
   const [showNewSafetyLupModal, setShowNewSafetyLupModal] = useState<boolean>(false);
@@ -772,6 +776,17 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                             </span>
                           </div>
                         )}
+
+                        <div className="mt-2 pt-2 border-t border-emerald-200/60">
+                          <button
+                            type="button"
+                            onClick={() => setViewingActaCharla(charla)}
+                            className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Ver Acta & Firmas ({charla.attendeesList?.filter(a => !!a.signatureUrl).length || 0})</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/70 text-xs text-amber-900">
@@ -2244,6 +2259,16 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL ACTA OFICIAL CON FIRMAS */}
+      {viewingActaCharla && (
+        <LupSignedActaModal
+          isOpen={!!viewingActaCharla}
+          onClose={() => setViewingActaCharla(null)}
+          charla={viewingActaCharla}
+          lup={safetyLups.find(l => l.id === viewingActaCharla.lupId)}
+        />
       )}
 
     </div>

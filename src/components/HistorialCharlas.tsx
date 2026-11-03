@@ -19,11 +19,15 @@ import {
   Sun, 
   Sunset, 
   Moon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  PenTool,
+  FileText
 } from 'lucide-react';
-import { CharlaSession, LupItem, ShiftId, ShiftType } from '../types';
+import { CharlaSession, LupItem, ShiftId, ShiftType, CharlaAttendee } from '../types';
 import { exportToCsv, saveCharla } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
+import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
+import { LupSignedActaModal } from './LupSignedActaModal';
 
 interface HistorialCharlasProps {
   charlas: CharlaSession[];
@@ -51,6 +55,20 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
   const [showDirectRegisterModal, setShowDirectRegisterModal] = useState<boolean>(false);
   const [defaultShiftForModal, setDefaultShiftForModal] = useState<ShiftId>('manana');
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string; title: string; subtitle: string } | null>(null);
+  const [actaModalCharla, setActaModalCharla] = useState<CharlaSession | null>(null);
+  const [kioskCharla, setKioskCharla] = useState<CharlaSession | null>(null);
+
+  const handleSaveKioskSignatures = (updatedAttendees: CharlaAttendee[]) => {
+    if (!kioskCharla) return;
+    const updated: CharlaSession = {
+      ...kioskCharla,
+      attendeesList: updatedAttendees,
+      attendeesCount: updatedAttendees.length
+    };
+    saveCharla(updated);
+    onCharlasUpdated();
+    setKioskCharla(null);
+  };
 
   // Direct Register Form State
   const [selectedLupId, setSelectedLupId] = useState<string>(lups[0]?.id || '');
@@ -432,8 +450,26 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 <span>Registrar Charla Turno 1</span>
               </button>
             ) : (
-              <div className="text-[11px] text-center font-bold text-emerald-700">
-                ✅ Charla validada por {charlaManana.supervisor}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-center font-bold text-emerald-700">
+                  ✅ Charla validada por {charlaManana.supervisor}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setActaModalCharla(charlaManana)}
+                    className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ver Acta & Firmas</span>
+                  </button>
+                  <button
+                    onClick={() => setKioskCharla(charlaManana)}
+                    className="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                    title="Firmar en Tablet"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -565,8 +601,26 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 <span>Registrar Charla Turno 2</span>
               </button>
             ) : (
-              <div className="text-[11px] text-center font-bold text-emerald-700">
-                ✅ Charla validada por {charlaTarde.supervisor}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-center font-bold text-emerald-700">
+                  ✅ Charla validada por {charlaTarde.supervisor}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setActaModalCharla(charlaTarde)}
+                    className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ver Acta & Firmas</span>
+                  </button>
+                  <button
+                    onClick={() => setKioskCharla(charlaTarde)}
+                    className="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                    title="Firmar en Tablet"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -698,8 +752,26 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
                 <span>Registrar Charla Turno 3</span>
               </button>
             ) : (
-              <div className="text-[11px] text-center font-bold text-emerald-700">
-                ✅ Charla validada por {charlaNoche.supervisor}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-center font-bold text-emerald-700">
+                  ✅ Charla validada por {charlaNoche.supervisor}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setActaModalCharla(charlaNoche)}
+                    className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ver Acta & Firmas</span>
+                  </button>
+                  <button
+                    onClick={() => setKioskCharla(charlaNoche)}
+                    className="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                    title="Firmar en Tablet"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -832,11 +904,31 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
               </div>
 
               {/* Right info */}
-              <div className="flex md:flex-col items-center md:items-end justify-between border-t md:border-t-0 pt-2 md:pt-0 border-slate-200 shrink-0 gap-1.5">
-                <span className="text-xs font-bold text-[#008744] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" />
-                  <span>{charla.attendeesCount} Operadores</span>
-                </span>
+              <div className="flex md:flex-col items-center md:items-end justify-between border-t md:border-t-0 pt-2 md:pt-0 border-slate-200 shrink-0 gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-[#008744] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{charla.attendeesCount} Operadores</span>
+                  </span>
+
+                  <button
+                    onClick={() => setActaModalCharla(charla)}
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                    title="Ver Acta Oficial con Firmas"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="hidden sm:inline">Acta & Firmas</span>
+                  </button>
+
+                  <button
+                    onClick={() => setKioskCharla(charla)}
+                    className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition cursor-pointer"
+                    title="Firmar en Tablet"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
                 {charla.photoSizeKb && (
                   <span className="text-[10px] text-slate-400 font-mono">
                     📸 Foto Liviana: {charla.photoSizeKb} KB
@@ -1107,6 +1199,45 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL ACTA OFICIAL CON FIRMAS */}
+      {actaModalCharla && (
+        <LupSignedActaModal
+          isOpen={!!actaModalCharla}
+          onClose={() => setActaModalCharla(null)}
+          charla={actaModalCharla}
+          lup={lups.find(l => l.id === actaModalCharla.lupId)}
+        />
+      )}
+
+      {/* KIOSCO DE FIRMAS DIGITALES EN TABLET */}
+      {kioskCharla && (
+        <CharlaSignatureKiosk
+          isOpen={!!kioskCharla}
+          onClose={() => setKioskCharla(null)}
+          lup={lups.find(l => l.id === kioskCharla.lupId) || {
+            id: kioskCharla.lupId,
+            code: kioskCharla.lupCode,
+            title: kioskCharla.lupTitle,
+            category: 'Seguridad SSO',
+            summary: '',
+            objective: 'Cumplimiento operacional seguro',
+            durationMinutes: 5,
+            area: kioskCharla.area,
+            author: kioskCharla.facilitator,
+            createdAt: kioskCharla.createdAt,
+            doPractice: { title: '', description: '', points: [] },
+            dontPractice: { title: '', description: '', points: [] },
+            keyPoints: []
+          }}
+          shiftName={kioskCharla.shift}
+          shiftId={kioskCharla.shiftId}
+          date={kioskCharla.date}
+          initialAttendees={kioskCharla.attendeesList || []}
+          supervisorName={kioskCharla.supervisor}
+          onSaveSignatures={handleSaveKioskSignatures}
+        />
       )}
 
     </div>
