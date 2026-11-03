@@ -527,47 +527,49 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
         </div>
       )}
 
-      {/* Hero Banner: Portal de Prevención de Riesgos */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-orange-600 via-amber-600 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-amber-400/30">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-96 h-96 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 flex-1">
-            {/* Banner Ilustrativo de Prevención con marco redondeado */}
-            <div className="relative shrink-0 rounded-2xl overflow-hidden shadow-md border-2 border-amber-300/60 bg-white/10 w-full sm:w-auto flex items-center justify-center">
-              <img 
-                src={bannerPrevencion} 
-                alt="Prevención de Riesgos CIAL" 
-                className="h-28 sm:h-32 w-full sm:w-auto object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
+      {/* Hero Banner: Portal de Prevención de Riesgos con Banner Panorámico estilo Dashboard */}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-amber-500/30 min-h-[320px] sm:min-h-[360px] flex flex-col justify-between">
+        {/* Imagen Panorámica de Fondo: Prevención CIAL */}
+        <img 
+          src={bannerPrevencion} 
+          alt="Prevención de Riesgos CIAL" 
+          className="absolute inset-0 w-full h-full object-cover object-right sm:object-[center_right] filter brightness-95" 
+        />
 
-            <div className="space-y-2 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 backdrop-blur-md border border-amber-300/40 text-amber-200 text-xs font-black uppercase tracking-wider">
-                <ShieldCheck className="w-4 h-4 text-amber-300" />
-                <span>Prevención de Riesgos & SSO • CD CIAL</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-                Portal Profesional de Prevención de Riesgos
-              </h1>
-              <p className="text-sm text-amber-100 max-w-xl leading-relaxed">
-                Monitorea el cumplimiento de LUPs de seguridad en turnos rotativos, cruza la asistencia diaria con la dotación capacitada y gestiona la trazabilidad individual de los <strong>{operators.length} colaboradores</strong> del centro.
-              </p>
-            </div>
+        {/* Gradiente Cálido Anaranjado/Óxido - Contraste alto a la izquierda para texto cristalino y transparencia a la derecha para apreciar la imagen */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#431407]/95 via-[#7c2d12]/90 to-[#ea580c]/30" />
+        
+        {/* Brillo radial sutil de profundidad */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.3),transparent_70%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+        {/* Contenido Principal */}
+        <div className="relative z-10 p-6 sm:p-10 max-w-3xl space-y-4">
+          <div className="inline-flex items-center gap-2 bg-black/35 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-amber-200 border border-white/20 shadow-xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+            <span>Prevención de Riesgos & SSO • CD CIAL</span>
           </div>
+          
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight drop-shadow-md">
+            Portal Profesional de Prevención de Riesgos
+          </h1>
+          
+          <p className="text-sm sm:text-base text-amber-100/95 font-medium leading-relaxed drop-shadow-xs max-w-2xl">
+            Monitorea el cumplimiento de LUPs de seguridad en turnos rotativos, cruza la asistencia diaria con la dotación capacitada y gestiona la trazabilidad individual de los <strong>{operators.length} colaboradores</strong> del centro.
+          </p>
 
-          <div className="flex flex-wrap items-center gap-3 self-start lg:self-center shrink-0">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <button
               onClick={() => setShowNewSafetyLupModal(true)}
-              className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer hover:shadow-lg"
+              className="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-2 cursor-pointer font-sans"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 stroke-[3]" />
               <span>+ Nuevo LUP de Seguridad</span>
             </button>
 
             <button
               onClick={handleExportDailySsoAct}
-              className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 border border-white/20 cursor-pointer backdrop-blur-md"
+              className="bg-black/35 hover:bg-black/50 backdrop-blur-md border border-white/25 text-white px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 cursor-pointer group shadow-sm"
               title="Descargar acta con lista nominal para ACHS / Inspección"
             >
               <Download className="w-4 h-4 text-amber-300" />
@@ -576,8 +578,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
           </div>
         </div>
 
-        {/* Date Selector and Fast Context */}
-        <div className="mt-6 pt-5 border-t border-white/15 flex flex-wrap items-center justify-between gap-4">
+        {/* Barra Inferior: Selector de Fecha y Sesión Activa */}
+        <div className="relative z-10 px-6 sm:px-10 py-3.5 border-t border-white/15 bg-black/35 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Calendar className="w-4 h-4 text-amber-300" />
             <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Fecha de Monitoreo:</span>
@@ -585,7 +587,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-black/30 text-white font-bold text-xs rounded-xl px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+              className="bg-black/40 text-white font-bold text-xs rounded-xl px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
             />
             {selectedDate === todayStr && (
               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-400/40">
@@ -596,7 +598,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
 
           <div className="flex items-center gap-2 text-xs text-amber-100">
             <span className="font-medium">Sesión activa:</span>
-            <span className="font-bold bg-black/25 px-2.5 py-1 rounded-lg border border-white/10">
+            <span className="font-bold bg-black/30 px-2.5 py-1 rounded-lg border border-white/10">
               {currentUser?.name || 'Profesional SSO'} ({currentUser?.role || 'prevencion'})
             </span>
           </div>
