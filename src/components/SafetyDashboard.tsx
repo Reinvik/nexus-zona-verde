@@ -35,6 +35,7 @@ import {
   LupItem, 
   LupPractice,
   CharlaSession, 
+  CharlaAttendee,
   OperatorItem, 
   ShiftId, 
   ShiftType, 
@@ -56,11 +57,14 @@ import {
   exportToCsv,
   ShiftSafetyStatus,
   getShiftTeamPhoto,
-  saveShiftTeamPhoto
+  saveShiftTeamPhoto,
+  getWeekNumber,
+  saveCharla
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import bannerPrevencion from '../assets/banner-prevencion.png';
 import { LupSignedActaModal } from './LupSignedActaModal';
+import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
 
 interface SafetyDashboardProps {
   currentUser?: AppUser | null;
@@ -123,6 +127,10 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   const [presentOperatorsInShift, setPresentOperatorsInShift] = useState<{ operatorId: string; operatorName: string; role?: string; area?: string }[]>([]);
   const [assignPhotoUrl, setAssignPhotoUrl] = useState<string | null>(null);
   const [assignPhotoSizeKb, setAssignPhotoSizeKb] = useState<number | null>(null);
+  const [isWeeklyCharla, setIsWeeklyCharla] = useState<boolean>(true);
+  const [assignAttendeesList, setAssignAttendeesList] = useState<CharlaAttendee[]>([]);
+  const [showAssignKiosk, setShowAssignKiosk] = useState<boolean>(false);
+  const [kioskCharlaDirect, setKioskCharlaDirect] = useState<CharlaSession | null>(null);
 
   // Modal: Ver LUP Completo
   const [viewingLupModal, setViewingLupModal] = useState<LupItem | null>(null);
@@ -202,21 +210,50 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     setAssignShiftId(shiftId);
     // Load present operators from attendance for that shift and date
     const presentRecords = getShiftAttendancePresent(selectedDate, shiftId);
-    const presentList = presentRecords.map(r => ({
+    let presentList = presentRecords.map(r => ({
       operatorId: r.operatorId,
       operatorName: r.operatorName,
       role: r.operatorRole,
       area: r.operatorArea
     }));
 
+    if (presentList.length === 0) {
+      const allOps = getOperators();
+      const shiftOps = allOps.filter(o => o.shiftId === shiftId || !o.shiftId).slice(0, 8);
+      presentList = shiftOps.map(op => ({
+        operatorId: op.id,
+        operatorName: op.name,
+        role: op.role,
+        area: op.area
+      }));
+    }
+
     setPresentOperatorsInShift(presentList);
     // Default to all selected
     setSelectedOperatorIds(presentList.map(p => p.operatorId));
+
+    // Initialize assignAttendeesList for tablet signatures
+    const allOps = getOperators();
+    const opMap = new Map(allOps.map(o => [o.id, o]));
+    const initAttendees: CharlaAttendee[] = presentList.map(p => {
+      const op = opMap.get(p.operatorId);
+      return {
+        operatorId: p.operatorId,
+        operatorName: p.operatorName,
+        rut: op?.rut,
+        role: p.role || op?.role,
+        area: p.area || op?.area,
+        signatureUrl: undefined,
+        signedAt: undefined
+      };
+    });
+    setAssignAttendeesList(initAttendees);
 
     // Load existing team photo for this shift if already taken in Asistencia
     const existingPhoto = getShiftTeamPhoto(selectedDate, shiftId);
     setAssignPhotoUrl(existingPhoto ? existingPhoto.photoUrl : null);
     setAssignPhotoSizeKb(existingPhoto ? (existingPhoto.photoSizeKb || null) : null);
+    setIsWeeklyCharla(true);
 
     setShowAssignModal(true);
   };
@@ -225,14 +262,42 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
   const handleAssignShiftChange = (newShiftId: ShiftId) => {
     setAssignShiftId(newShiftId);
     const presentRecords = getShiftAttendancePresent(selectedDate, newShiftId);
-    const presentList = presentRecords.map(r => ({
+    let presentList = presentRecords.map(r => ({
       operatorId: r.operatorId,
       operatorName: r.operatorName,
       role: r.operatorRole,
       area: r.operatorArea
     }));
+
+    if (presentList.length === 0) {
+      const allOps = getOperators();
+      const shiftOps = allOps.filter(o => o.shiftId === newShiftId || !o.shiftId).slice(0, 8);
+      presentList = shiftOps.map(op => ({
+        operatorId: op.id,
+        operatorName: op.name,
+        role: op.role,
+        area: op.area
+      }));
+    }
+
     setPresentOperatorsInShift(presentList);
     setSelectedOperatorIds(presentList.map(p => p.operatorId));
+
+    const allOps = getOperators();
+    const opMap = new Map(allOps.map(o => [o.id, o]));
+    const initAttendees: CharlaAttendee[] = presentList.map(p => {
+      const op = opMap.get(p.operatorId);
+      return {
+        operatorId: p.operatorId,
+        operatorName: p.operatorName,
+        rut: op?.rut,
+        role: p.role || op?.role,
+        area: p.area || op?.area,
+        signatureUrl: undefined,
+        signedAt: undefined
+      };
+    });
+    setAssignAttendeesList(initAttendees);
 
     const existingPhoto = getShiftTeamPhoto(selectedDate, newShiftId);
     setAssignPhotoUrl(existingPhoto ? existingPhoto.photoUrl : null);
@@ -279,6 +344,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
     const shiftInfo = SHIFT_MAP[assignShiftId] || SHIFT_MAP['turno-1'];
 
     try {
+      const eligibleAttendees = assignAttendeesList.filter(a => selectedOperatorIds.includes(a.operatorId));
       const session = registerShiftLupTraining({
         date: selectedDate,
         shiftId: assignShiftId,
@@ -287,17 +353,29 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
         supervisor: assignSupervisor || currentUser?.name || 'Supervisor de Turno',
         facilitator: assignFacilitator || assignSupervisor,
         selectedOperatorIds: selectedOperatorIds,
+        attendeesWithSignatures: eligibleAttendees,
         notes: assignNotes,
         photoUrl: assignPhotoUrl || undefined,
-        photoSizeKb: assignPhotoSizeKb || undefined
+        photoSizeKb: assignPhotoSizeKb || undefined,
+        isWeeklySafetyTalk: isWeeklyCharla,
+        weekNumber: getWeekNumber(selectedDate),
+        charlaType: isWeeklyCharla ? 'semanal' : 'diaria'
       });
 
-      showToast(`✅ LUP registrado para ${shiftInfo.label} con ${session.attendeesCount} colaboradores capacitados.`);
+      const signedCount = eligibleAttendees.filter(a => !!a.signatureUrl).length;
+      showToast(
+        `✅ ${isWeeklyCharla ? 'Charla de Seguridad Semanal' : 'LUP de Seguridad'} registrado para ${shiftInfo.label} con ${session.attendeesCount} colaboradores (${signedCount} firmas digitalizadas).`
+      );
       setShowAssignModal(false);
       setAssignNotes('');
       setAssignPhotoUrl(null);
       setAssignPhotoSizeKb(null);
       loadData();
+
+      // Si se firmaron actas, abrir modal oficial de firmas para imprimir o descargar PDF
+      if (signedCount > 0) {
+        setViewingActaCharla(session);
+      }
     } catch (err: any) {
       showToast('Error al registrar la charla: ' + (err?.message || 'Error desconocido'), 'error');
     }
@@ -751,11 +829,19 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
 
                     {/* If completed, show LUP details */}
                     {isDone && charla ? (
-                      <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 text-xs space-y-1.5">
+                      <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 text-xs space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-black text-emerald-900">{charla.lupCode}</span>
                           <span className="text-[10px] text-emerald-700 font-bold">{charla.time} hrs</span>
                         </div>
+
+                        {charla.isWeeklySafetyTalk && (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-200/90 text-amber-950 font-black text-[10px] border border-amber-400/80 shadow-2xs">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-800" />
+                            <span>Charla Semanal • Sem. {charla.weekNumber || getWeekNumber(charla.date)}</span>
+                          </div>
+                        )}
+
                         <p className="font-bold text-slate-800 line-clamp-2">
                           {charla.lupTitle}
                         </p>
@@ -766,7 +852,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                           <div 
                             onClick={() => setViewingPhoto({
                               url: charla.photoUrl!,
-                              title: `Evidencia Turno • ${shift.label}`,
+                              title: `Evidencia de Charla de Seguridad • ${shift.label}`,
                               subtitle: `${charla.lupCode} - ${charla.lupTitle}`
                             })}
                             className="flex items-center gap-2 p-1.5 bg-emerald-100/80 hover:bg-emerald-200 rounded-xl cursor-pointer border border-emerald-300 transition mt-2 shadow-2xs"
@@ -774,19 +860,32 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                             <img src={charla.photoUrl} alt="Foto equipo" className="w-8 h-8 rounded-lg object-cover" />
                             <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
                               <Eye className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>Ver Foto del Equipo ({charla.attendeesCount} pers.)</span>
+                              <span>Ver Foto de la Charla ({charla.attendeesCount} pers.)</span>
                             </span>
                           </div>
                         )}
 
-                        <div className="mt-2 pt-2 border-t border-emerald-200/60">
+                        <div className="mt-2 pt-2 border-t border-emerald-200/60 space-y-1.5">
                           <button
                             type="button"
                             onClick={() => setViewingActaCharla(charla)}
                             className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                           >
                             <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Ver Acta & Firmas ({charla.attendeesList?.filter(a => !!a.signatureUrl).length || 0})</span>
+                            <span>Ver Acta & Firmas ({charla.attendeesList?.filter(a => !!a.signatureUrl).length || 0} de {charla.attendeesCount})</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setKioskCharlaDirect(charla)}
+                            className="w-full py-1.5 px-3 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <PenTool className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>
+                              {(charla.attendeesList?.filter(a => !!a.signatureUrl).length || 0) === charla.attendeesCount
+                                ? `Firmas Completas (${charla.attendeesCount}/${charla.attendeesCount})`
+                                : `✍️ Pedir Firmas en Tablet (${charla.attendeesList?.filter(a => !!a.signatureUrl).length || 0}/${charla.attendeesCount})`}
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -1262,29 +1361,29 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: ASIGNAR LUP AL TURNO (SIN CRONÓMETRO - 1 CLIC) */}
+      {/* MODAL: ASIGNAR LUP AL TURNO / REGISTRAR CHARLA DE SEGURIDAD SEMANAL */}
       {/* ============================================================== */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 animate-scale-up">
             
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-50 to-white">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black">
-                  <Sparkles className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-black/15 text-slate-950 flex items-center justify-center font-black">
+                  <ShieldCheck className="w-6 h-6 text-slate-950" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    ⚡ Asignación Rápida de LUP al Turno
+                  <h3 className="text-base font-black">
+                    Registro de Charla de Seguridad & Asignación LUP
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Cruce directo con la asistencia del día sin pasar por cronómetro.
+                  <p className="text-xs text-amber-950/85 font-medium">
+                    Sube la foto de la reunión, cruza la dotación presente y toma firmas en tablet.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowAssignModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-xl cursor-pointer"
+                className="text-slate-950 hover:bg-black/10 p-1.5 rounded-xl cursor-pointer transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1292,6 +1391,65 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
 
             <form onSubmit={handleConfirmAssignLup} className="p-5 space-y-4">
               
+              {/* Selector Tipo de Charla / Periodicidad */}
+              <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-700" />
+                    <span>Frecuencia y Tipo de Charla</span>
+                  </label>
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                    Semana {getWeekNumber(selectedDate)} del Año
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsWeeklyCharla(true)}
+                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
+                      isWeeklyCharla
+                        ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      isWeeklyCharla ? 'border-slate-950 bg-slate-950' : 'border-slate-400'
+                    }`}>
+                      {isWeeklyCharla && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    </div>
+                    <div>
+                      <span className="text-xs font-black block">Charla de Seguridad Semanal</span>
+                      <span className={`text-[10px] block ${isWeeklyCharla ? 'text-amber-950 font-semibold' : 'text-slate-500'}`}>
+                        Obligatoria SSO • DS 40 / Ley 16.744
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsWeeklyCharla(false)}
+                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
+                      !isWeeklyCharla
+                        ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      !isWeeklyCharla ? 'border-slate-950 bg-slate-950' : 'border-slate-400'
+                    }`}>
+                      {!isWeeklyCharla && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    </div>
+                    <div>
+                      <span className="text-xs font-black block">Charla Diaria de 5 Minutos</span>
+                      <span className={`text-[10px] block ${!isWeeklyCharla ? 'text-amber-950 font-semibold' : 'text-slate-500'}`}>
+                        Operacional de inicio de turno
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
@@ -1367,45 +1525,84 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                 </div>
               </div>
 
-              {/* Attendance Checklist for Shift */}
+              {/* Attendance & Digital Signatures Checklist for Shift */}
               <div className="pt-2">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase">
-                    Operadores Presentes en este Turno ({selectedOperatorIds.length} de {presentOperatorsInShift.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleToggleSelectAllOperators}
-                    className="text-[11px] font-bold text-amber-700 hover:underline cursor-pointer"
-                  >
-                    {selectedOperatorIds.length === presentOperatorsInShift.length ? 'Desmarcar Todos' : 'Marcar Todos'}
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-amber-700" />
+                      <span>Operadores Asistentes ({selectedOperatorIds.length} de {presentOperatorsInShift.length})</span>
+                    </label>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {assignAttendeesList.filter(a => selectedOperatorIds.includes(a.operatorId) && !!a.signatureUrl).length} de {selectedOperatorIds.length} firmas estampadas en tablet
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAssignKiosk(true)}
+                      disabled={selectedOperatorIds.length === 0}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 disabled:opacity-40 text-slate-950 font-black text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <PenTool className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Tomar Firmas en Tablet</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleSelectAllOperators}
+                      className="text-[11px] font-bold text-amber-700 hover:underline cursor-pointer"
+                    >
+                      {selectedOperatorIds.length === presentOperatorsInShift.length ? 'Desmarcar' : 'Marcar Todos'}
+                    </button>
+                  </div>
                 </div>
 
                 {presentOperatorsInShift.length === 0 ? (
                   <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs text-rose-700">
-                    ⚠️ No hay operadores marcados como <strong>Presente</strong> en el Pase de Lista para este turno y fecha. Si dictaste la charla a una dotación, puedes marcar su asistencia en el módulo de Asistencia.
+                    ⚠️ No hay operadores marcados como <strong>Presente</strong> en el Pase de Lista para este turno y fecha. Puedes marcarlos en el módulo de Asistencia.
                   </div>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-slate-50 rounded-2xl border border-slate-200 scrollbar-thin">
                     {presentOperatorsInShift.map(op => {
                       const isChecked = selectedOperatorIds.includes(op.operatorId);
+                      const attendeeData = assignAttendeesList.find(a => a.operatorId === op.operatorId);
+                      const hasSigned = !!attendeeData?.signatureUrl;
+
                       return (
-                        <label 
+                        <div 
                           key={op.operatorId}
-                          className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 transition cursor-pointer text-xs"
+                          className={`flex items-center justify-between p-2 rounded-xl border transition ${
+                            isChecked ? 'bg-white border-slate-200' : 'bg-slate-100/60 border-slate-200 opacity-60'
+                          }`}
                         >
-                          <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                             <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => handleToggleOperator(op.operatorId)}
-                              className="rounded-md text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                              className="rounded-md text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer shrink-0"
                             />
-                            <span className="font-bold text-slate-800">{op.operatorName}</span>
+                            <div className="truncate">
+                              <span className="font-bold text-slate-800 text-xs block truncate">{op.operatorName}</span>
+                              <span className="text-[10px] text-slate-500 block">{op.role || 'Operador'}</span>
+                            </div>
+                          </label>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasSigned ? (
+                              <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Firmado {attendeeData?.signedAt || ''}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 border border-amber-300/60 px-2 py-0.5 rounded-lg">
+                                Pendiente firma
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[10px] text-slate-500">{op.role || 'Operador'}</span>
-                        </label>
+                        </div>
                       );
                     })}
                   </div>
@@ -1425,13 +1622,18 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                 />
               </div>
 
-              {/* Foto de Evidencia del Equipo */}
+              {/* Foto / Imagen de la Charla de Seguridad */}
               <div className="bg-amber-50/70 border border-amber-300 rounded-2xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-amber-700" />
-                    <span>Foto de Evidencia del Equipo en Terreno</span>
-                  </span>
+                  <div>
+                    <span className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-amber-700" />
+                      <span>Foto / Imagen de la Charla de Seguridad</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium block">
+                      Evidencia visual de la reunión o afiche firmado
+                    </span>
+                  </div>
                   {assignPhotoSizeKb && (
                     <span className="text-[10px] text-amber-800 font-mono font-bold bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
                       📸 {assignPhotoSizeKb} KB
@@ -1443,17 +1645,17 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                   <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-amber-300 shadow-2xs">
                     <img 
                       src={assignPhotoUrl} 
-                      alt="Foto del equipo" 
+                      alt="Foto de la charla" 
                       className="w-16 h-16 object-cover rounded-xl border border-amber-400 cursor-pointer hover:opacity-90 transition"
                       onClick={() => setViewingPhoto({
                         url: assignPhotoUrl!,
-                        title: `Evidencia Turno • ${SHIFT_MAP[assignShiftId]?.label}`,
+                        title: `Evidencia de Charla • ${SHIFT_MAP[assignShiftId]?.label}`,
                         subtitle: `${selectedDate} • Dotación Presente`
                       })}
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-xs font-black text-slate-800 block truncate">
-                        Foto grupal adjunta con éxito
+                        Foto de la charla adjunta con éxito
                       </span>
                       <span className="text-[11px] text-emerald-700 font-bold block">
                         ✓ Quedará vinculada a la charla de seguridad
@@ -1488,7 +1690,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                     <label className="border-2 border-dashed border-amber-400 hover:border-amber-600 bg-white hover:bg-amber-100/50 rounded-2xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
                       <Camera className="w-5 h-5 text-amber-700 mb-1" />
                       <span className="text-xs font-bold text-slate-800">Tomar Foto con Cámara</span>
-                      <span className="text-[10px] text-slate-500 font-medium">Abre cámara trasera del celular</span>
+                      <span className="text-[10px] text-slate-500 font-medium">Abre cámara trasera del celular / tablet</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1500,8 +1702,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
 
                     <label className="border border-slate-300 hover:border-amber-500 bg-white hover:bg-slate-50 rounded-2xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
                       <ImageIcon className="w-5 h-5 text-slate-500 mb-1" />
-                      <span className="text-xs font-bold text-slate-800">Subir desde Galería</span>
-                      <span className="text-[10px] text-slate-500 font-medium">Cargar imagen guardada</span>
+                      <span className="text-xs font-bold text-slate-800">Subir Imagen de la Charla</span>
+                      <span className="text-[10px] text-slate-500 font-medium">Cargar desde galería o archivos</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1527,7 +1729,9 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                   className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs transition shadow-md cursor-pointer flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Confirmar y Guardar ({selectedOperatorIds.length} Colaboradores)</span>
+                  <span>
+                    Confirmar y Guardar ({selectedOperatorIds.length} Asistentes • {assignAttendeesList.filter(a => selectedOperatorIds.includes(a.operatorId) && !!a.signatureUrl).length} Firmas)
+                  </span>
                 </button>
               </div>
 
@@ -2270,6 +2474,55 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
           onClose={() => setViewingActaCharla(null)}
           charla={viewingActaCharla}
           lup={safetyLups.find(l => l.id === viewingActaCharla.lupId)}
+        />
+      )}
+
+      {/* KIOSCO DE FIRMAS DIGITALES EN TABLET (DESDE MODAL ASIGNAR) */}
+      {showAssignKiosk && (
+        <CharlaSignatureKiosk
+          isOpen={showAssignKiosk}
+          onClose={() => setShowAssignKiosk(false)}
+          lup={safetyLups.find(l => l.id === assignLupId) || safetyLups[0] || getLups()[0]}
+          shiftName={SHIFT_MAP[assignShiftId]?.name || 'Turno 1'}
+          shiftId={assignShiftId}
+          date={selectedDate}
+          initialAttendees={assignAttendeesList.filter(a => selectedOperatorIds.includes(a.operatorId))}
+          supervisorName={assignSupervisor}
+          onSaveSignatures={(updatedAttendees) => {
+            setAssignAttendeesList(prev => {
+              const map = new Map(prev.map(a => [a.operatorId, a]));
+              updatedAttendees.forEach(u => map.set(u.operatorId, u));
+              return Array.from(map.values());
+            });
+            setShowAssignKiosk(false);
+            const count = updatedAttendees.filter(a => !!a.signatureUrl).length;
+            showToast(`✅ Se estamparon ${count} firmas digitales en la tablet.`);
+          }}
+        />
+      )}
+
+      {/* KIOSCO DE FIRMAS DIGITALES EN TABLET (DESDE TARJETA DE TURNO YA REGISTRADO) */}
+      {kioskCharlaDirect && (
+        <CharlaSignatureKiosk
+          isOpen={!!kioskCharlaDirect}
+          onClose={() => setKioskCharlaDirect(null)}
+          lup={safetyLups.find(l => l.id === kioskCharlaDirect.lupId) || getLups().find(l => l.id === kioskCharlaDirect.lupId) || safetyLups[0] || getLups()[0]}
+          shiftName={kioskCharlaDirect.shift}
+          shiftId={kioskCharlaDirect.shiftId}
+          date={kioskCharlaDirect.date}
+          initialAttendees={kioskCharlaDirect.attendeesList || []}
+          supervisorName={kioskCharlaDirect.supervisor}
+          onSaveSignatures={(updatedAttendees) => {
+            const updated: CharlaSession = {
+              ...kioskCharlaDirect,
+              attendeesList: updatedAttendees,
+              attendeesCount: updatedAttendees.length
+            };
+            saveCharla(updated);
+            showToast(`✅ Firmas actualizadas para ${kioskCharlaDirect.lupCode} (${updatedAttendees.filter(a => !!a.signatureUrl).length} firmadas).`);
+            setKioskCharlaDirect(null);
+            loadData();
+          }}
         />
       )}
 

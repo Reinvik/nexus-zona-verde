@@ -101,6 +101,9 @@ export interface CharlaSession {
   attendeesNotes?: string;
   attendeesList?: CharlaAttendee[]; // Nómina nominal de presentes que vieron el LUP
   isSafetyLup?: boolean; // Indica si fue sesión de LUP de Seguridad
+  isWeeklySafetyTalk?: boolean; // Indica si fue Charla de Seguridad Semanal oficial
+  weekNumber?: number; // Número de semana del año (e.g. Semana 45)
+  charlaType?: 'semanal' | 'diaria' | 'extraordinaria';
   keyAgreements?: string; // Acuerdos tomados en la charla
   photoUrl?: string; // Foto liviana de evidencia de la charla
   photoSizeKb?: number; // Tamaño en KB (< 80 KB)

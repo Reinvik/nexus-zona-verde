@@ -1155,6 +1155,15 @@ export function getShiftAttendancePresent(date: string, shiftId: ShiftId): Atten
   return records.filter(r => r.status === 'presente' || r.status === 'tarde');
 }
 
+export function getWeekNumber(dateInput?: Date | string): number {
+  const date = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput + 'T12:00:00') : new Date(dateInput)) : new Date();
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
 export interface RegisterShiftLupParams {
   date: string;
   shiftId: ShiftId;
@@ -1163,10 +1172,14 @@ export interface RegisterShiftLupParams {
   supervisor: string;
   facilitator?: string;
   selectedOperatorIds?: string[]; // Si no se envía o está vacío, se incluyen todos los presentes
+  attendeesWithSignatures?: CharlaAttendee[]; // Nómina con firmas capturadas en tablet
   notes?: string;
   keyAgreements?: string;
   photoUrl?: string;
   photoSizeKb?: number;
+  isWeeklySafetyTalk?: boolean; // Charla de Seguridad Semanal oficial CIAL
+  weekNumber?: number; // Número de semana del año
+  charlaType?: 'semanal' | 'diaria' | 'extraordinaria';
 }
 
 export interface ShiftTeamPhoto {
@@ -1236,21 +1249,26 @@ export function registerShiftLupTraining(params: RegisterShiftLupParams): Charla
     ? presentRecords.filter(r => params.selectedOperatorIds!.includes(r.operatorId))
     : presentRecords;
 
-  const attendeesList: CharlaAttendee[] = eligibleRecords.map(r => {
-    const op = opMap.get(r.operatorId);
-    return {
-      operatorId: r.operatorId,
-      operatorName: r.operatorName,
-      rut: op?.rut,
-      role: r.operatorRole || op?.role,
-      area: r.operatorArea || op?.area
-    };
-  });
+  // Si se enviaron asistentes con firmas desde la tablet, usarlos; de lo contrario armar la lista base
+  const attendeesList: CharlaAttendee[] = (params.attendeesWithSignatures && params.attendeesWithSignatures.length > 0)
+    ? params.attendeesWithSignatures
+    : eligibleRecords.map(r => {
+        const op = opMap.get(r.operatorId);
+        return {
+          operatorId: r.operatorId,
+          operatorName: r.operatorName,
+          rut: op?.rut,
+          role: r.operatorRole || op?.role,
+          area: r.operatorArea || op?.area
+        };
+      });
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 
   const isSafety = lup.isSafety ?? (lup.category === 'Seguridad SSO');
+  const isWeekly = params.isWeeklySafetyTalk ?? true;
+  const calculatedWeek = params.weekNumber || getWeekNumber(params.date);
 
   // Si no se proporcionó foto directa, verificar si existe una foto del equipo tomada en Asistencia
   const existingShiftPhoto = getShiftTeamPhoto(params.date, params.shiftId);
@@ -1277,6 +1295,9 @@ export function registerShiftLupTraining(params: RegisterShiftLupParams): Charla
     photoUrl: finalPhotoUrl,
     photoSizeKb: finalPhotoSizeKb,
     isSafetyLup: isSafety,
+    isWeeklySafetyTalk: isWeekly,
+    weekNumber: calculatedWeek,
+    charlaType: params.charlaType || (isWeekly ? 'semanal' : 'diaria'),
     createdAt: now.toISOString()
   };
 

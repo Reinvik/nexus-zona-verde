@@ -102,11 +102,18 @@ export const LupSignedActaModal: React.FC<LupSignedActaModalProps> = ({
           {/* Title Banner */}
           <div className="bg-slate-100 rounded-2xl p-4 text-center border border-slate-300">
             <span className="text-[10px] font-black uppercase text-emerald-800 tracking-widest block">
-              REGISTRO DE CAPACITACIÓN Y TOMA DE CONOCIMIENTO
+              {charla.isWeeklySafetyTalk 
+                ? `ACTA OFICIAL • CHARLA DE SEGURIDAD SEMANAL (SEMANA ${charla.weekNumber || 'SSO'})` 
+                : 'REGISTRO DE CAPACITACIÓN Y TOMA DE CONOCIMIENTO'}
             </span>
             <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
               LECCIÓN DE UN PUNTO: {charla.lupCode} - {charla.lupTitle}
             </h2>
+            {charla.isWeeklySafetyTalk && (
+              <span className="inline-block mt-1 text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                🛡️ Capacitación Semanal Obligatoria SSO • Validez Legal DS 40 / Ley 16.744 ACHS
+              </span>
+            )}
             {lup?.objective && (
               <p className="text-xs text-slate-600 italic mt-1 max-w-2xl mx-auto">
                 "{lup.objective}"

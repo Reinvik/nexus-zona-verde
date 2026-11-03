@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react';
 import { CharlaSession, LupItem, ShiftId, ShiftType, CharlaAttendee } from '../types';
-import { exportToCsv, saveCharla } from '../services/storage';
+import { exportToCsv, saveCharla, getWeekNumber } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
 import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
 import { LupSignedActaModal } from './LupSignedActaModal';
@@ -80,6 +80,7 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
   const [regAgreements, setRegAgreements] = useState<string>('');
   const [regPhoto, setRegPhoto] = useState<string | null>(null);
   const [regPhotoSizeKb, setRegPhotoSizeKb] = useState<number | null>(null);
+  const [regIsWeekly, setRegIsWeekly] = useState<boolean>(true);
 
   // Supervisors list for quick selection
   const knownSupervisors = [
@@ -163,6 +164,10 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
       keyAgreements: regAgreements.trim() || undefined,
       photoUrl: regPhoto || undefined,
       photoSizeKb: regPhotoSizeKb || undefined,
+      isSafetyLup: lup.isSafety ?? (lup.category === 'Seguridad SSO'),
+      isWeeklySafetyTalk: regIsWeekly,
+      weekNumber: getWeekNumber(selectedDate),
+      charlaType: regIsWeekly ? 'semanal' : 'diaria',
       createdAt: now.toISOString()
     };
 
@@ -969,6 +974,39 @@ export const HistorialCharlas: React.FC<HistorialCharlasProps> = ({
 
             <form onSubmit={handleSubmitDirectRegister} className="space-y-4">
               
+              {/* Tipo de Charla / Periodicidad */}
+              <div className="bg-amber-50/80 border border-amber-300/80 rounded-2xl p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black uppercase text-amber-950 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Tipo de Charla / Periodicidad</span>
+                  </label>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                    Semana {getWeekNumber(selectedDate)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRegIsWeekly(true)}
+                    className={`py-1.5 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      regIsWeekly ? 'bg-amber-400 text-slate-950 border border-amber-500 shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
+                    }`}
+                  >
+                    <span>🛡️ Charla Semanal SSO</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegIsWeekly(false)}
+                    className={`py-1.5 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      !regIsWeekly ? 'bg-amber-400 text-slate-950 border border-amber-500 shadow-xs' : 'bg-white text-slate-600 border border-slate-200'
+                    }`}
+                  >
+                    <span>⏱️ Charla Diaria</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Select LUP */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
