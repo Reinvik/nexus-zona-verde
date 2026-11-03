@@ -57,6 +57,7 @@ import {
   saveShiftTeamPhoto
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
+import bannerPrevencion from '../assets/banner-prevencion.png';
 
 interface SafetyDashboardProps {
   currentUser?: AppUser | null;
@@ -523,23 +524,35 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
       )}
 
       {/* Hero Banner: Portal de Prevención de Riesgos */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-600 via-amber-700 to-slate-900 p-6 sm:p-8 text-white shadow-lg">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-72 h-72 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-orange-600 via-amber-600 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-amber-400/30">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-96 h-96 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/25 backdrop-blur-md border border-amber-300/30 text-amber-200 text-xs font-black uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4 text-amber-300" />
-              <span>Prevención de Riesgos & SSO • CD CIAL</span>
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 flex-1">
+            {/* Banner Ilustrativo de Prevención con marco redondeado */}
+            <div className="relative shrink-0 rounded-2xl overflow-hidden shadow-md border-2 border-amber-300/60 bg-white/10 w-full sm:w-auto flex items-center justify-center">
+              <img 
+                src={bannerPrevencion} 
+                alt="Prevención de Riesgos CIAL" 
+                className="h-28 sm:h-32 w-full sm:w-auto object-cover hover:scale-105 transition-transform duration-300"
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Portal Profesional de Prevención de Riesgos
-            </h1>
-            <p className="text-sm text-amber-100 max-w-2xl leading-relaxed">
-              Monitorea el cumplimiento de LUPs de seguridad en turnos rotativos, cruza la asistencia diaria con la dotación capacitada y gestiona la trazabilidad individual de los <strong>{operators.length} colaboradores</strong> del centro.
-            </p>
+
+            <div className="space-y-2 flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 backdrop-blur-md border border-amber-300/40 text-amber-200 text-xs font-black uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-amber-300" />
+                <span>Prevención de Riesgos & SSO • CD CIAL</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
+                Portal Profesional de Prevención de Riesgos
+              </h1>
+              <p className="text-sm text-amber-100 max-w-xl leading-relaxed">
+                Monitorea el cumplimiento de LUPs de seguridad en turnos rotativos, cruza la asistencia diaria con la dotación capacitada y gestiona la trazabilidad individual de los <strong>{operators.length} colaboradores</strong> del centro.
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
+          <div className="flex flex-wrap items-center gap-3 self-start lg:self-center shrink-0">
             <button
               onClick={() => setShowNewSafetyLupModal(true)}
               className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer hover:shadow-lg"
