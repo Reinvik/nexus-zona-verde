@@ -24,7 +24,8 @@ import {
   ArrowUpDown,
   Columns2,
   List,
-  Eye
+  Eye,
+  BarChart3
 } from 'lucide-react';
 import { 
   PalletJackReport, 
@@ -44,15 +45,17 @@ import {
   getGruaChecklists, 
   saveGruaChecklist, 
   DEFAULT_GRUA_CHECKLIST_ITEMS,
-  exportToCsv 
+  exportToCsv,
+  calculateElapsedHours
 } from '../services/storage';
 import { PalletJackModule } from './PalletJackModule';
 import { RfScannerModule } from './RfScannerModule';
+import { SlaDashboard } from './SlaDashboard';
 import { PredictiveLeaderInput } from './PredictiveLeaderInput';
 import { PredictiveTextarea } from './PredictiveTextarea';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 
-export type EquiposSubTab = 'transpaletas' | 'pistolas-rf' | 'andenes' | 'checklist-gruas';
+export type EquiposSubTab = 'transpaletas' | 'pistolas-rf' | 'andenes' | 'checklist-gruas' | 'tiempos-proveedor';
 
 interface EquiposInfraestructuraModuleProps {
   pallets: PalletJackReport[];
@@ -130,11 +133,28 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
     refreshAndenesAndGruas();
   }, []);
 
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   // Pending counters
   const pendingPallets = pallets.filter(p => p.status === 'pendiente').length;
   const pendingRfs = rfs.filter(r => r.status === 'pendiente').length;
   const blockedAndenesCount = andenes.filter(a => a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo').length;
   const rejectedGruasCount = gruaChecklists.filter(c => c.finalStatus === 'rechazado').length;
+
+  // SLA Overdue counters for Tiempos Proveedor tab (Pallet Jack: 48h, RF Scanner: 24h)
+  const overduePalletsCount = pallets.filter(
+    p => (p.status === 'pendiente' || p.status === 'retirada_proveedor' || p.status === 'en_taller') &&
+         calculateElapsedHours(p.reportedAt) > 48
+  ).length;
+
+  const overdueRfsCount = rfs.filter(
+    r => (r.status === 'pendiente' || r.status === 'retirada_proveedor' || r.status === 'en_taller') &&
+         calculateElapsedHours(r.reportedAt) > 24
+  ).length;
 
   // ---------------------------------------------
   // ANDENES HANDLERS
@@ -480,6 +500,27 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
             <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.2 rounded-full">
               FOR-27
             </span>
+          </button>
+
+          <button
+            onClick={() => setSubTab('tiempos-proveedor')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer shrink-0 ${
+              subTab === 'tiempos-proveedor'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40 ring-2 ring-emerald-400/40'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Tiempos Proveedor (SLA)</span>
+            {(overduePalletsCount + overdueRfsCount) > 0 ? (
+              <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.2 rounded-full">
+                {overduePalletsCount + overdueRfsCount} Vencidos
+              </span>
+            ) : (
+              <span className="bg-slate-700 text-slate-300 text-[10px] font-black px-2 py-0.2 rounded-full">
+                SLA
+              </span>
+            )}
           </button>
 
         </div>
@@ -2021,6 +2062,15 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-PESTAÑA 5: TIEMPOS PROVEEDOR (SLA) */}
+      {/* ========================================================================= */}
+      {subTab === 'tiempos-proveedor' && (
+        <div>
+          <SlaDashboard pallets={pallets} rfs={rfs} />
         </div>
       )}
 

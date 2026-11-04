@@ -23,7 +23,6 @@ import { CharlaTimer } from './components/CharlaTimer';
 import { PalletJackModule } from './components/PalletJackModule';
 import { RfScannerModule } from './components/RfScannerModule';
 import { EquiposInfraestructuraModule, EquiposSubTab } from './components/EquiposInfraestructuraModule';
-import { SlaDashboard } from './components/SlaDashboard';
 import { HistorialCharlas } from './components/HistorialCharlas';
 import { SafetyDashboard } from './components/SafetyDashboard';
 import { UserManagementModule } from './components/UserManagementModule';
@@ -176,7 +175,12 @@ export default function App() {
       <Navigation
         activeTab={activeTab}
         onTabChange={(tab) => {
-          setActiveTab(tab);
+          if (tab === 'reportes-sla') {
+            setEquiposSubTab('tiempos-proveedor');
+            setActiveTab('equipos-infraestructura');
+          } else {
+            setActiveTab(tab);
+          }
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         pendingPalletsCount={pendingPalletsCount}
@@ -195,7 +199,12 @@ export default function App() {
             rfs={rfs}
             onNavigate={(tab, lupId) => {
               if (lupId) setSelectedLupId(lupId);
-              setActiveTab(tab);
+              if (tab === 'reportes-sla') {
+                setEquiposSubTab('tiempos-proveedor');
+                setActiveTab('equipos-infraestructura');
+              } else {
+                setActiveTab(tab);
+              }
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onOpenPalletModal={handleOpenPalletReport}
@@ -269,9 +278,13 @@ export default function App() {
         )}
 
         {activeTab === 'reportes-sla' && (
-          <SlaDashboard
+          <EquiposInfraestructuraModule
             pallets={pallets}
+            onPalletsUpdated={loadData}
             rfs={rfs}
+            onRfsUpdated={loadData}
+            initialSubTab="tiempos-proveedor"
+            currentUser={userProfile || undefined}
           />
         )}
 

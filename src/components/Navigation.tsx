@@ -6,7 +6,6 @@ import {
   Timer, 
   Truck, 
   ScanBarcode, 
-  BarChart3, 
   ClipboardCheck,
   AlertTriangle,
   KeyRound,
@@ -72,13 +71,6 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Layers,
       badge: (pendingPalletsCount + pendingRfsCount) > 0 ? `${pendingPalletsCount + pendingRfsCount}` : null,
       badgeColor: 'bg-rose-500 text-white'
-    },
-    {
-      id: 'reportes-sla' as MainTab,
-      label: 'Tiempos Proveedor (SLA)',
-      shortLabel: 'SLA Prov.',
-      icon: BarChart3,
-      badge: null
     },
     {
       id: 'historial-charlas' as MainTab,
