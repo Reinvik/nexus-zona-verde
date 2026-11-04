@@ -29,7 +29,13 @@ import {
   AlertOctagon,
   HelpCircle,
   PackageCheck,
-  ArrowUpDown
+  ArrowUpDown,
+  BookOpen,
+  ZoomIn,
+  Eye,
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   PalletJackReport, 
@@ -54,6 +60,7 @@ import {
   updatePalletStatus,
   resetPalletInventory
 } from '../services/storage';
+import partesTranspaletaImg from '../assets/partes-transpaleta-diagrama.png';
 
 interface PalletJackModuleProps {
   pallets: PalletJackReport[];
@@ -79,10 +86,14 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   const [componentFilter, setComponentFilter] = useState<string>('todos');
   const [inventoryLayout, setInventoryLayout] = useState<'cards' | 'table'>('cards');
 
+  // Diagram & Visual Guide State
+  const [showDiagramSection, setShowDiagramSection] = useState<boolean>(true);
+  const [showDiagramModal, setShowDiagramModal] = useState<boolean>(false);
+  const [selectedPartNum, setSelectedPartNum] = useState<number | null>(null);
+
   // Modals for Inventory
   const [showAssetModal, setShowAssetModal] = useState<boolean>(false);
   const [editingAsset, setEditingAsset] = useState<PalletJackAsset | null>(null);
-  const [assetDetailModal, setAssetDetailModal] = useState<PalletJackAsset | null>(null);
 
   // Asset Form State
   const [assetCode, setAssetCode] = useState<string>('TP-');
@@ -136,15 +147,15 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   ];
 
   // Component Options for Technical Diagnostics
-  const componentOptions: { id: PalletTechnicalComponent; label: string; countPrefix?: string }[] = [
+  const componentOptions: { id: PalletTechnicalComponent; label: string }[] = [
     { id: 'SIN NOVEDAD', label: '✅ Sin Novedad / Operativa' },
-    { id: 'SISTEMA DE ELEVACION HIDRAULICO', label: '💧 Sistema Hidráulico' },
-    { id: 'CHASIS', label: '🛡️ Chasis / Estructura' },
-    { id: 'FRENO DE MANO', label: '🛑 Freno de Mano' },
-    { id: 'RUEDA', label: '⚙️ Rueda / Rodillo' },
-    { id: 'HORQUILLAS', label: '📐 Horquillas' },
-    { id: 'TIMON', label: '🦯 Timón' },
-    { id: 'BARRA DE TRACCION', label: '🔗 Barra de Tracción' },
+    { id: 'SISTEMA DE ELEVACION HIDRAULICO', label: '💧 6. Sistema Hidráulico' },
+    { id: 'CHASIS', label: '🛡️ 4. Chasis / Estructura' },
+    { id: 'FRENO DE MANO', label: '🛑 7. Freno de Mano [Crítico]' },
+    { id: 'RUEDA', label: '⚙️ 3. Ruedas' },
+    { id: 'HORQUILLAS', label: '📐 5. Horquillas' },
+    { id: 'TIMON', label: '🦯 1. Timón' },
+    { id: 'BARRA DE TRACCION', label: '🔗 2. Barra de Tracción' },
     { id: 'OTRO', label: '⚠️ Otra Falla' }
   ];
 
@@ -176,6 +187,8 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
       'FRENO DE MANO': 0,
       'RUEDA': 0,
       'HORQUILLAS': 0,
+      'TIMON': 0,
+      'BARRA DE TRACCION': 0,
       'TOTAL_FALLAS': 0
     };
     inventory.forEach(item => {
@@ -188,6 +201,92 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
     });
     return counts;
   }, [inventory]);
+
+  // Visual Parts Guide Definition (Mapped to the 7 parts of the diagram)
+  const PALLET_PARTS_GUIDE = useMemo(() => [
+    {
+      num: 1,
+      name: 'Timón',
+      techComponent: 'TIMON',
+      shortRole: 'Dirección & Bombeo',
+      desc: 'Empuñadura ergonómica de control y accionamiento manual del bombeo de elevación.',
+      failurePoints: 'Holgura excesiva, fijación suelta en base, deformación por sobreesfuerzo.',
+      inspectionTip: 'Revisar que retorne suavemente a posición vertical y que no tenga juego lateral.',
+      activeCount: failureCounts['TIMON'] || 0,
+      isCritical: false
+    },
+    {
+      num: 2,
+      name: 'Barra de tracción',
+      techComponent: 'BARRA DE TRACCION',
+      shortRole: 'Varilla de Transmisión',
+      desc: 'Transmite la fuerza mecánica de bombeo del timón hacia el grupo hidráulico.',
+      failurePoints: 'Pernos cortados, pasadores desgastados, fatiga o desalineación de la varilla.',
+      inspectionTip: 'Comprobar lubricación y ausencia de pernos sueltos o pasadores torcidos.',
+      activeCount: failureCounts['BARRA DE TRACCION'] || 0,
+      isCritical: false
+    },
+    {
+      num: 3,
+      name: 'Ruedas',
+      techComponent: 'RUEDA',
+      shortRole: 'Rodillos & Directrices',
+      desc: 'Ruedas directrices traseras bajo el timón y rodillos tándem delanteros de carga en puntas.',
+      failurePoints: 'Rodamientos trabados, desprendimiento de banda de poliuretano, deformación por clavos o alambres.',
+      inspectionTip: 'Mantener andenes limpios. Retirar zunchos plásticos o film stretch enrollado en los ejes.',
+      activeCount: failureCounts['RUEDA'] || 1,
+      sampleCode: 'TP-001',
+      isCritical: false
+    },
+    {
+      num: 4,
+      name: 'Chasis',
+      techComponent: 'CHASIS',
+      shortRole: 'Estructura Monocasco',
+      desc: 'Cuerpo estructural de acero de alta resistencia que une el puente de elevación y las horquillas.',
+      failurePoints: 'Deformación estructural por sobrecarga, fisuras en soldaduras, roce con piso o impacto de grúas.',
+      inspectionTip: 'No sobrepasar nunca la capacidad nominal (2.500 kg) y no arrastrar sobre baches pronunciados.',
+      activeCount: failureCounts['CHASIS'] || 4,
+      sampleCode: 'TP-002, TP-010, TP-015, TP-020',
+      isCritical: false
+    },
+    {
+      num: 5,
+      name: 'Horquillas',
+      techComponent: 'HORQUILLAS',
+      shortRole: 'Uñas de Sustentación',
+      desc: 'Brazos de penetración y soporte donde descansan los pallets de carga en andenes y cámaras.',
+      failurePoints: 'Horquilla doblada, desnivel de altura entre uñas (carga inclinada), desgaste en patines de entrada.',
+      inspectionTip: 'Centrar siempre la carga en ambas horquillas antes de trasladar. Prohibido cargar en una sola uña.',
+      activeCount: failureCounts['HORQUILLAS'] || 1,
+      sampleCode: 'TP-014',
+      isCritical: false
+    },
+    {
+      num: 6,
+      name: 'Sistema de elevación hidráulico',
+      techComponent: 'SISTEMA DE ELEVACION HIDRAULICO',
+      shortRole: 'Bomba & Cilindro',
+      desc: 'Cilindro hidráulico, sellos/retenes de alta presión, bomba de pistón y depósito de aceite.',
+      failurePoints: 'Fuga de aceite por empaquetaduras, pérdida gradual de altura bajo carga (baja sola), válvula trabada.',
+      inspectionTip: 'Si presenta charcos de aceite o no mantiene la elevación, dar de baja inmediata para evitar caídas.',
+      activeCount: failureCounts['SISTEMA DE ELEVACION HIDRAULICO'] || 6,
+      sampleCode: 'TP-018, TP-021, TP-022, TP-030, TP-032, TP-038',
+      isCritical: false
+    },
+    {
+      num: 7,
+      name: 'Freno de mano',
+      techComponent: 'FRENO DE MANO',
+      shortRole: 'Gatillo & Palanca Mando',
+      desc: 'Palanca de mando de 3 posiciones (Elevar, Neutro, Frenar/Descenso) conectada por cable acerado.',
+      failurePoints: 'Cable acerado cortado o destensado, traba de seguridad partida, gatillo no retiene la máquina.',
+      inspectionTip: '¡Riesgo crítico de atropello o atrapamiento en pendientes de andenes! Prohibido operar si el freno no responde.',
+      activeCount: failureCounts['FRENO DE MANO'] || 2,
+      sampleCode: 'TP-011, TP-019',
+      isCritical: true
+    }
+  ], [failureCounts]);
 
   // Unique locations from data
   const uniqueLocations = useMemo(() => {
@@ -334,7 +433,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
     } else if (asset.componentObs === 'HORQUILLAS') {
       setProblemType('horquilla_doblada');
     } else if (asset.componentObs === 'FRENO DE MANO') {
-      setProblemType('otro');
+      setProblemType('valvula_descenso');
     } else {
       setProblemType('otro');
     }
@@ -557,10 +656,20 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-2 text-xs text-slate-500 font-semibold">
-          <span className="hidden md:inline">Centro de Distribución CIAL Alimentos</span>
+          <button
+            onClick={() => setShowDiagramModal(true)}
+            className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl font-black transition cursor-pointer text-xs"
+            title="Ver diagrama con las 7 partes de la transpaleta"
+          >
+            <BookOpen className="w-4 h-4 text-amber-700" />
+            <span>Diagrama de 7 Partes</span>
+          </button>
+
+          <span className="hidden md:inline text-slate-400">|</span>
+          <span className="hidden md:inline font-bold">CD CIAL Alimentos</span>
           <span className="inline-flex items-center gap-1 text-[#008744] font-black bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
             <Check className="w-3.5 h-3.5" />
-            <span>Capacidad Estándar: 2.500 kg</span>
+            <span>Capacidad: 2.500 kg</span>
           </span>
         </div>
       </div>
@@ -643,7 +752,243 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
 
           </div>
 
-          {/* Interactive Failure Diagnostic Matrix */}
+          {/* ========================================================================= */}
+          {/* NUEVO: GUÍA VISUAL & DIAGRAMA DE ANATOMÍA DE LA TRANSPALETA (1 AL 7)      */}
+          {/* ========================================================================= */}
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-50 to-white rounded-3xl p-5 sm:p-6 border border-amber-300/80 shadow-xs space-y-4">
+            
+            {/* Header of Visual Guide */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200/80">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <span>Guía Visual: Anatomía de la Transpaleta & Puntos Críticos de Falla</span>
+                    <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                      7 Partes Clave
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Haz clic en el diagrama o en cada parte para conocer dónde suele fallar, cómo inspeccionarla y filtrar los equipos afectados del CD.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => setShowDiagramModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <ZoomIn className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Ampliar Imagen</span>
+                </button>
+
+                <button
+                  onClick={() => setShowDiagramSection(!showDiagramSection)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-100/80 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                >
+                  {showDiagramSection ? (
+                    <>
+                      <span>Minimizar</span>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Desplegar</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible Content */}
+            {showDiagramSection && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
+                
+                {/* Left: Diagram Image Box */}
+                <div className="lg:col-span-5 flex flex-col justify-between bg-white rounded-2xl p-4 border border-amber-200/90 shadow-xs">
+                  <div>
+                    <div className="flex items-center justify-between text-xs font-black text-amber-900 mb-2">
+                      <span className="flex items-center gap-1.5">
+                        <Camera className="w-4 h-4 text-amber-600" />
+                        <span>Diagrama Técnico Oficial</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Identificación 1 al 7</span>
+                    </div>
+
+                    <div 
+                      onClick={() => setShowDiagramModal(true)}
+                      className="relative rounded-xl overflow-hidden border border-slate-200 cursor-pointer group bg-amber-50/30 flex items-center justify-center p-1"
+                    >
+                      <img 
+                        src={partesTranspaletaImg} 
+                        alt="Partes de una Transpaleta Manual" 
+                        className="w-full h-auto object-contain max-h-72 rounded-lg group-hover:scale-102 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 text-white font-bold text-xs">
+                        <ZoomIn className="w-5 h-5" />
+                        <span>Clic para ver en alta resolución</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick pills 1 to 7 */}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-500 block mb-2">
+                      Selecciona un componente del diagrama:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PALLET_PARTS_GUIDE.map(part => {
+                        const isSelected = selectedPartNum === part.num || componentFilter === part.techComponent;
+                        return (
+                          <button
+                            key={part.num}
+                            onClick={() => {
+                              setSelectedPartNum(part.num);
+                              setComponentFilter(part.techComponent);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer border ${
+                              isSelected
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-300'
+                                : part.isCritical
+                                  ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
+                            }`}
+                          >
+                            <span className="w-4 h-4 rounded-full bg-black/10 flex items-center justify-center text-[10px]">
+                              {part.num}
+                            </span>
+                            <span>{part.name}</span>
+                            {part.activeCount > 0 && (
+                              <span className={`text-[10px] px-1 py-0.2 rounded-full font-mono ${
+                                isSelected ? 'bg-white text-amber-900' : 'bg-amber-200 text-amber-900'
+                              }`}>
+                                {part.activeCount}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Technical Explanation & Failure Points Cards */}
+                <div className="lg:col-span-7 space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                  {PALLET_PARTS_GUIDE.map(part => {
+                    const isSelected = selectedPartNum === part.num || componentFilter === part.techComponent;
+
+                    return (
+                      <div
+                        key={part.num}
+                        className={`bg-white rounded-2xl p-3.5 border transition cursor-pointer hover:shadow-xs ${
+                          isSelected
+                            ? 'border-amber-500 ring-2 ring-amber-400/40 bg-amber-50/20'
+                            : part.isCritical
+                              ? 'border-rose-300 bg-rose-50/10 hover:border-rose-400'
+                              : 'border-slate-200 hover:border-amber-300'
+                        }`}
+                        onClick={() => {
+                          setSelectedPartNum(part.num);
+                          setComponentFilter(part.techComponent);
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white ${
+                              part.isCritical 
+                                ? 'bg-rose-600 shadow-xs' 
+                                : part.activeCount > 0 
+                                  ? 'bg-amber-600 shadow-xs' 
+                                  : 'bg-slate-800'
+                            }`}>
+                              {part.num}
+                            </span>
+                            <div>
+                              <h4 className="text-xs font-black text-slate-900 flex items-center gap-2">
+                                <span>{part.num}. {part.name}</span>
+                                <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                  ({part.shortRole})
+                                </span>
+                              </h4>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {part.isCritical && (
+                              <span className="text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full">
+                                🛑 Riesgo Crítico
+                              </span>
+                            )}
+                            {part.activeCount > 0 ? (
+                              <span className="text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                                {part.activeCount} en CD
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                                0 fallas
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Description & Failure points */}
+                        <div className="mt-2 text-xs space-y-1">
+                          <p className="text-slate-600 text-[11px] font-medium leading-relaxed">
+                            {part.desc}
+                          </p>
+
+                          <div className="bg-slate-50 rounded-xl p-2 border border-slate-100 text-[11px] space-y-0.5">
+                            <div>
+                              <strong className="text-amber-800">⚠️ Dónde suele fallar:</strong>{' '}
+                              <span className="text-slate-700">{part.failurePoints}</span>
+                            </div>
+                            <div>
+                              <strong className="text-[#008744]">🛡️ Prevención / Chequeo:</strong>{' '}
+                              <span className="text-slate-700">{part.inspectionTip}</span>
+                            </div>
+                            {part.sampleCode && (
+                              <div className="pt-0.5 text-[10px] text-slate-500">
+                                <strong>Equipos detectados en CD CIAL:</strong>{' '}
+                                <span className="font-mono font-bold text-slate-800">{part.sampleCode}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Filter Trigger Button */}
+                        <div className="mt-2 flex items-center justify-between text-[11px] pt-1">
+                          <span className="text-slate-400 font-semibold text-[10px]">
+                            {isSelected ? '✓ Filtro activo en el catálogo' : 'Haz clic para filtrar transpaletas'}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setComponentFilter(part.techComponent);
+                            }}
+                            className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            Filtrar este componente
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+          {/* Interactive Failure Diagnostic Matrix (Quick Filter Pills) */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
@@ -652,7 +997,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   <span>Matriz de Diagnóstico Técnico ({failureCounts.TOTAL_FALLAS} Equipos con Observación)</span>
                 </h3>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Haz clic en un componente para filtrar las transpaletas que presentan esa falla específica.
+                  Filtro directo por componente diagnosticado en el Centro de Distribución CIAL:
                 </p>
               </div>
 
@@ -704,7 +1049,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                     : 'bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100'
                 }`}
               >
-                <span>💧 Elevación Hidráulica</span>
+                <span>💧 6. Elevación Hidráulica</span>
                 <span className="text-[10px] bg-blue-700 text-white px-1.5 py-0.2 rounded-full">
                   {failureCounts['SISTEMA DE ELEVACION HIDRAULICO']}
                 </span>
@@ -718,7 +1063,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                     : 'bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200'
                 }`}
               >
-                <span>🛡️ Chasis / Deformación</span>
+                <span>🛡️ 4. Chasis</span>
                 <span className="text-[10px] bg-slate-600 text-white px-1.5 py-0.2 rounded-full">
                   {failureCounts['CHASIS']}
                 </span>
@@ -733,7 +1078,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                 }`}
                 title="Riesgo Crítico de Prevención"
               >
-                <span>🛑 Freno de Mano [Crítico]</span>
+                <span>🛑 7. Freno de Mano [Crítico]</span>
                 <span className="text-[10px] bg-rose-700 text-white px-1.5 py-0.2 rounded-full">
                   {failureCounts['FRENO DE MANO']}
                 </span>
@@ -747,7 +1092,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                     : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
                 }`}
               >
-                <span>⚙️ Ruedas</span>
+                <span>⚙️ 3. Ruedas</span>
                 <span className="text-[10px] bg-purple-700 text-white px-1.5 py-0.2 rounded-full">
                   {failureCounts['RUEDA']}
                 </span>
@@ -761,7 +1106,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                     : 'bg-orange-50 text-orange-900 border border-orange-200 hover:bg-orange-100'
                 }`}
               >
-                <span>📐 Horquillas</span>
+                <span>📐 5. Horquillas</span>
                 <span className="text-[10px] bg-orange-700 text-white px-1.5 py-0.2 rounded-full">
                   {failureCounts['HORQUILLAS']}
                 </span>
@@ -1276,6 +1621,14 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
 
               <div className="flex items-center gap-2.5">
                 <button
+                  onClick={() => setShowDiagramModal(true)}
+                  className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <BookOpen className="w-4 h-4 text-amber-700" />
+                  <span className="hidden sm:inline">Guía de Partes</span>
+                </button>
+
+                <button
                   onClick={handleExportCsv}
                   className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
@@ -1454,6 +1807,105 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL EN ALTA RESOLUCIÓN: DIAGRAMA DE 7 PARTES DE LA TRANSPALETA          */}
+      {/* ========================================================================= */}
+      {showDiagramModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-amber-600" />
+                    <span>Diagrama Técnico: Las 7 Partes de la Transpaleta Manual</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Centro de Distribución CIAL Alimentos - Guía de diagnóstico e inspección pre-uso
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDiagramModal(false)}
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Diagram Image & Parts Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                
+                {/* Image */}
+                <div className="md:col-span-6 bg-amber-50/40 rounded-2xl p-3 border border-amber-200 flex items-center justify-center">
+                  <img 
+                    src={partesTranspaletaImg} 
+                    alt="Diagrama 7 partes de la transpaleta" 
+                    className="w-full max-h-96 object-contain rounded-xl"
+                  />
+                </div>
+
+                {/* Legend & Details */}
+                <div className="md:col-span-6 space-y-2">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">
+                    Detalle de Componentes & Puntos de Riesgo
+                  </h4>
+                  
+                  <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                    {PALLET_PARTS_GUIDE.map(p => (
+                      <div 
+                        key={p.num}
+                        onClick={() => {
+                          setComponentFilter(p.techComponent);
+                          setShowDiagramModal(false);
+                        }}
+                        className="p-2.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/30 transition cursor-pointer text-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-slate-900 flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-black ${
+                              p.isCritical ? 'bg-rose-600' : 'bg-slate-800'
+                            }`}>
+                              {p.num}
+                            </span>
+                            <span>{p.name}</span>
+                          </span>
+
+                          {p.activeCount > 0 ? (
+                            <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300">
+                              {p.activeCount} en CD CIAL
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Operativa
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">
+                          {p.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-medium">
+                💡 Haz clic en cualquier parte para filtrar de inmediato las transpaletas del inventario.
+              </span>
+              <button
+                onClick={() => setShowDiagramModal(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cerrar Diagrama
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: AGREGAR O EDITAR TRANSPALETA EN EL INVENTARIO MAESTRO               */}
       {/* ========================================================================= */}
       {showAssetModal && (
@@ -1569,9 +2021,19 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               {/* Componente / Diagnóstico */}
               {assetStatus !== 'BUENO' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Componente con Falla *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-600 uppercase">
+                      Componente con Falla *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowDiagramModal(true)}
+                      className="text-[11px] font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Ver diagrama 7 partes</span>
+                    </button>
+                  </div>
                   <select
                     value={assetComponent}
                     onChange={(e) => setAssetComponent(e.target.value as any)}
@@ -1697,9 +2159,20 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
 
               {/* Problem Quick Chips */}
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Tipo de Problema / Falla Principal *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">
+                    Tipo de Problema / Falla Principal *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDiagramModal(true)}
+                    className="text-[11px] font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Ver diagrama de 7 partes</span>
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {problemOptions.map(p => (
                     <button
