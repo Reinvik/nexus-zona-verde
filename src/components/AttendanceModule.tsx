@@ -84,19 +84,48 @@ const SHIFT_OPTIONS: { id: ShiftId | 'todos'; name: string; hours: string; defau
   { id: 'todos', name: 'Todos los Turnos (Dotación 102)', hours: 'Todos los Turnos', defaultArrival: '07:00' }
 ];
 
-const MONTH_TABS = [
-  { id: '2026-10', name: 'Octubre 2026 (Mes Actual)' },
-  { id: '2026-01', name: 'Ene (01)' },
-  { id: '2026-02', name: 'Feb (02)' },
-  { id: '2026-03', name: 'Mar (03)' },
-  { id: '2026-04', name: 'Abr (04)' },
-  { id: '2026-05', name: 'May (05)' },
-  { id: '2026-06', name: 'Jun (06)' },
-  { id: '2026-07', name: 'Jul (07)' },
-  { id: '2026-08', name: 'Ago (08)' },
-  { id: '2026-09', name: 'Sep (09)' },
-  { id: 'todos', name: 'Historial Completo (Ene - Oct)' }
+const MONTH_NAMES_MAP = [
+  { short: 'Ene', long: 'Enero' },
+  { short: 'Feb', long: 'Febrero' },
+  { short: 'Mar', long: 'Marzo' },
+  { short: 'Abr', long: 'Abril' },
+  { short: 'May', long: 'Mayo' },
+  { short: 'Jun', long: 'Junio' },
+  { short: 'Jul', long: 'Julio' },
+  { short: 'Ago', long: 'Agosto' },
+  { short: 'Sep', long: 'Septiembre' },
+  { short: 'Oct', long: 'Octubre' },
+  { short: 'Nov', long: 'Noviembre' },
+  { short: 'Dic', long: 'Diciembre' }
 ];
+
+const getDynamicMonthTabs = () => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const currentKey = `${currentYear}-${currentMonth}`;
+
+  const tabs: { id: string; name: string }[] = [];
+
+  MONTH_NAMES_MAP.forEach((m, idx) => {
+    const num = String(idx + 1).padStart(2, '0');
+    const id = `${currentYear}-${num}`;
+    const isCurrent = id === currentKey;
+    tabs.push({
+      id,
+      name: isCurrent ? `${m.long} ${currentYear} (Mes Actual)` : `${m.short} (${num})`
+    });
+  });
+
+  tabs.push({
+    id: 'todos',
+    name: `Historial Completo (${currentYear})`
+  });
+
+  return tabs;
+};
+
+const MONTH_TABS = getDynamicMonthTabs();
 
 const STATUS_CONFIG: Record<AttendanceStatus, {
   label: string;
@@ -302,10 +331,21 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   currentUser
 }) => {
   const canManageAttendance = currentUser?.permissions?.canManageAttendance ?? (currentUser?.role !== 'prevencion');
-  // Current date in YYYY-MM-DD
+  // Current date in YYYY-MM-DD (Chile / local timezone)
   const todayStr = useMemo(() => {
     const now = new Date();
-    return now.toISOString().slice(0, 10);
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const todayHeaderLabel = useMemo(() => {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const monthNamesShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const m = monthNamesShort[now.getMonth()] || 'nov';
+    return `${d}-${m}`;
   }, []);
 
   const [viewMode, setViewMode] = useState<'diario' | 'matriz'>('matriz');
@@ -313,7 +353,12 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const [selectedShiftId, setSelectedShiftId] = useState<ShiftId | 'todos'>(() => {
     return currentUser?.shiftId || 'turno-1';
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
   const [operators, setOperators] = useState<OperatorItem[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [search, setSearch] = useState<string>('');
@@ -625,8 +670,9 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   };
 
   const scrollToToday = () => {
-    if (selectedMonth !== '2026-10') {
-      setSelectedMonth('2026-10');
+    const currentMonthKey = todayStr.slice(0, 7);
+    if (selectedMonth !== currentMonthKey && selectedMonth !== 'todos') {
+      setSelectedMonth(currentMonthKey);
     }
     setTimeout(() => {
       todayHeaderRef.current?.scrollIntoView({
@@ -893,7 +939,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   // Matrix dates to display based on selectedMonth
   const matrixDates = useMemo(() => {
     if (selectedMonth === 'todos') {
-      // In "todos", show all 304 dates
+      // In "todos", show all dates
       return HISTORICAL_DATE_KEYS.map((key, i) => ({
         key,
         header: HISTORICAL_HEADER_DAYS[i] || key.slice(5)
@@ -909,6 +955,24 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
         });
       }
     });
+
+    // Dynamic fallback if month is not in static keys
+    if (result.length === 0 && /^\d{4}-\d{2}$/.test(selectedMonth)) {
+      const [yearStr, monthStr] = selectedMonth.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const mName = monthNames[month - 1] || 'mes';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dayPadded = String(d).padStart(2, '0');
+        result.push({
+          key: `${selectedMonth}-${dayPadded}`,
+          header: `${dayPadded}-${mName}`
+        });
+      }
+    }
+
     return result;
   }, [selectedMonth]);
 
@@ -2203,10 +2267,10 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 type="button"
                 onClick={scrollToToday}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xs transition-all text-xs cursor-pointer active:scale-95"
-                title="Desplazarse a la columna de hoy (27-oct)"
+                title={`Desplazarse a la columna de hoy (${todayHeaderLabel})`}
               >
                 <Calendar className="w-3.5 h-3.5 text-white" />
-                <span>📍 Ir a Hoy (27-oct)</span>
+                <span>📍 Ir a Hoy ({todayHeaderLabel})</span>
               </button>
 
               <button
@@ -2264,7 +2328,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                       const isToday = d.key === todayStr;
                       const parts = d.header.split('-');
                       const dayNum = parts[0] || d.header;
-                      const monthName = parts[1] || 'OCT';
+                      const monthName = parts[1] || (d.key ? d.key.slice(5, 7) : 'MES');
 
                       return (
                         <th 
