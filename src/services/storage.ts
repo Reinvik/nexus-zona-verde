@@ -92,6 +92,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Ariel Mella',
     role: 'jefatura',
     area: 'Jefatura de Operaciones & CD',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'todos',
     permissions: {
       canDeleteLup: true,
       canEditLup: true,
@@ -105,11 +107,25 @@ export const INITIAL_USERS: AppUser[] = [
     updatedAt: '2026-10-26T15:00:00Z'
   },
   {
+    id: 'user-carlos-venegas',
+    email: 'carlos.venegas@cial.cl',
+    name: 'Carlos Venegas',
+    role: 'jefatura',
+    area: 'Jefatura Logística & CD',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'Carlos Venegas',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.jefatura },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
     id: 'user-francisco-lara',
     email: 'francisco.lara@cial.cl',
     name: 'Francisco Lara',
     role: 'jefatura',
     area: 'Jefe de Turno / Operaciones',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'todos',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.jefatura },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -120,6 +136,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Euro Velásquez',
     role: 'jefatura',
     area: 'Jefe de Turno / Operaciones',
+    shiftId: 'turno-2',
+    assignedSupervisorName: 'todos',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.jefatura },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -130,6 +148,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Walter Sánchez',
     role: 'supervisor',
     area: 'Supervisor Despacho & Andenes',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'Walter Sánchez',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -140,6 +160,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Mayckell Pereira',
     role: 'supervisor',
     area: 'Supervisor Encajado & Picking',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'Mayckell Pereira',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -150,6 +172,32 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Claudio Sepúlveda',
     role: 'supervisor',
     area: 'Supervisor Picking Frío',
+    shiftId: 'turno-2',
+    assignedSupervisorName: 'Claudio Sepúlveda',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-cristian-hernandez',
+    email: 'cristian.hernandez@cial.cl',
+    name: 'Cristian Hernández',
+    role: 'supervisor',
+    area: 'Supervisor Recepción & Almacenamiento',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'Cristian Hernandez',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-bryan-marino',
+    email: 'bryan.marino@cial.cl',
+    name: 'Bryan Mariño',
+    role: 'supervisor',
+    area: 'Supervisor de Turno / Operaciones',
+    shiftId: 'turno-3',
+    assignedSupervisorName: 'Bryan Mariño',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -160,6 +208,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Prevención de Riesgos CD',
     role: 'prevencion',
     area: 'Seguridad y Salud Ocupacional (SSO)',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'todos',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-27T10:00:00Z'
@@ -170,6 +220,8 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Mariana Vega',
     role: 'prevencion',
     area: 'Prevención de Riesgos SSO',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'todos',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
     createdAt: '2026-10-28T09:00:00Z',
     updatedAt: '2026-10-28T09:00:00Z'
@@ -180,19 +232,11 @@ export const INITIAL_USERS: AppUser[] = [
     name: 'Fernando Albornoz',
     role: 'prevencion',
     area: 'Prevención de Riesgos SSO (Externo)',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'todos',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.prevencion },
     createdAt: '2026-10-28T09:00:00Z',
     updatedAt: '2026-10-28T09:00:00Z'
-  },
-  {
-    id: 'user-cristian-hernandez',
-    email: 'cristian.hernandez@cial.cl',
-    name: 'Cristian Hernández',
-    role: 'supervisor',
-    area: 'Supervisor Recepción & Almacenamiento',
-    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
-    createdAt: '2026-10-01T08:00:00Z',
-    updatedAt: '2026-10-26T15:00:00Z'
   }
 ];
 
@@ -1085,6 +1129,41 @@ export function getAppUsers(): AppUser[] {
 
   ensurePrevencionUser('mariana.vega@cial.cl', 'Mariana Vega', 'Prevención de Riesgos SSO');
   ensurePrevencionUser('ext.fernando.albornoz@cial.cl', 'Fernando Albornoz', 'Prevención de Riesgos SSO (Externo)');
+
+  // Normalizar preasignación de turnos y dotación si no están definidos
+  let hasUserUpdates = false;
+  users = users.map(u => {
+    let updated = { ...u };
+    let changed = false;
+
+    if (!updated.shiftId) {
+      if (updated.name.toLowerCase().includes('euro') || updated.name.toLowerCase().includes('claudio')) {
+        updated.shiftId = 'turno-2';
+      } else if (updated.name.toLowerCase().includes('bryan')) {
+        updated.shiftId = 'turno-3';
+      } else {
+        updated.shiftId = 'turno-1';
+      }
+      changed = true;
+    }
+
+    if (!updated.assignedSupervisorName) {
+      if (updated.role === 'supervisor') {
+        updated.assignedSupervisorName = updated.name;
+        changed = true;
+      } else {
+        updated.assignedSupervisorName = 'todos';
+        changed = true;
+      }
+    }
+
+    if (changed) hasUserUpdates = true;
+    return updated;
+  });
+
+  if (hasUserUpdates) {
+    safeSet(KEYS.USERS, users);
+  }
 
   return users;
 }

@@ -309,6 +309,7 @@ export interface AppUser {
   role: UserRole;
   area?: string;
   shiftId?: ShiftId;
+  assignedSupervisorName?: string; // Preasignación de dotación para filtrar automáticamente la gente
   permissions: UserPermissions;
   isSuperAdmin?: boolean; // ariel.mella@cial.cl
   createdAt: string;

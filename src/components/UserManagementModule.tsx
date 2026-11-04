@@ -21,7 +21,7 @@ import {
   FileText,
   BadgeCheck
 } from 'lucide-react';
-import { AppUser, UserRole, UserPermissions } from '../types';
+import { AppUser, UserRole, UserPermissions, ShiftId } from '../types';
 import { 
   getAppUsers, 
   saveAppUser, 
@@ -45,6 +45,8 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
   const [newName, setNewName] = useState<string>('');
   const [newRole, setNewRole] = useState<UserRole>('supervisor');
   const [newArea, setNewArea] = useState<string>('Despacho & Andenes');
+  const [newShiftId, setNewShiftId] = useState<ShiftId | 'todos'>('turno-1');
+  const [newAssignedSupervisor, setNewAssignedSupervisor] = useState<string>('todos');
 
   const loadUsers = () => {
     const list = getAppUsers();
@@ -131,6 +133,39 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
     showNotification(`Permisos de ${targetUser.name} restablecidos a valores estándar.`);
   };
 
+  // Update preassigned shift for user
+  const handleUpdateUserShift = (userId: string, shiftId?: ShiftId) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+
+    const updatedUser: AppUser = {
+      ...targetUser,
+      shiftId,
+      updatedAt: new Date().toISOString()
+    };
+
+    saveAppUser(updatedUser);
+    loadUsers();
+    const shiftLabel = shiftId === 'turno-1' ? 'Turno 1' : shiftId === 'turno-2' ? 'Turno 2' : shiftId === 'turno-3' ? 'Turno 3' : 'Todos los Turnos';
+    showNotification(`Turno preasignado ${shiftLabel} guardado para ${targetUser.name}`);
+  };
+
+  // Update preassigned dotación / supervisor for user
+  const handleUpdateUserDotacion = (userId: string, assignedSupervisorName: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+
+    const updatedUser: AppUser = {
+      ...targetUser,
+      assignedSupervisorName: assignedSupervisorName === 'todos' ? undefined : assignedSupervisorName,
+      updatedAt: new Date().toISOString()
+    };
+
+    saveAppUser(updatedUser);
+    loadUsers();
+    showNotification(`Dotación preasignada "${assignedSupervisorName}" guardada para ${targetUser.name}`);
+  };
+
   // Delete user
   const handleDeleteUser = (userId: string, userName: string) => {
     if (window.confirm(`¿Estás seguro de eliminar el acceso del usuario "${userName}" del sistema Zona Verde?`)) {
@@ -162,6 +197,8 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
       name: newName.trim() || cleanEmail.split('@')[0],
       role: newRole,
       area: newArea.trim() || 'Operaciones CIAL',
+      shiftId: newShiftId === 'todos' ? undefined : newShiftId,
+      assignedSupervisorName: newAssignedSupervisor === 'todos' ? undefined : newAssignedSupervisor,
       permissions: {
         ...DEFAULT_ROLE_PERMISSIONS[newRole]
       },
@@ -445,6 +482,63 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
 
                 </div>
 
+                {/* PREASIGNACIÓN DE TURNO & DOTACIÓN (REQUERIMIENTO JEFATURAS/SUPERVISORES) */}
+                <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span>Turno Preasignado:</span>
+                    </span>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        { id: 'turno-1', label: 'Turno 1', desc: '07:00 - 15:00' },
+                        { id: 'turno-2', label: 'Turno 2', desc: '14:30 - 22:30' },
+                        { id: 'turno-3', label: 'Turno 3', desc: '22:00 - 07:00' },
+                        { id: undefined, label: 'Sin Turno', desc: 'Ver todos' }
+                      ].map((t) => {
+                        const isSelected = u.shiftId === t.id;
+                        return (
+                          <button
+                            key={t.label}
+                            type="button"
+                            onClick={() => handleUpdateUserShift(u.id, t.id as any)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                              isSelected
+                                ? 'bg-[#008744] text-white border-[#008744] shadow-sm font-black ring-2 ring-emerald-300'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                            title={`Preasignar ${t.label} (${t.desc})`}
+                          >
+                            <span>{t.label}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-950 shrink-0">Dotación a ver:</span>
+                    <select
+                      value={u.assignedSupervisorName || 'todos'}
+                      onChange={(e) => handleUpdateUserDotacion(u.id, e.target.value)}
+                      className="text-xs font-bold rounded-xl px-3 py-1.5 border border-slate-300 bg-white text-slate-800 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="todos">Toda la Dotación (Sin filtro)</option>
+                      <option value={u.name}>Mi dotación propia ({u.name})</option>
+                      <option value="Walter Sánchez">Walter Sánchez (Despacho)</option>
+                      <option value="Mayckell Pereira">Mayckell Pereira (Encajado/Picking)</option>
+                      <option value="Claudio Sepúlveda">Claudio Sepúlveda (Picking Frío)</option>
+                      <option value="Cristian Hernandez">Cristian Hernández (Recepción)</option>
+                      <option value="Bryan Mariño">Bryan Mariño (Turno 3)</option>
+                      <option value="Carlos Venegas">Carlos Venegas (Jefatura Logística)</option>
+                      <option value="Francisco Lara">Francisco Lara (Jefe Turno)</option>
+                      <option value="Euro Velásquez">Euro Velásquez (Jefe Turno)</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* MATRIZ DE TOGGLES DE PERMISOS GRANULARES */}
                 <div className="mt-4 pt-4 border-t border-slate-100">
                   <p className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2.5">
@@ -669,6 +763,43 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
                     onChange={(e) => setNewArea(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Turno Preasignado
+                  </label>
+                  <select
+                    value={newShiftId}
+                    onChange={(e) => setNewShiftId(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="turno-1">Turno 1 (07:00 - 15:00)</option>
+                    <option value="turno-2">Turno 2 (14:30 - 22:30)</option>
+                    <option value="turno-3">Turno 3 (22:00 - 07:00)</option>
+                    <option value="todos">Todos los Turnos</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Dotación Asignada
+                  </label>
+                  <select
+                    value={newAssignedSupervisor}
+                    onChange={(e) => setNewAssignedSupervisor(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="todos">Toda la Dotación</option>
+                    <option value="Walter Sánchez">Walter Sánchez (Despacho)</option>
+                    <option value="Mayckell Pereira">Mayckell Pereira (Encajado/Picking)</option>
+                    <option value="Claudio Sepúlveda">Claudio Sepúlveda (Picking Frío)</option>
+                    <option value="Cristian Hernandez">Cristian Hernández (Recepción)</option>
+                    <option value="Bryan Mariño">Bryan Mariño (Turno 3)</option>
+                    <option value="Carlos Venegas">Carlos Venegas (Logística)</option>
+                  </select>
                 </div>
               </div>
 

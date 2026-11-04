@@ -58,6 +58,7 @@ import {
   getShiftTeamPhoto,
   saveShiftTeamPhoto,
   deleteShiftTeamPhoto,
+  getAppUsers,
   ShiftTeamPhoto
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -309,13 +310,23 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
   const [viewMode, setViewMode] = useState<'diario' | 'matriz'>('matriz');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [selectedShiftId, setSelectedShiftId] = useState<ShiftId | 'todos'>('turno-1');
+  const [selectedShiftId, setSelectedShiftId] = useState<ShiftId | 'todos'>(() => {
+    return currentUser?.shiftId || 'turno-1';
+  });
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
   const [operators, setOperators] = useState<OperatorItem[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [search, setSearch] = useState<string>('');
   const [selectedArea, setSelectedArea] = useState<string>('todas');
-  const [selectedSupervisor, setSelectedSupervisor] = useState<string>('todos');
+  const [selectedSupervisor, setSelectedSupervisor] = useState<string>(() => {
+    if (currentUser?.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos') {
+      return currentUser.assignedSupervisorName;
+    }
+    if (currentUser?.role === 'supervisor') {
+      return currentUser.name;
+    }
+    return 'todos';
+  });
   const [selectedGroup, setSelectedGroup] = useState<string>('todos');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -672,6 +683,61 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
     return names.map(name => ({ name, count: counts[name] }));
   }, [operators]);
+
+  // Obtener el badge de turno preasignado de un supervisor o jefatura
+  const getSupervisorShiftBadge = (supervisorName: string): string | null => {
+    const appUsers = getAppUsers();
+    const cleanSup = supervisorName.toLowerCase().trim();
+    const matchedUser = appUsers.find(
+      u => u.name.toLowerCase().trim() === cleanSup ||
+           cleanSup.includes(u.name.toLowerCase().trim()) ||
+           u.name.toLowerCase().includes(cleanSup)
+    );
+    if (matchedUser?.shiftId) {
+      return matchedUser.shiftId === 'turno-1' ? 'T1' : matchedUser.shiftId === 'turno-2' ? 'T2' : 'T3';
+    }
+    return null;
+  };
+
+  // Manejador al elegir un supervisor/jefatura: aplica su dotación Y su turno preasignado
+  const handleSelectSupervisor = (supervisorName: string) => {
+    if (supervisorName === 'todos' || selectedSupervisor === supervisorName) {
+      setSelectedSupervisor('todos');
+      return;
+    }
+
+    setSelectedSupervisor(supervisorName);
+
+    // 1. Buscar si este supervisor o jefatura tiene turno preasignado en AppUsers
+    const appUsers = getAppUsers();
+    const cleanSup = supervisorName.toLowerCase().trim();
+    const matchedUser = appUsers.find(
+      u => u.name.toLowerCase().trim() === cleanSup ||
+           cleanSup.includes(u.name.toLowerCase().trim()) ||
+           u.name.toLowerCase().includes(cleanSup)
+    );
+
+    if (matchedUser?.shiftId) {
+      setSelectedShiftId(matchedUser.shiftId);
+      const shiftLabel = matchedUser.shiftId === 'turno-1' ? 'Turno 1' : matchedUser.shiftId === 'turno-2' ? 'Turno 2' : 'Turno 3';
+      showToast(`🎯 Preasignado: ${supervisorName} • ${shiftLabel}`);
+    } else {
+      // 2. Si no tiene usuario explícito, detectar turno mayoritario de su dotación
+      const supOperators = operators.filter(o => (o.supervisor || '').trim().toLowerCase() === cleanSup && o.shiftId);
+      if (supOperators.length > 0) {
+        const counts: Record<string, number> = {};
+        for (const op of supOperators) {
+          if (op.shiftId) counts[op.shiftId] = (counts[op.shiftId] || 0) + 1;
+        }
+        const predominantShift = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] as ShiftId;
+        if (predominantShift) {
+          setSelectedShiftId(predominantShift);
+          const shiftLabel = predominantShift === 'turno-1' ? 'Turno 1' : predominantShift === 'turno-2' ? 'Turno 2' : 'Turno 3';
+          showToast(`🎯 Dotación: ${supervisorName} • ${shiftLabel}`);
+        }
+      }
+    }
+  };
 
   // Operational Groups list with counts
   const groupOptions = useMemo(() => {
@@ -1314,15 +1380,18 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             </label>
             <select
               value={selectedSupervisor}
-              onChange={(e) => setSelectedSupervisor(e.target.value)}
+              onChange={(e) => handleSelectSupervisor(e.target.value)}
               className="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-indigo-600 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="todos">Todos los Supervisores ({operators.length})</option>
-              {supervisorOptions.map(s => (
-                <option key={s.name} value={s.name}>
-                  {s.name} ({s.count} colab.)
-                </option>
-              ))}
+              {supervisorOptions.map(s => {
+                const shiftBadge = getSupervisorShiftBadge(s.name);
+                return (
+                  <option key={s.name} value={s.name}>
+                    {s.name} {shiftBadge ? `[${shiftBadge}]` : ''} ({s.count} colab.)
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -1393,24 +1462,36 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             >
               Todos ({operators.length})
             </button>
-            {supervisorOptions.map(s => (
-              <button
-                key={s.name}
-                onClick={() => setSelectedSupervisor(selectedSupervisor === s.name ? 'todos' : s.name)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  selectedSupervisor === s.name
-                    ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
-                    : 'bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
-                }`}
-              >
-                <span>{s.name}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                  selectedSupervisor === s.name ? 'bg-indigo-700 text-white' : 'bg-indigo-200/80 text-indigo-900'
-                }`}>
-                  {s.count}
-                </span>
-              </button>
-            ))}
+            {supervisorOptions.map(s => {
+              const shiftBadge = getSupervisorShiftBadge(s.name);
+              const isSelected = selectedSupervisor === s.name;
+              return (
+                <button
+                  key={s.name}
+                  onClick={() => handleSelectSupervisor(s.name)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
+                      : 'bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+                  }`}
+                  title={shiftBadge ? `Turno preasignado: ${shiftBadge} • Clic para ver su dotación` : `Ver dotación de ${s.name}`}
+                >
+                  <span>{s.name}</span>
+                  {shiftBadge && (
+                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider ${
+                      isSelected ? 'bg-amber-400 text-slate-950 font-black' : 'bg-indigo-200 text-indigo-900 font-bold'
+                    }`}>
+                      {shiftBadge}
+                    </span>
+                  )}
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                    isSelected ? 'bg-indigo-700 text-white' : 'bg-indigo-200/80 text-indigo-900'
+                  }`}>
+                    {s.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Quick Pill Row 2: Operational Groups */}
@@ -1450,6 +1531,39 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
           </div>
 
         </div>
+
+        {/* Quick Shortcut to Current User's Preassigned View */}
+        {currentUser && (currentUser.shiftId || currentUser.assignedSupervisorName || currentUser.role === 'supervisor') && (
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Preasignación Activa:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentUser.shiftId) setSelectedShiftId(currentUser.shiftId);
+                  if (currentUser.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos') {
+                    setSelectedSupervisor(currentUser.assignedSupervisorName);
+                  } else if (currentUser.role === 'supervisor') {
+                    setSelectedSupervisor(currentUser.name);
+                  }
+                  const shiftLabel = currentUser.shiftId === 'turno-2' ? 'Turno 2' : currentUser.shiftId === 'turno-3' ? 'Turno 3' : 'Turno 1';
+                  showToast(`🎯 Mostrando dotación preasignada de ${currentUser.name} (${shiftLabel})`);
+                }}
+                className="px-3 py-1 rounded-xl text-xs font-black bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Haz clic para aplicar directamente tu turno y dotación preasignada"
+              >
+                <span>🎯 Mi Dotación: {currentUser.name.split(' ')[0]} • {currentUser.shiftId === 'turno-2' ? 'Turno 2' : currentUser.shiftId === 'turno-3' ? 'Turno 3' : 'Turno 1'}</span>
+              </button>
+            </div>
+            
+            <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+              Preasignado en Configuración (Usuarios & Permisos)
+            </span>
+          </div>
+        )}
 
         {/* Applied Filters indicator bar */}
         {(selectedSupervisor !== 'todos' || selectedGroup !== 'todos' || selectedShiftId !== 'todos' || selectedArea !== 'todas' || search.trim() !== '') && (
