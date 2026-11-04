@@ -121,7 +121,7 @@ export const SlaDashboard: React.FC<SlaDashboardProps> = ({ pallets, rfs }) => {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    Servicio Hidráulico Valparaíso SpA
+                    Proveedor Transpaletas
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Mantención y reparación de transpaletas manuales
@@ -197,7 +197,7 @@ export const SlaDashboard: React.FC<SlaDashboardProps> = ({ pallets, rfs }) => {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    Soporte Hardware TI CIAL / Zebra
+                    Proveedor RF
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Servicio técnico de radiofrecuencia, baterías y gatillos
@@ -273,13 +273,13 @@ export const SlaDashboard: React.FC<SlaDashboardProps> = ({ pallets, rfs }) => {
         </h4>
         <ul className="text-xs text-amber-900 space-y-1.5 list-disc list-inside font-medium leading-relaxed">
           <li>
-            <strong>Reunión de Zona Verde (07:10 AM):</strong> El líder de turno debe revisar las transpaletas y pistolas en estado "Pendiente" y asignarlas al coordinador de patio para entrega al furgón del proveedor.
+            <strong>Reunión de Zona Verde (07:10 AM):</strong> El Jefe de turno debe revisar las transpaletas y pistolas en estado "Pendiente" y asignarlas al coordinador de patio para entrega al furgón del proveedor.
           </li>
           <li>
-            <strong>Escalamiento por demoras:</strong> Si una transpaleta supera las 48 horas sin entrega, la app marca el estado automáticamente en <span className="font-bold text-rose-700">Rojo</span> para alertar a la Jefatura de Mantención CIAL.
+            <strong>Escalamiento por demoras:</strong> Si una transpaleta supera las 48 horas sin entrega, la app marca el estado en <span className="font-bold text-rose-700">Rojo</span> para alertar a la Administrativo de operaciones CIAL.
           </li>
           <li>
-            <strong>Rotación de Pistolas RF:</strong> Evitar operar con menos del 85% de la dotación nominal de terminales para no retrasar el picking de cámara fría.
+            <strong>Rotación de Pistolas RF y transpaletas:</strong> Evitar operar con menos del 85% de la dotación nominal de terminales para no retrasar el picking.
           </li>
         </ul>
       </div>

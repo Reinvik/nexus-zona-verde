@@ -53,7 +53,7 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
   const [problemDescription, setProblemDescription] = useState<string>('');
   const [severity, setSeverity] = useState<EquipmentSeverity>('critica');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [providerName, setProviderName] = useState<string>('Soporte Hardware TI CIAL / Partner Zebra');
+  const [providerName, setProviderName] = useState<string>('Proveedor RF');
 
   const rfProblemOptions: { type: RfProblemType; label: string; icon: string }[] = [
     { type: 'gatillo_trabado', label: '🔫 Gatillo Pistola Trabado / Hundido', icon: '🔫' },

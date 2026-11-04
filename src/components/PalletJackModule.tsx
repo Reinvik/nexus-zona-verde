@@ -136,7 +136,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   const [problemDescription, setProblemDescription] = useState<string>('');
   const [severity, setSeverity] = useState<EquipmentSeverity>('critica');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [providerName, setProviderName] = useState<string>('Servicio Hidráulico Valparaíso SpA');
+  const [providerName, setProviderName] = useState<string>('Proveedor Transpaletas');
 
   const problemOptions: { type: PalletProblemType; label: string; icon: string }[] = [
     { type: 'fuga_hidraulica', label: '💧 Fuga de Aceite / Hidráulico', icon: '💧' },
@@ -1617,7 +1617,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   <span>Seguimiento de Tickets & SLA Proveedor Técnico</span>
                 </h2>
                 <p className="text-xs text-slate-500 font-medium">
-                  Reporte de fallas con foto y control del tiempo de respuesta del proveedor (Servicio Hidráulico Valparaíso SpA).
+                  Reporte de fallas con foto y control del tiempo de respuesta del proveedor (Proveedor Transpaletas).
                 </p>
               </div>
 
