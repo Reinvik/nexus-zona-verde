@@ -150,6 +150,34 @@ export interface PalletJackReport {
   technicianNotes?: string;
 }
 
+export type PalletConservationStatus = 'BUENO' | 'REGULAR' | 'MALO';
+
+export type PalletTechnicalComponent = 
+  | 'SIN NOVEDAD'
+  | 'SISTEMA DE ELEVACION HIDRAULICO'
+  | 'CHASIS'
+  | 'FRENO DE MANO'
+  | 'RUEDA'
+  | 'HORQUILLAS'
+  | 'TIMON'
+  | 'BARRA DE TRACCION'
+  | 'OTRO';
+
+export interface PalletJackAsset {
+  id: string; // e.g. "TP-001"
+  code: string; // e.g. "TP-001"
+  capacityKg: number; // e.g. 2500
+  capacityConfirmed: boolean; // false = "?- REVISAR CON PROVEEDOR"
+  location: string; // e.g. "PICKING", "DESPACHO", "SALA DE LAVADO", "LI", "PALETIZADO", "REEMPLAZO ZONALES"
+  status: PalletConservationStatus; // "BUENO" | "REGULAR" | "MALO"
+  componentObs: PalletTechnicalComponent | string; // e.g. "SISTEMA DE ELEVACION HIDRAULICO", "SIN NOVEDAD"
+  notes?: string;
+  brand?: string; // e.g. "Jungheinrich / Estándar CIAL"
+  lastInspectionDate?: string;
+  activeTicketId?: string; // ID del ticket de reparación en PalletJackReport si está en taller o reportada
+  updatedAt?: string;
+}
+
 export type RfProblemType = 
   | 'gatillo_trabado'
   | 'pantalla_rota'

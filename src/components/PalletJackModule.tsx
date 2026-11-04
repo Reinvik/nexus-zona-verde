@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Truck, 
   Plus, 
@@ -14,15 +14,45 @@ import {
   Filter,
   X,
   ArrowRight,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MapPin,
+  Gauge,
+  ShieldAlert,
+  Sparkles,
+  RefreshCw,
+  Edit3,
+  Trash2,
+  LayoutGrid,
+  ListFilter,
+  SlidersHorizontal,
+  Check,
+  AlertOctagon,
+  HelpCircle,
+  PackageCheck,
+  ArrowUpDown
 } from 'lucide-react';
-import { PalletJackReport, PalletProblemType, EquipmentSeverity, EquipmentStatus, ShiftType } from '../types';
+import { 
+  PalletJackReport, 
+  PalletProblemType, 
+  EquipmentSeverity, 
+  EquipmentStatus, 
+  ShiftType,
+  PalletJackAsset,
+  PalletConservationStatus,
+  PalletTechnicalComponent
+} from '../types';
 import { 
   savePallet, 
   calculateElapsedHours, 
   formatDurationHuman, 
   getSlaHealth, 
-  exportToCsv 
+  exportToCsv,
+  getPalletInventory,
+  savePalletInventoryItem,
+  deletePalletInventoryItem,
+  updatePalletLocation,
+  updatePalletStatus,
+  resetPalletInventory
 } from '../services/storage';
 
 interface PalletJackModuleProps {
@@ -36,17 +66,58 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   onPalletsUpdated,
   readOnly = false
 }) => {
-  const [search, setSearch] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  // Navigation between Inventory Master and Repair Tickets
+  const [viewMode, setViewMode] = useState<'inventory' | 'tickets'>('inventory');
+
+  // ==========================================
+  // INVENTORY STATE & DATA
+  // ==========================================
+  const [inventory, setInventory] = useState<PalletJackAsset[]>([]);
+  const [inventorySearch, setInventorySearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'todos' | PalletConservationStatus>('todos');
+  const [locationFilter, setLocationFilter] = useState<string>('todas');
+  const [componentFilter, setComponentFilter] = useState<string>('todos');
+  const [inventoryLayout, setInventoryLayout] = useState<'cards' | 'table'>('cards');
+
+  // Modals for Inventory
+  const [showAssetModal, setShowAssetModal] = useState<boolean>(false);
+  const [editingAsset, setEditingAsset] = useState<PalletJackAsset | null>(null);
+  const [assetDetailModal, setAssetDetailModal] = useState<PalletJackAsset | null>(null);
+
+  // Asset Form State
+  const [assetCode, setAssetCode] = useState<string>('TP-');
+  const [assetCapacity, setAssetCapacity] = useState<number>(2500);
+  const [assetCapacityConfirmed, setAssetCapacityConfirmed] = useState<boolean>(false);
+  const [assetLocation, setAssetLocation] = useState<string>('PICKING');
+  const [assetStatus, setAssetStatus] = useState<PalletConservationStatus>('BUENO');
+  const [assetComponent, setAssetComponent] = useState<PalletTechnicalComponent>('SIN NOVEDAD');
+  const [assetNotes, setAssetNotes] = useState<string>('');
+  const [assetBrand, setAssetBrand] = useState<string>('Estándar CIAL / Jungheinrich');
+
+  // Load Inventory from storage
+  const loadInventory = () => {
+    const data = getPalletInventory();
+    setInventory(data);
+  };
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  // ==========================================
+  // TICKETS / SLA STATE & MODALS
+  // ==========================================
+  const [ticketSearch, setTicketSearch] = useState<string>('');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<string>('todos');
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [activePalletDetail, setActivePalletDetail] = useState<PalletJackReport | null>(null);
 
   // Form State for reporting a damaged pallet jack
-  const [code, setCode] = useState<string>('TM-');
+  const [code, setCode] = useState<string>('TP-');
   const [brand, setBrand] = useState<string>('Jungheinrich AM 22');
   const [reportedBy, setReportedBy] = useState<string>('');
   const [shift, setShift] = useState<ShiftType>('Turno 1');
-  const [area, setArea] = useState<string>('Andén 3');
+  const [area, setArea] = useState<string>('PICKING');
   const [problemType, setProblemType] = useState<PalletProblemType>('fuga_hidraulica');
   const [problemTitle, setProblemTitle] = useState<string>('');
   const [problemDescription, setProblemDescription] = useState<string>('');
@@ -64,7 +135,217 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
     { type: 'otro', label: '⚠️ Otra Falla Mecánica', icon: '⚠️' }
   ];
 
-  // Handle Photo selection or simulated camera capture
+  // Component Options for Technical Diagnostics
+  const componentOptions: { id: PalletTechnicalComponent; label: string; countPrefix?: string }[] = [
+    { id: 'SIN NOVEDAD', label: '✅ Sin Novedad / Operativa' },
+    { id: 'SISTEMA DE ELEVACION HIDRAULICO', label: '💧 Sistema Hidráulico' },
+    { id: 'CHASIS', label: '🛡️ Chasis / Estructura' },
+    { id: 'FRENO DE MANO', label: '🛑 Freno de Mano' },
+    { id: 'RUEDA', label: '⚙️ Rueda / Rodillo' },
+    { id: 'HORQUILLAS', label: '📐 Horquillas' },
+    { id: 'TIMON', label: '🦯 Timón' },
+    { id: 'BARRA DE TRACCION', label: '🔗 Barra de Tracción' },
+    { id: 'OTRO', label: '⚠️ Otra Falla' }
+  ];
+
+  // Known Locations in CD CIAL
+  const standardLocations = [
+    'PICKING',
+    'DESPACHO',
+    'SALA DE LAVADO',
+    'LI',
+    'PALETIZADO',
+    'REEMPLAZO ZONALES',
+    'TALLER EXTERNO'
+  ];
+
+  // ==========================================
+  // INVENTORY CALCULATIONS & METRICS
+  // ==========================================
+  const totalAssets = inventory.length;
+  const buenoCount = inventory.filter(i => i.status === 'BUENO').length;
+  const regularCount = inventory.filter(i => i.status === 'REGULAR').length;
+  const maloCount = inventory.filter(i => i.status === 'MALO').length;
+  const availabilityRate = totalAssets > 0 ? (((buenoCount + regularCount) / totalAssets) * 100).toFixed(1) : '0';
+
+  // Count by failure component
+  const failureCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      'SISTEMA DE ELEVACION HIDRAULICO': 0,
+      'CHASIS': 0,
+      'FRENO DE MANO': 0,
+      'RUEDA': 0,
+      'HORQUILLAS': 0,
+      'TOTAL_FALLAS': 0
+    };
+    inventory.forEach(item => {
+      if (item.status !== 'BUENO' && item.componentObs && item.componentObs !== 'SIN NOVEDAD') {
+        counts.TOTAL_FALLAS += 1;
+        if (counts[item.componentObs] !== undefined) {
+          counts[item.componentObs] += 1;
+        }
+      }
+    });
+    return counts;
+  }, [inventory]);
+
+  // Unique locations from data
+  const uniqueLocations = useMemo(() => {
+    const locSet = new Set<string>();
+    inventory.forEach(item => {
+      if (item.location) locSet.add(item.location);
+    });
+    return Array.from(locSet).sort();
+  }, [inventory]);
+
+  // Filtered inventory list
+  const filteredInventory = useMemo(() => {
+    return inventory.filter(item => {
+      const matchesSearch = 
+        item.code.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        item.location.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        (item.notes || '').toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        (item.componentObs || '').toLowerCase().includes(inventorySearch.toLowerCase());
+
+      const matchesStatus = statusFilter === 'todos' || item.status === statusFilter;
+      const matchesLocation = locationFilter === 'todas' || item.location === locationFilter;
+      const matchesComponent = 
+        componentFilter === 'todos' 
+          ? true 
+          : componentFilter === 'CON_FALLA'
+            ? item.status !== 'BUENO'
+            : item.componentObs === componentFilter;
+
+      return matchesSearch && matchesStatus && matchesLocation && matchesComponent;
+    });
+  }, [inventory, inventorySearch, statusFilter, locationFilter, componentFilter]);
+
+  // ==========================================
+  // INVENTORY ACTIONS
+  // ==========================================
+  const handleOpenAddAsset = () => {
+    setEditingAsset(null);
+    setAssetCode(`TP-${String(inventory.length + 1).padStart(3, '0')}`);
+    setAssetCapacity(2500);
+    setAssetCapacityConfirmed(false);
+    setAssetLocation('PICKING');
+    setAssetStatus('BUENO');
+    setAssetComponent('SIN NOVEDAD');
+    setAssetNotes('');
+    setAssetBrand('Estándar CIAL / Jungheinrich');
+    setShowAssetModal(true);
+  };
+
+  const handleOpenEditAsset = (asset: PalletJackAsset) => {
+    setEditingAsset(asset);
+    setAssetCode(asset.code);
+    setAssetCapacity(asset.capacityKg || 2500);
+    setAssetCapacityConfirmed(asset.capacityConfirmed);
+    setAssetLocation(asset.location);
+    setAssetStatus(asset.status);
+    setAssetComponent((asset.componentObs as PalletTechnicalComponent) || 'SIN NOVEDAD');
+    setAssetNotes(asset.notes || '');
+    setAssetBrand(asset.brand || 'Estándar CIAL');
+    setShowAssetModal(true);
+  };
+
+  const handleSaveAsset = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = assetCode.trim().toUpperCase();
+    const assetToSave: PalletJackAsset = {
+      id: editingAsset ? editingAsset.id : cleanCode,
+      code: cleanCode,
+      capacityKg: Number(assetCapacity) || 2500,
+      capacityConfirmed: assetCapacityConfirmed,
+      location: assetLocation.trim().toUpperCase(),
+      status: assetStatus,
+      componentObs: assetStatus === 'BUENO' ? 'SIN NOVEDAD' : assetComponent,
+      notes: assetNotes.trim(),
+      brand: assetBrand.trim(),
+      updatedAt: new Date().toISOString()
+    };
+
+    savePalletInventoryItem(assetToSave);
+    loadInventory();
+    setShowAssetModal(false);
+  };
+
+  const handleDeleteAsset = (id: string, code: string) => {
+    if (readOnly) return;
+    if (confirm(`¿Está seguro de eliminar la transpaleta ${code} del inventario permanente?`)) {
+      deletePalletInventoryItem(id);
+      loadInventory();
+    }
+  };
+
+  const handleQuickStatusChange = (asset: PalletJackAsset, newStatus: PalletConservationStatus) => {
+    if (readOnly) return;
+    updatePalletStatus(asset.id, newStatus);
+    loadInventory();
+  };
+
+  const handleQuickLocationChange = (asset: PalletJackAsset, newLocation: string) => {
+    if (readOnly) return;
+    updatePalletLocation(asset.id, newLocation);
+    loadInventory();
+  };
+
+  const handleResetToOfficialSeeds = () => {
+    if (readOnly) return;
+    if (confirm('¿Restablecer el inventario maestro con las 34 transpaletas oficiales del Centro de Distribución CIAL?')) {
+      resetPalletInventory();
+      loadInventory();
+    }
+  };
+
+  const handleExportInventoryCsv = () => {
+    const rows = inventory.map(item => ({
+      'Código Transpaleta': item.code,
+      'Ubicación': item.location,
+      'Estado Conservación': item.status,
+      'Falla / Componente Afectado': item.componentObs || 'SIN NOVEDAD',
+      'Observaciones Técnicas': item.notes || '',
+      'Capacidad (Kg)': item.capacityKg,
+      'Capacidad Confirmada Proveedor': item.capacityConfirmed ? 'SÍ' : 'POR CONFIRMAR',
+      'Marca / Modelo': item.brand || 'Estándar CIAL'
+    }));
+    exportToCsv('Inventario_Maestro_Transpaletas_CIAL', rows);
+  };
+
+  // Convert an asset directly to a service repair ticket
+  const handleOpenTicketFromAsset = (asset: PalletJackAsset) => {
+    setCode(asset.code);
+    setArea(asset.location);
+    setBrand(asset.brand || 'Jungheinrich AM 22');
+    setProblemTitle(
+      asset.componentObs !== 'SIN NOVEDAD'
+        ? `Falla en ${asset.componentObs}`
+        : 'Transpaleta con Falla Mecánica'
+    );
+    setProblemDescription(
+      asset.notes || `Equipo ${asset.code} reportado con condición ${asset.status}. Requiere retiro de proveedor técnico.`
+    );
+    
+    // Auto-map problem type
+    if (asset.componentObs === 'SISTEMA DE ELEVACION HIDRAULICO') {
+      setProblemType('no_eleva');
+    } else if (asset.componentObs === 'RUEDA') {
+      setProblemType('rueda_trabada');
+    } else if (asset.componentObs === 'HORQUILLAS') {
+      setProblemType('horquilla_doblada');
+    } else if (asset.componentObs === 'FRENO DE MANO') {
+      setProblemType('otro');
+    } else {
+      setProblemType('otro');
+    }
+
+    setSeverity(asset.status === 'MALO' ? 'critica' : 'moderada');
+    setShowReportModal(true);
+  };
+
+  // ==========================================
+  // TICKETS ACTIONS & HANDLERS
+  // ==========================================
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -77,7 +358,6 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   };
 
   const handleSimulateCamera = () => {
-    // Generate an illustrative placeholder photo for the failure
     const samplePhotos = [
       'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&auto=format&fit=crop&q=60',
       'https://images.unsplash.com/photo-1553413077-190dd305871c?w=600&auto=format&fit=crop&q=60'
@@ -87,9 +367,10 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
 
   const handleSubmitReport = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanCode = code.trim().toUpperCase();
     const newReport: PalletJackReport = {
       id: `pal-${Date.now()}`,
-      code: code.trim().toUpperCase(),
+      code: cleanCode,
       brand,
       reportedAt: new Date().toISOString(),
       reportedBy: reportedBy.trim() || 'Operador de Turno',
@@ -105,11 +386,23 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
     };
 
     savePallet(newReport);
+
+    // Also reflect in inventory if exists
+    const matchingAsset = inventory.find(i => i.code === cleanCode);
+    if (matchingAsset) {
+      updatePalletStatus(
+        matchingAsset.id, 
+        matchingAsset.status === 'BUENO' ? 'REGULAR' : matchingAsset.status, 
+        newReport.problemDescription
+      );
+      loadInventory();
+    }
+
     setShowReportModal(false);
     onPalletsUpdated();
 
     // Reset Form
-    setCode('TM-');
+    setCode('TP-');
     setProblemTitle('');
     setProblemDescription('');
     setPhotoPreview(null);
@@ -128,32 +421,17 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
     };
     savePallet(updated);
     setActivePalletDetail(updated);
-    onPalletsUpdated();
-  };
 
-  const filteredPallets = pallets.filter(p => {
-    const matchesStatus = statusFilter === 'todos' || p.status === statusFilter;
-    const matchesSearch = 
-      p.code.toLowerCase().includes(search.toLowerCase()) ||
-      p.problemTitle.toLowerCase().includes(search.toLowerCase()) ||
-      p.area.toLowerCase().includes(search.toLowerCase()) ||
-      p.reportedBy.toLowerCase().includes(search.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
-
-  const getStatusBadge = (status: EquipmentStatus) => {
-    switch (status) {
-      case 'pendiente':
-        return { label: 'Pendiente Retiro', class: 'bg-amber-100 text-amber-800 border-amber-300' };
-      case 'retirada_proveedor':
-        return { label: 'Retirada por Proveedor', class: 'bg-blue-100 text-blue-800 border-blue-300' };
-      case 'en_taller':
-        return { label: 'En Taller Técnico', class: 'bg-purple-100 text-purple-800 border-purple-300' };
-      case 'reparada':
-        return { label: 'Reparada / Operativa', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
-      case 'de_baja':
-        return { label: 'De Baja / Descarte', class: 'bg-slate-200 text-slate-800 border-slate-300' };
+    // If marked repaired, update the inventory item back to BUENO!
+    if (newStatus === 'reparada') {
+      const match = inventory.find(i => i.code === pallet.code);
+      if (match) {
+        updatePalletStatus(match.id, 'BUENO', 'Reparada por proveedor técnico');
+        loadInventory();
+      }
     }
+
+    onPalletsUpdated();
   };
 
   const handleExportCsv = () => {
@@ -174,10 +452,64 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
         'Costo Reparación CLP': p.repairCost || 0
       };
     });
-    exportToCsv('Control_Transpaletas_CIAL', rows);
+    exportToCsv('Control_Tickets_Transpaletas_CIAL', rows);
   };
 
-  // Metrics
+  const filteredPallets = pallets.filter(p => {
+    const matchesStatus = ticketStatusFilter === 'todos' || p.status === ticketStatusFilter;
+    const matchesSearch = 
+      p.code.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+      p.problemTitle.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+      p.area.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+      p.reportedBy.toLowerCase().includes(ticketSearch.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  const getStatusBadge = (status: EquipmentStatus) => {
+    switch (status) {
+      case 'pendiente':
+        return { label: 'Pendiente Retiro', class: 'bg-amber-100 text-amber-800 border-amber-300' };
+      case 'retirada_proveedor':
+        return { label: 'Retirada por Proveedor', class: 'bg-blue-100 text-blue-800 border-blue-300' };
+      case 'en_taller':
+        return { label: 'En Taller Técnico', class: 'bg-purple-100 text-purple-800 border-purple-300' };
+      case 'reparada':
+        return { label: 'Reparada / Operativa', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+      case 'de_baja':
+        return { label: 'De Baja / Descarte', class: 'bg-slate-200 text-slate-800 border-slate-300' };
+    }
+  };
+
+  const getConservationBadge = (status: PalletConservationStatus) => {
+    switch (status) {
+      case 'BUENO':
+        return { 
+          label: 'BUENO (Operativa)', 
+          short: 'Operativa',
+          bg: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+          dot: 'bg-emerald-500',
+          pill: 'bg-emerald-500 text-white'
+        };
+      case 'REGULAR':
+        return { 
+          label: 'REGULAR (En Observación)', 
+          short: 'En Observación',
+          bg: 'bg-amber-50 text-amber-800 border-amber-300',
+          dot: 'bg-amber-500',
+          pill: 'bg-amber-500 text-white'
+        };
+      case 'MALO':
+        return { 
+          label: 'MALO (Fuera de Servicio)', 
+          short: 'Fuera de Servicio',
+          bg: 'bg-rose-50 text-rose-800 border-rose-300',
+          dot: 'bg-rose-500',
+          pill: 'bg-rose-600 text-white'
+        };
+    }
+  };
+
+  // Metrics for tickets
   const totalCount = pallets.length;
   const pendingCount = pallets.filter(p => p.status === 'pendiente').length;
   const inWorkshopCount = pallets.filter(p => p.status === 'en_taller' || p.status === 'retirada_proveedor').length;
@@ -186,229 +518,1127 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Top Banner & KPI Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase mb-1">
-            <span>Total Reportes</span>
-            <Truck className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900">{totalCount}</div>
-          <div className="text-[11px] text-slate-400 font-semibold mt-0.5">Parque de Transpaletas CD</div>
-        </div>
+      {/* ========================================================================= */}
+      {/* MAIN TOP SWITCHER: INVENTARIO MAESTRO vs TICKETS DE REPARACIÓN (SLA)      */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl w-full sm:w-auto">
+          <button
+            onClick={() => setViewMode('inventory')}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+              viewMode === 'inventory'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-[#008744]" />
+            <span>Inventario del Parque</span>
+            <span className="bg-emerald-100 text-[#008744] text-[10px] font-black px-2 py-0.5 rounded-full">
+              {totalAssets} Equipos
+            </span>
+          </button>
 
-        <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200 shadow-xs">
-          <div className="flex items-center justify-between text-amber-800 text-xs font-bold uppercase mb-1">
-            <span>Pendientes Retiro</span>
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-900">{pendingCount}</div>
-          <div className="text-[11px] text-amber-700 font-semibold mt-0.5">En espera en andenes</div>
-        </div>
-
-        <div className="bg-purple-50/80 rounded-2xl p-4 border border-purple-200 shadow-xs">
-          <div className="flex items-center justify-between text-purple-800 text-xs font-bold uppercase mb-1">
-            <span>En Proveedor / Taller</span>
+          <button
+            onClick={() => setViewMode('tickets')}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+              viewMode === 'tickets'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
             <Wrench className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-purple-900">{inWorkshopCount}</div>
-          <div className="text-[11px] text-purple-700 font-semibold mt-0.5">En mantención activa</div>
-        </div>
-
-        <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 shadow-xs">
-          <div className="flex items-center justify-between text-emerald-800 text-xs font-bold uppercase mb-1">
-            <span>Reparadas OK</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-900">{repairedCount}</div>
-          <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">100% operativas</div>
-        </div>
-      </div>
-
-      {/* Action Header & Filters */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <Truck className="w-6 h-6 text-[#008744]" />
-              <span>Control de Transpaletas Manuales en Mal Estado</span>
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Reporte de fallas con foto y seguimiento del SLA de respuesta del proveedor técnico.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={handleExportCsv}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-              <span className="hidden sm:inline">Exportar CSV</span>
-            </button>
-
-            {!readOnly && (
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="bg-[#008744] hover:bg-emerald-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Levantar Transpaleta</span>
-              </button>
+            <span>Reportes & SLA Proveedor</span>
+            {pendingCount + inWorkshopCount > 0 && (
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                {pendingCount + inWorkshopCount} Activos
+              </span>
             )}
-          </div>
+          </button>
         </div>
 
-        {/* Search & Filter pills */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar por N° TM, falla, área..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
-            {[
-              { id: 'todos', label: 'Todas' },
-              { id: 'pendiente', label: 'Pendientes' },
-              { id: 'en_taller', label: 'En Taller' },
-              { id: 'reparada', label: 'Reparadas' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition ${
-                  statusFilter === tab.id
-                    ? 'bg-slate-800 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-end gap-2 px-2 text-xs text-slate-500 font-semibold">
+          <span className="hidden md:inline">Centro de Distribución CIAL Alimentos</span>
+          <span className="inline-flex items-center gap-1 text-[#008744] font-black bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+            <Check className="w-3.5 h-3.5" />
+            <span>Capacidad Estándar: 2.500 kg</span>
+          </span>
         </div>
       </div>
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredPallets.map(pallet => {
-          const statusInfo = getStatusBadge(pallet.status);
-          const elapsedHours = calculateElapsedHours(pallet.reportedAt, pallet.returnedAt);
-          const sla = getSlaHealth(elapsedHours);
+      {/* ========================================================================= */}
+      {/* VISTA 1: INVENTARIO MAESTRO DEL PARQUE (34 TRANSPALETAS)                   */}
+      {/* ========================================================================= */}
+      {viewMode === 'inventory' && (
+        <div className="space-y-6">
 
-          return (
-            <div
-              key={pallet.id}
-              className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between"
-            >
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            
+            {/* Total Parque */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase mb-1">
+                <span>Parque Total</span>
+                <Truck className="w-4 h-4 text-slate-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900">{totalAssets}</div>
+              <div className="text-[11px] text-slate-400 font-semibold mt-0.5">Transpaletas manuales</div>
+            </div>
+
+            {/* Operativas (Bueno) */}
+            <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 shadow-xs">
+              <div className="flex items-center justify-between text-emerald-800 text-xs font-bold uppercase mb-1">
+                <span>Operativas (Bueno)</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-emerald-900">{buenoCount}</span>
+                <span className="text-xs font-bold text-emerald-700">
+                  {totalAssets > 0 ? ((buenoCount / totalAssets) * 100).toFixed(0) : 0}%
+                </span>
+              </div>
+              <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">Listas para andenes</div>
+            </div>
+
+            {/* En Observación (Regular) */}
+            <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200 shadow-xs">
+              <div className="flex items-center justify-between text-amber-800 text-xs font-bold uppercase mb-1">
+                <span>En Observación</span>
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-amber-900">{regularCount}</span>
+                <span className="text-xs font-bold text-amber-700">
+                  {totalAssets > 0 ? ((regularCount / totalAssets) * 100).toFixed(0) : 0}%
+                </span>
+              </div>
+              <div className="text-[11px] text-amber-700 font-semibold mt-0.5">Operan con restricción</div>
+            </div>
+
+            {/* Fuera de Servicio (Malo) */}
+            <div className="bg-rose-50/80 rounded-2xl p-4 border border-rose-200 shadow-xs">
+              <div className="flex items-center justify-between text-rose-800 text-xs font-bold uppercase mb-1">
+                <span>Fuera de Servicio</span>
+                <AlertOctagon className="w-4 h-4 text-rose-600" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-rose-900">{maloCount}</span>
+                <span className="text-xs font-bold text-rose-700">
+                  {totalAssets > 0 ? ((maloCount / totalAssets) * 100).toFixed(0) : 0}%
+                </span>
+              </div>
+              <div className="text-[11px] text-rose-700 font-semibold mt-0.5">Inmovilizadas / Taller</div>
+            </div>
+
+            {/* Disponibilidad Operativa */}
+            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-4 text-white shadow-xs">
+              <div className="flex items-center justify-between text-slate-300 text-xs font-bold uppercase mb-1">
+                <span>Disponibilidad CD</span>
+                <Gauge className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-400">{availabilityRate}%</div>
+              <div className="text-[11px] text-slate-300 font-semibold mt-0.5">
+                {buenoCount + regularCount} de {totalAssets} en circulación
+              </div>
+            </div>
+
+          </div>
+
+          {/* Interactive Failure Diagnostic Matrix */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                {/* Header: Code & Status */}
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-black bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl">
-                      {pallet.code}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      {pallet.brand}
-                    </span>
-                  </div>
-
-                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${statusInfo.class}`}>
-                    {statusInfo.label}
-                  </span>
-                </div>
-
-                {/* Problem Title & Description */}
-                <h3 className="text-sm font-black text-slate-900 mt-1 mb-1">
-                  {pallet.problemTitle}
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600" />
+                  <span>Matriz de Diagnóstico Técnico ({failureCounts.TOTAL_FALLAS} Equipos con Observación)</span>
                 </h3>
-                <p className="text-xs text-slate-600 font-medium line-clamp-2 mb-3">
-                  {pallet.problemDescription}
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Haz clic en un componente para filtrar las transpaletas que presentan esa falla específica.
                 </p>
-
-                {/* Photo Thumbnail if present */}
-                {pallet.photoUrl && (
-                  <div className="mb-3 relative rounded-xl overflow-hidden border border-slate-200 h-28 bg-slate-100">
-                    <img 
-                      src={pallet.photoUrl} 
-                      alt={pallet.code} 
-                      className="w-full h-full object-cover" 
-                    />
-                    <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-                      Foto Evidencia
-                    </span>
-                  </div>
-                )}
-
-                {/* SLA / Time Elapsed Counter */}
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 mb-3 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-semibold flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {pallet.status === 'reparada' ? 'Tiempo de Respuesta:' : 'Tiempo Transcurrido:'}
-                    </span>
-                    <span className="font-mono font-black text-slate-900">
-                      {formatDurationHuman(elapsedHours)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400">Estado de SLA (Meta 48h):</span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${sla.badgeClass}`}>
-                      {sla.label}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-slate-500 font-medium space-y-0.5 mb-3">
-                  <div>📍 <strong>Ubicación:</strong> {pallet.area}</div>
-                  <div>👤 <strong>Reportado por:</strong> {pallet.reportedBy}</div>
-                  <div>🏢 <strong>Proveedor:</strong> {pallet.providerName}</div>
-                </div>
               </div>
 
-              {/* Card Footer Actions */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              {componentFilter !== 'todos' && (
                 <button
-                  onClick={() => setActivePalletDetail(pallet)}
-                  className="text-xs font-bold text-slate-700 hover:text-emerald-700 py-1.5 px-3 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                  onClick={() => setComponentFilter('todos')}
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 underline cursor-pointer flex items-center gap-1 self-start sm:self-auto"
                 >
-                  Ver Ficha / Trazabilidad
+                  <X className="w-3.5 h-3.5" />
+                  <span>Limpiar filtro de componente</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                onClick={() => setComponentFilter('todos')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'todos'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>Todos los Equipos</span>
+                <span className="text-[10px] bg-slate-700 text-white px-1.5 py-0.2 rounded-full">
+                  {totalAssets}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('CON_FALLA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'CON_FALLA'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <span>⚠️ Con Alguna Falla</span>
+                <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts.TOTAL_FALLAS}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('SISTEMA DE ELEVACION HIDRAULICO')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'SISTEMA DE ELEVACION HIDRAULICO'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                <span>💧 Elevación Hidráulica</span>
+                <span className="text-[10px] bg-blue-700 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts['SISTEMA DE ELEVACION HIDRAULICO']}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('CHASIS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'CHASIS'
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <span>🛡️ Chasis / Deformación</span>
+                <span className="text-[10px] bg-slate-600 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts['CHASIS']}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('FRENO DE MANO')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'FRENO DE MANO'
+                    ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400'
+                    : 'bg-rose-50 text-rose-900 border border-rose-300 hover:bg-rose-100'
+                }`}
+                title="Riesgo Crítico de Prevención"
+              >
+                <span>🛑 Freno de Mano [Crítico]</span>
+                <span className="text-[10px] bg-rose-700 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts['FRENO DE MANO']}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('RUEDA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'RUEDA'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <span>⚙️ Ruedas</span>
+                <span className="text-[10px] bg-purple-700 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts['RUEDA']}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('HORQUILLAS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'HORQUILLAS'
+                    ? 'bg-orange-600 text-white shadow-xs'
+                    : 'bg-orange-50 text-orange-900 border border-orange-200 hover:bg-orange-100'
+                }`}
+              >
+                <span>📐 Horquillas</span>
+                <span className="text-[10px] bg-orange-700 text-white px-1.5 py-0.2 rounded-full">
+                  {failureCounts['HORQUILLAS']}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setComponentFilter('SIN NOVEDAD')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  componentFilter === 'SIN NOVEDAD'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                <span>✅ Sin Falla (100% OK)</span>
+                <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded-full">
+                  {buenoCount}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Action Header & Filters */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                  <Truck className="w-6 h-6 text-[#008744]" />
+                  <span>Inventario Maestro de Transpaletas Manuales (CD CIAL)</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Control de parque, semáforo de conservación, ubicación actual y trazabilidad de fallas mecánicas.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Reset official seeds button */}
+                {!readOnly && (
+                  <button
+                    onClick={handleResetToOfficialSeeds}
+                    title="Restablece las 34 transpaletas con los datos oficiales de la planilla maestra"
+                    className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="hidden xl:inline">Sincronizar Oficial (34)</span>
+                  </button>
+                )}
+
+                {/* Export CSV button */}
+                <button
+                  onClick={handleExportInventoryCsv}
+                  className="px-3 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span className="hidden sm:inline">Exportar Planilla</span>
                 </button>
 
-                {!readOnly && pallet.status !== 'reparada' ? (
+                {/* View switcher: Cards vs Table */}
+                <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-0.5">
                   <button
-                    onClick={() => handleUpdateStatus(pallet, 'reparada')}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
+                    onClick={() => setInventoryLayout('cards')}
+                    title="Vista en Tarjetas"
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      inventoryLayout === 'cards' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-400 hover:text-slate-600'
+                    }`}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Marcar Reparada</span>
+                    <LayoutGrid className="w-4 h-4" />
                   </button>
-                ) : (
-                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {pallet.status === 'reparada' ? 'Operativa' : 'En Gestión'}
-                  </span>
+                  <button
+                    onClick={() => setInventoryLayout('table')}
+                    title="Vista en Tabla"
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      inventoryLayout === 'table' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <ListFilter className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Add pallet button */}
+                {!readOnly && (
+                  <button
+                    onClick={handleOpenAddAsset}
+                    className="bg-[#008744] hover:bg-emerald-700 active:scale-95 text-white px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar Transpaleta</span>
+                  </button>
                 )}
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {filteredPallets.length === 0 && (
-        <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-          <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h4 className="text-base font-bold text-slate-700">No hay transpaletas registradas con este filtro</h4>
-          <p className="text-xs text-slate-500 mt-1">Presiona "Levantar Transpaleta" para ingresar una nueva falla.</p>
+            {/* Filter and Search Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-slate-100">
+              
+              {/* Search text */}
+              <div className="sm:col-span-5 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar por N° (TP-001), ubicación, falla..."
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="sm:col-span-4 flex items-center gap-1 overflow-x-auto scrollbar-none">
+                {[
+                  { id: 'todos', label: 'Todos' },
+                  { id: 'BUENO', label: '🟢 Bueno' },
+                  { id: 'REGULAR', label: '🟡 Regular' },
+                  { id: 'MALO', label: '🔴 Malo' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setStatusFilter(tab.id as any)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition ${
+                      statusFilter === tab.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Location Select Filter */}
+              <div className="sm:col-span-3">
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                >
+                  <option value="todas">📍 Todas las Ubicaciones ({uniqueLocations.length})</option>
+                  {uniqueLocations.map(loc => (
+                    <option key={loc} value={loc}>
+                      {loc} ({inventory.filter(i => i.location === loc).length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* INVENTORY DISPLAY: CARDS VIEW                                             */}
+          {/* ========================================================================= */}
+          {inventoryLayout === 'cards' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredInventory.map(asset => {
+                const badge = getConservationBadge(asset.status);
+                const hasFailure = asset.status !== 'BUENO';
+
+                return (
+                  <div
+                    key={asset.id}
+                    className={`bg-white rounded-2xl p-5 border transition flex flex-col justify-between hover:shadow-md ${
+                      asset.status === 'MALO'
+                        ? 'border-rose-200 hover:border-rose-400 bg-rose-50/10'
+                        : asset.status === 'REGULAR'
+                          ? 'border-amber-200 hover:border-amber-400 bg-amber-50/10'
+                          : 'border-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Header: Code, Capacity & Status Badge */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-base font-black bg-slate-900 text-white px-2.5 py-1 rounded-xl shadow-xs">
+                            {asset.code}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                            {asset.capacityKg.toLocaleString('es-CL')} kg
+                          </span>
+                        </div>
+
+                        <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${badge.bg}`}>
+                          {badge.short}
+                        </span>
+                      </div>
+
+                      {/* Location Selector / Display */}
+                      <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl mb-3 border border-slate-100">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                          <MapPin className="w-3.5 h-3.5 text-[#008744]" />
+                          <span>Ubicación:</span>
+                        </div>
+
+                        {!readOnly ? (
+                          <select
+                            value={asset.location}
+                            onChange={(e) => handleQuickLocationChange(asset, e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-black text-slate-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#008744]"
+                          >
+                            {standardLocations.map(loc => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                            {!standardLocations.includes(asset.location) && (
+                              <option value={asset.location}>{asset.location}</option>
+                            )}
+                          </select>
+                        ) : (
+                          <span className="text-xs font-black text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                            {asset.location}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Technical Diagnostics */}
+                      <div className="space-y-2 mb-3">
+                        <div className="text-xs">
+                          <span className="text-slate-400 font-bold uppercase text-[10px] block">
+                            Componente / Diagnóstico:
+                          </span>
+                          <span className={`font-black text-xs inline-block mt-0.5 ${
+                            asset.componentObs === 'FRENO DE MANO' 
+                              ? 'text-rose-700' 
+                              : asset.componentObs === 'SISTEMA DE ELEVACION HIDRAULICO'
+                                ? 'text-blue-700'
+                                : asset.status === 'BUENO'
+                                  ? 'text-emerald-700'
+                                  : 'text-slate-800'
+                          }`}>
+                            {asset.componentObs || 'SIN NOVEDAD'}
+                          </span>
+                        </div>
+
+                        {asset.notes && (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs text-slate-600 font-medium">
+                            <span className="font-bold text-slate-700">Obs: </span>
+                            {asset.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Capacity Note */}
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold mb-3">
+                        <HelpCircle className="w-3 h-3 text-slate-400" />
+                        <span>
+                          {asset.capacityConfirmed 
+                            ? 'Capacidad verificada en placa' 
+                            : 'Capacidad 2.500 kg (Por confirmar con proveedor)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      
+                      {/* Quick Status Setter (Semáforo Buttons) */}
+                      {!readOnly && (
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleQuickStatusChange(asset, 'BUENO')}
+                            title="Marcar como BUENO (Operativa)"
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition cursor-pointer border ${
+                              asset.status === 'BUENO'
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-slate-50 text-emerald-800 border-slate-200 hover:bg-emerald-50'
+                            }`}
+                          >
+                            Bueno
+                          </button>
+                          <button
+                            onClick={() => handleQuickStatusChange(asset, 'REGULAR')}
+                            title="Marcar como REGULAR (En Observación)"
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition cursor-pointer border ${
+                              asset.status === 'REGULAR'
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-slate-50 text-amber-800 border-slate-200 hover:bg-amber-50'
+                            }`}
+                          >
+                            Regular
+                          </button>
+                          <button
+                            onClick={() => handleQuickStatusChange(asset, 'MALO')}
+                            title="Marcar como MALO (Fuera de Servicio)"
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition cursor-pointer border ${
+                              asset.status === 'MALO'
+                                ? 'bg-rose-600 text-white border-rose-600'
+                                : 'bg-slate-50 text-rose-800 border-slate-200 hover:bg-rose-50'
+                            }`}
+                          >
+                            Malo
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Bottom Primary Action: Enviar a Taller / Abrir Ticket */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        {!readOnly && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditAsset(asset)}
+                              title="Editar datos de la transpaleta"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAsset(asset.id, asset.code)}
+                              title="Eliminar del inventario"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {hasFailure ? (
+                          <button
+                            onClick={() => handleOpenTicketFromAsset(asset)}
+                            className="ml-auto bg-amber-500 hover:bg-amber-600 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <Wrench className="w-3.5 h-3.5" />
+                            <span>Abrir Ticket Taller</span>
+                          </button>
+                        ) : (
+                          <span className="ml-auto text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Operativa</span>
+                          </span>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* INVENTORY DISPLAY: TABLE VIEW                                             */}
+          {/* ========================================================================= */}
+          {inventoryLayout === 'table' && (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">N° Transpaleta</th>
+                      <th className="py-3 px-4">Estado Conservación</th>
+                      <th className="py-3 px-4">Ubicación</th>
+                      <th className="py-3 px-4">Falla / Componente</th>
+                      <th className="py-3 px-4">Observaciones Técnicas</th>
+                      <th className="py-3 px-4">Capacidad</th>
+                      <th className="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredInventory.map(asset => {
+                      const badge = getConservationBadge(asset.status);
+                      const hasFailure = asset.status !== 'BUENO';
+
+                      return (
+                        <tr key={asset.id} className="hover:bg-slate-50/80 transition">
+                          
+                          {/* Code */}
+                          <td className="py-3 px-4 font-mono font-black text-slate-900">
+                            <span className="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                              {asset.code}
+                            </span>
+                          </td>
+
+                          {/* Conservation Status Badge */}
+                          <td className="py-3 px-4">
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${badge.bg}`}>
+                              {badge.label}
+                            </span>
+                          </td>
+
+                          {/* Location */}
+                          <td className="py-3 px-4 font-bold text-slate-800">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-[#008744]" />
+                              {asset.location}
+                            </span>
+                          </td>
+
+                          {/* Component */}
+                          <td className="py-3 px-4 font-semibold text-slate-700">
+                            <span className={
+                              asset.componentObs === 'FRENO DE MANO'
+                                ? 'text-rose-700 font-bold'
+                                : asset.componentObs === 'SISTEMA DE ELEVACION HIDRAULICO'
+                                  ? 'text-blue-700 font-bold'
+                                  : asset.status === 'BUENO'
+                                    ? 'text-emerald-700'
+                                    : 'text-slate-800'
+                            }>
+                              {asset.componentObs || 'SIN NOVEDAD'}
+                            </span>
+                          </td>
+
+                          {/* Observations */}
+                          <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={asset.notes || ''}>
+                            {asset.notes || <span className="text-slate-300 italic">Sin observaciones</span>}
+                          </td>
+
+                          {/* Capacity */}
+                          <td className="py-3 px-4 font-mono font-bold text-slate-600">
+                            {asset.capacityKg.toLocaleString('es-CL')} kg
+                          </td>
+
+                          {/* Action Buttons */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {hasFailure && (
+                                <button
+                                  onClick={() => handleOpenTicketFromAsset(asset)}
+                                  className="bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                  title="Abrir Ticket con Proveedor Técnico"
+                                >
+                                  <Wrench className="w-3 h-3" />
+                                  <span>Ticket</span>
+                                </button>
+                              )}
+
+                              {!readOnly && (
+                                <button
+                                  onClick={() => handleOpenEditAsset(asset)}
+                                  className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
+                                  title="Editar"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {filteredInventory.length === 0 && (
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+              <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h4 className="text-base font-bold text-slate-700">No se encontraron transpaletas con los filtros seleccionados</h4>
+              <p className="text-xs text-slate-500 mt-1">Prueba quitando los filtros de texto, ubicación o componente.</p>
+            </div>
+          )}
+
         </div>
       )}
 
-      {/* New Report Modal */}
+      {/* ========================================================================= */}
+      {/* VISTA 2: REPORTES DE FALLA & SEGUIMIENTO SLA DEL PROVEEDOR                 */}
+      {/* ========================================================================= */}
+      {viewMode === 'tickets' && (
+        <div className="space-y-6">
+          
+          {/* Top Banner & KPI Summary for Tickets */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase mb-1">
+                <span>Total Reportes</span>
+                <Truck className="w-4 h-4 text-slate-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900">{totalCount}</div>
+              <div className="text-[11px] text-slate-400 font-semibold mt-0.5">Historial de tickets</div>
+            </div>
+
+            <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200 shadow-xs">
+              <div className="flex items-center justify-between text-amber-800 text-xs font-bold uppercase mb-1">
+                <span>Pendientes Retiro</span>
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-amber-900">{pendingCount}</div>
+              <div className="text-[11px] text-amber-700 font-semibold mt-0.5">En espera en andenes</div>
+            </div>
+
+            <div className="bg-purple-50/80 rounded-2xl p-4 border border-purple-200 shadow-xs">
+              <div className="flex items-center justify-between text-purple-800 text-xs font-bold uppercase mb-1">
+                <span>En Proveedor / Taller</span>
+                <Wrench className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-purple-900">{inWorkshopCount}</div>
+              <div className="text-[11px] text-purple-700 font-semibold mt-0.5">En mantención activa</div>
+            </div>
+
+            <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 shadow-xs">
+              <div className="flex items-center justify-between text-emerald-800 text-xs font-bold uppercase mb-1">
+                <span>Reparadas OK</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-900">{repairedCount}</div>
+              <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">100% operativas</div>
+            </div>
+          </div>
+
+          {/* Action Header & Filters */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                  <Wrench className="w-6 h-6 text-purple-600" />
+                  <span>Seguimiento de Tickets & SLA Proveedor Técnico</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Reporte de fallas con foto y control del tiempo de respuesta del proveedor (Servicio Hidráulico Valparaíso SpA).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={handleExportCsv}
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span className="hidden sm:inline">Exportar CSV</span>
+                </button>
+
+                {!readOnly && (
+                  <button
+                    onClick={() => {
+                      setCode('TP-');
+                      setProblemTitle('');
+                      setProblemDescription('');
+                      setPhotoPreview(null);
+                      setShowReportModal(true);
+                    }}
+                    className="bg-[#008744] hover:bg-emerald-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Levantar Transpaleta</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Search & Filter pills */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar por N° TP, falla, área..."
+                  value={ticketSearch}
+                  onChange={(e) => setTicketSearch(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
+                {[
+                  { id: 'todos', label: 'Todas' },
+                  { id: 'pendiente', label: 'Pendientes' },
+                  { id: 'en_taller', label: 'En Taller' },
+                  { id: 'reparada', label: 'Reparadas' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setTicketStatusFilter(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition ${
+                      ticketStatusFilter === tab.id
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Cards Grid for Tickets */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPallets.map(pallet => {
+              const statusInfo = getStatusBadge(pallet.status);
+              const elapsedHours = calculateElapsedHours(pallet.reportedAt, pallet.returnedAt);
+              const sla = getSlaHealth(elapsedHours);
+
+              return (
+                <div
+                  key={pallet.id}
+                  className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Header: Code & Status */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-black bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-xl">
+                          {pallet.code}
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          {pallet.brand}
+                        </span>
+                      </div>
+
+                      <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${statusInfo.class}`}>
+                        {statusInfo.label}
+                      </span>
+                    </div>
+
+                    {/* Problem Title & Description */}
+                    <h3 className="text-sm font-black text-slate-900 mt-1 mb-1">
+                      {pallet.problemTitle}
+                    </h3>
+                    <p className="text-xs text-slate-600 font-medium line-clamp-2 mb-3">
+                      {pallet.problemDescription}
+                    </p>
+
+                    {/* Photo Thumbnail if present */}
+                    {pallet.photoUrl && (
+                      <div className="mb-3 relative rounded-xl overflow-hidden border border-slate-200 h-28 bg-slate-100">
+                        <img 
+                          src={pallet.photoUrl} 
+                          alt={pallet.code} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                          Foto Evidencia
+                        </span>
+                      </div>
+                    )}
+
+                    {/* SLA / Time Elapsed Counter */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 mb-3 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 font-semibold flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          {pallet.status === 'reparada' ? 'Tiempo de Respuesta:' : 'Tiempo Transcurrido:'}
+                        </span>
+                        <span className="font-mono font-black text-slate-900">
+                          {formatDurationHuman(elapsedHours)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Estado de SLA (Meta 48h):</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${sla.badgeClass}`}>
+                          {sla.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 font-medium space-y-0.5 mb-3">
+                      <div>📍 <strong>Ubicación:</strong> {pallet.area}</div>
+                      <div>👤 <strong>Reportado por:</strong> {pallet.reportedBy}</div>
+                      <div>🏢 <strong>Proveedor:</strong> {pallet.providerName}</div>
+                    </div>
+                  </div>
+
+                  {/* Card Footer Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setActivePalletDetail(pallet)}
+                      className="text-xs font-bold text-slate-700 hover:text-emerald-700 py-1.5 px-3 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      Ver Ficha / Trazabilidad
+                    </button>
+
+                    {!readOnly && pallet.status !== 'reparada' ? (
+                      <button
+                        onClick={() => handleUpdateStatus(pallet, 'reparada')}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Marcar Reparada</span>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {pallet.status === 'reparada' ? 'Operativa' : 'En Gestión'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredPallets.length === 0 && (
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+              <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h4 className="text-base font-bold text-slate-700">No hay tickets de falla registrados con este filtro</h4>
+              <p className="text-xs text-slate-500 mt-1">Presiona "Levantar Transpaleta" o abre un ticket desde el Inventario Maestro.</p>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: AGREGAR O EDITAR TRANSPALETA EN EL INVENTARIO MAESTRO               */}
+      {/* ========================================================================= */}
+      {showAssetModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-[#008744]" />
+                  <span>{editingAsset ? 'Editar Transpaleta' : 'Nueva Transpaleta al Parque'}</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  {editingAsset ? `Actualizar datos del equipo ${editingAsset.code}` : 'Registra un nuevo activo en el CD CIAL'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAssetModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAsset} className="space-y-4">
+              
+              {/* Code & Capacity */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Código de Activo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: TP-001"
+                    value={assetCode}
+                    onChange={(e) => setAssetCode(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-black focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Capacidad (Kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={assetCapacity}
+                    onChange={(e) => setAssetCapacity(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  />
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Ubicación Actual *
+                </label>
+                <select
+                  value={assetLocation}
+                  onChange={(e) => setAssetLocation(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                >
+                  {standardLocations.map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                  {!standardLocations.includes(assetLocation) && (
+                    <option value={assetLocation}>{assetLocation}</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Estado de Conservación */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
+                  Estado de Conservación (Semáforo) *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'BUENO' as PalletConservationStatus, label: '🟢 Bueno', desc: 'Operativa' },
+                    { id: 'REGULAR' as PalletConservationStatus, label: '🟡 Regular', desc: 'Observación' },
+                    { id: 'MALO' as PalletConservationStatus, label: '🔴 Malo', desc: 'Fuera Serv.' }
+                  ].map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setAssetStatus(s.id);
+                        if (s.id === 'BUENO') {
+                          setAssetComponent('SIN NOVEDAD');
+                        }
+                      }}
+                      className={`p-2 rounded-xl text-center border transition cursor-pointer ${
+                        assetStatus === s.id
+                          ? s.id === 'BUENO'
+                            ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-300'
+                            : s.id === 'REGULAR'
+                              ? 'bg-amber-600 text-white border-amber-600 ring-2 ring-amber-300'
+                              : 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="text-xs font-black">{s.label}</div>
+                      <div className={`text-[10px] font-semibold ${assetStatus === s.id ? 'text-white/90' : 'text-slate-400'}`}>
+                        {s.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Componente / Diagnóstico */}
+              {assetStatus !== 'BUENO' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Componente con Falla *
+                  </label>
+                  <select
+                    value={assetComponent}
+                    onChange={(e) => setAssetComponent(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                  >
+                    {componentOptions
+                      .filter(c => c.id !== 'SIN NOVEDAD')
+                      .map(comp => (
+                        <option key={comp.id} value={comp.id}>{comp.label}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Observaciones */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Observaciones Técnicas / Detalle de la Condición
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ej: Fuga de aceite por el pistón hidráulico / Rueda trabada..."
+                  value={assetNotes}
+                  onChange={(e) => setAssetNotes(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
+                />
+              </div>
+
+              {/* Checkbox: Confirmed with provider */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="assetConfirmedCheck"
+                  checked={assetCapacityConfirmed}
+                  onChange={(e) => setAssetCapacityConfirmed(e.target.checked)}
+                  className="w-4 h-4 text-[#008744] rounded border-slate-300 focus:ring-[#008744]"
+                />
+                <label htmlFor="assetConfirmedCheck" className="text-xs text-slate-600 font-semibold cursor-pointer">
+                  Capacidad nominal verificada formalmente con proveedor
+                </label>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAssetModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#008744] hover:bg-emerald-700 text-white shadow-md transition cursor-pointer"
+                >
+                  {editingAsset ? 'Guardar Cambios' : 'Registrar Transpaleta'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: REPORTAR FALLA (CREAR TICKET DE SLA)                                */}
+      {/* ========================================================================= */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-slate-200">
@@ -418,7 +1648,7 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   Levantar Transpaleta Manual con Falla
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Notifica de inmediato para coordinar el retiro y reparación con el proveedor.
+                  Notifica de inmediato para coordinar el retiro y reparación con el proveedor técnico.
                 </p>
               </div>
               <button
@@ -440,9 +1670,9 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Ej: TM-04"
+                    placeholder="Ej: TP-001"
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#008744]"
                   />
                 </div>
@@ -553,12 +1783,12 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Ubicación / Andén *
+                    Ubicación / Área *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Andén 4 Despacho"
+                    placeholder="Ej: PICKING"
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
@@ -629,7 +1859,9 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
         </div>
       )}
 
-      {/* Detail / Timeline Modal */}
+      {/* ========================================================================= */}
+      {/* MODAL: DETALLE / TRAZABILIDAD DEL TICKET DE FALLA                         */}
+      {/* ========================================================================= */}
       {activePalletDetail && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-slate-200">

@@ -5,6 +5,8 @@ import {
   CharlaSession, 
   CharlaAttendee,
   PalletJackReport, 
+  PalletJackAsset,
+  PalletConservationStatus,
   RfScannerReport, 
   OperatorItem, 
   AttendanceRecord,
@@ -17,7 +19,7 @@ import {
   GruaChecklistReport,
   GruaChecklistEvaluation
 } from '../types';
-import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
+import { INITIAL_LUPS, INITIAL_CHARLAS, INITIAL_PALLETS, INITIAL_PALLET_INVENTORY, INITIAL_RFS, INITIAL_OPERATORS, INITIAL_ATTENDANCE } from '../data/seedData';
 import { getHistoricalAttendanceForDate } from '../data/attendanceHistory';
 
 const KEYS = {
@@ -26,6 +28,7 @@ const KEYS = {
   AUDIT_LOGS: 'cial_zv_audit_logs_v1',
   CHARLAS: 'cial_zv_charlas_v1',
   PALLETS: 'cial_zv_pallets_v1',
+  PALLET_INVENTORY: 'cial_zv_pallet_inventory_v1',
   RFS: 'cial_zv_rfs_v1',
   OPERATORS: 'cial_zv_operators_v3',
   ATTENDANCE: 'cial_zv_attendance_overrides_v2',
@@ -476,6 +479,61 @@ export function savePallet(pallet: PalletJackReport): void {
 export function deletePallet(id: string): void {
   const current = getPallets();
   safeSet(KEYS.PALLETS, current.filter(p => p.id !== id));
+}
+
+// Inventario Maestro de Transpaletas Manuales (Parque de 34 Equipos)
+export function getPalletInventory(): PalletJackAsset[] {
+  const data = safeGet<PalletJackAsset[]>(KEYS.PALLET_INVENTORY, []);
+  if (!data || data.length === 0) {
+    safeSet(KEYS.PALLET_INVENTORY, INITIAL_PALLET_INVENTORY);
+    return INITIAL_PALLET_INVENTORY;
+  }
+  return data;
+}
+
+export function savePalletInventoryItem(item: PalletJackAsset): void {
+  const current = getPalletInventory();
+  const index = current.findIndex(p => p.id === item.id);
+  let updated: PalletJackAsset[];
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = { ...item, updatedAt: new Date().toISOString() };
+  } else {
+    updated = [{ ...item, updatedAt: new Date().toISOString() }, ...current];
+  }
+  safeSet(KEYS.PALLET_INVENTORY, updated);
+}
+
+export function deletePalletInventoryItem(id: string): void {
+  const current = getPalletInventory();
+  safeSet(KEYS.PALLET_INVENTORY, current.filter(p => p.id !== id));
+}
+
+export function updatePalletLocation(id: string, newLocation: string): void {
+  const current = getPalletInventory();
+  const updated = current.map(p => p.id === id ? { ...p, location: newLocation, updatedAt: new Date().toISOString() } : p);
+  safeSet(KEYS.PALLET_INVENTORY, updated);
+}
+
+export function updatePalletStatus(id: string, newStatus: PalletConservationStatus, newObs?: string): void {
+  const current = getPalletInventory();
+  const updated = current.map(p => {
+    if (p.id === id) {
+      return { 
+        ...p, 
+        status: newStatus, 
+        componentObs: newObs !== undefined ? newObs : p.componentObs,
+        updatedAt: new Date().toISOString() 
+      };
+    }
+    return p;
+  });
+  safeSet(KEYS.PALLET_INVENTORY, updated);
+}
+
+export function resetPalletInventory(): PalletJackAsset[] {
+  safeSet(KEYS.PALLET_INVENTORY, INITIAL_PALLET_INVENTORY);
+  return INITIAL_PALLET_INVENTORY;
 }
 
 // Pistolas RF
