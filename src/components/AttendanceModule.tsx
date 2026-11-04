@@ -61,6 +61,8 @@ import {
   ShiftTeamPhoto
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 import { 
   HISTORICAL_DATE_KEYS, 
   HISTORICAL_HEADER_DAYS, 
@@ -2487,32 +2489,21 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Supervisor
-                  </label>
-                  <input
-                    type="text"
-                    list="supervisor-datalist-opts"
-                    placeholder="Ej: Cristian Hernandez"
-                    value={formSupervisor}
-                    onChange={(e) => setFormSupervisor(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Supervisor a Cargo"
+                  placeholder="Ej: Cristian Hernandez / Walter Sánchez"
+                  value={formSupervisor}
+                  onChange={setFormSupervisor}
+                  filterRole="all"
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Jefe Turno
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Euro Velasquez"
-                    value={formJefeTurno}
-                    onChange={(e) => setFormJefeTurno(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Jefe Turno"
+                  placeholder="Ej: Euro Velásquez / Carlos Venegas"
+                  value={formJefeTurno}
+                  onChange={setFormJefeTurno}
+                  filterRole="all"
+                />
               </div>
 
               <datalist id="supervisor-datalist-opts">
@@ -2782,18 +2773,14 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               </div>
 
               {/* Notes / Reason */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Observaciones / N° Folio Licencia (Opcional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Feriado legal anual aprobado / Licencia médica FONASA #12345"
-                  value={modalNotes}
-                  onChange={(e) => setModalNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Observaciones / N° Folio Licencia (Opcional)"
+                context="attendanceNotes"
+                rows={2}
+                placeholder="Ej: Feriado legal anual aprobado / Licencia médica FONASA..."
+                value={modalNotes}
+                onChange={setModalNotes}
+              />
 
               {/* Action Buttons */}
               <div className="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
@@ -2894,18 +2881,14 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Observación / Justificación (Opcional)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Ej: Licencia médica extendida / Permiso administrativo / Vacaciones autorizadas..."
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Observación / Justificación (Opcional)"
+                context="attendanceNotes"
+                rows={2}
+                placeholder="Ej: Licencia médica extendida / Permiso administrativo / Vacaciones autorizadas..."
+                value={noteText}
+                onChange={setNoteText}
+              />
 
               <datalist id="supervisor-datalist-opts">
                 {supervisorOptions.map(s => (

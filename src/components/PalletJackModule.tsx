@@ -61,6 +61,8 @@ import {
   resetPalletInventory
 } from '../services/storage';
 import partesTranspaletaImg from '../assets/partes-transpaleta-diagrama.png';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 
 interface PalletJackModuleProps {
   pallets: PalletJackReport[];
@@ -2049,18 +2051,14 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               )}
 
               {/* Observaciones */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Observaciones Técnicas / Detalle de la Condición
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Ej: Fuga de aceite por el pistón hidráulico / Rueda trabada..."
-                  value={assetNotes}
-                  onChange={(e) => setAssetNotes(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Observaciones Técnicas / Detalle de la Condición"
+                context="palletJack"
+                rows={2}
+                placeholder="Ej: Pérdida paulatina de presión en cilindro / Rueda trabada..."
+                value={assetNotes}
+                onChange={setAssetNotes}
+              />
 
               {/* Checkbox: Confirmed with provider */}
               <div className="flex items-center gap-2 pt-1">
@@ -2195,19 +2193,15 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
               </div>
 
               {/* Description */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Descripción Detallada del Problema *
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Explica qué le pasa a la transpaleta (ej: pierde aceite por el pistón al subir pallets pesados)..."
-                  value={problemDescription}
-                  onChange={(e) => setProblemDescription(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Descripción Detallada del Problema"
+                required
+                context="palletJack"
+                rows={2}
+                placeholder="Explica qué le pasa a la transpaleta o elige una sugerencia técnica..."
+                value={problemDescription}
+                onChange={setProblemDescription}
+              />
 
               {/* Photo Evidence */}
               <div>
@@ -2268,19 +2262,14 @@ export const PalletJackModule: React.FC<PalletJackModuleProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Operador que Reporta *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Tu nombre y apellido"
-                    value={reportedBy}
-                    onChange={(e) => setReportedBy(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Operador / Supervisor que Reporta"
+                  required
+                  placeholder="Buscar jefatura, supervisor o escribir..."
+                  value={reportedBy}
+                  onChange={setReportedBy}
+                  filterRole="all"
+                />
               </div>
 
               {/* Severity */}

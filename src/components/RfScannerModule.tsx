@@ -22,6 +22,8 @@ import {
   getSlaHealth, 
   exportToCsv 
 } from '../services/storage';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 
 interface RfScannerModuleProps {
   rfs: RfScannerReport[];
@@ -507,19 +509,15 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
               </div>
 
               {/* Description */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Descripción Detallada *
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Describe la falla (ej: el gatillo se queda pegado al apretarlo o la pantalla táctil no responde en la parte inferior)..."
-                  value={problemDescription}
-                  onChange={(e) => setProblemDescription(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Descripción Detallada"
+                required
+                context="rfScanner"
+                rows={2}
+                placeholder="Describe la falla o elige una sugerencia técnica..."
+                value={problemDescription}
+                onChange={setProblemDescription}
+              />
 
               {/* Photo Evidence */}
               <div>
@@ -580,19 +578,14 @@ export const RfScannerModule: React.FC<RfScannerModuleProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Operador que Reporta *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Tu nombre y apellido"
-                    value={reportedBy}
-                    onChange={(e) => setReportedBy(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Operador / Supervisor que Reporta"
+                  required
+                  placeholder="Buscar jefatura, supervisor o escribir..."
+                  value={reportedBy}
+                  onChange={setReportedBy}
+                  filterRole="all"
+                />
               </div>
 
               {/* Severity */}

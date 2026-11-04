@@ -24,6 +24,8 @@ import { compressImageFile } from '../utils/imageCompressor';
 import { Camera, Image as ImageIcon, X } from 'lucide-react';
 import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
 import { LupSignedActaModal } from './LupSignedActaModal';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 
 interface CharlaTimerProps {
   lups: LupItem[];
@@ -695,33 +697,23 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Facilitador (Operador o Líder) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Juan Pérez (Operador)"
-                    value={facilitator}
-                    onChange={(e) => setFacilitator(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Facilitador (Operador o Líder)"
+                  required
+                  placeholder="Ej: Juan Pérez (Operador Líder)"
+                  value={facilitator}
+                  onChange={setFacilitator}
+                  filterRole="all"
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Supervisor a Cargo del Registro *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Carlos Venegas / Ariel Mella"
-                    value={supervisor}
-                    onChange={(e) => setSupervisor(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Supervisor a Cargo del Registro"
+                  required
+                  placeholder="Ej: Carlos Venegas / Ariel Mella"
+                  value={supervisor}
+                  onChange={setSupervisor}
+                  filterRole="all"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -857,18 +849,14 @@ export const CharlaTimer: React.FC<CharlaTimerProps> = ({
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Acuerdos y Compromisos Tomados (Opcional)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Ej: Se revisarán las ruedas de las transpaletas antes de las 10:00 AM..."
-                  value={keyAgreements}
-                  onChange={(e) => setKeyAgreements(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008744]"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Acuerdos y Compromisos Tomados (Opcional)"
+                context="charla"
+                rows={2}
+                placeholder="Ej: Se reforzarán las inspecciones pre-uso de transpaletas y silbato en cruces..."
+                value={keyAgreements}
+                onChange={setKeyAgreements}
+              />
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button

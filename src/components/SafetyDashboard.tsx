@@ -65,6 +65,8 @@ import { compressImageFile } from '../utils/imageCompressor';
 import bannerPrevencion from '../assets/banner-prevencion.png';
 import { LupSignedActaModal } from './LupSignedActaModal';
 import { CharlaSignatureKiosk } from './CharlaSignatureKiosk';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 
 interface SafetyDashboardProps {
   currentUser?: AppUser | null;
@@ -1497,32 +1499,22 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Supervisor Responsable *
-                  </label>
-                  <input
-                    type="text"
-                    value={assignSupervisor}
-                    onChange={(e) => setAssignSupervisor(e.target.value)}
-                    placeholder="Ej: Carlos Venegas"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    required
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Supervisor Responsable"
+                  required
+                  value={assignSupervisor}
+                  onChange={setAssignSupervisor}
+                  placeholder="Ej: Carlos Venegas / Walter Sánchez"
+                  filterRole="all"
+                />
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Facilitador / Líder Charla
-                  </label>
-                  <input
-                    type="text"
-                    value={assignFacilitator}
-                    onChange={(e) => setAssignFacilitator(e.target.value)}
-                    placeholder="Ej: Juan Pérez (Operador Líder)"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
+                <PredictiveLeaderInput
+                  label="Facilitador / Líder Charla"
+                  value={assignFacilitator}
+                  onChange={setAssignFacilitator}
+                  placeholder="Ej: Juan Pérez (Operador Líder)"
+                  filterRole="all"
+                />
               </div>
 
               {/* Attendance & Digital Signatures Checklist for Shift */}
@@ -1609,18 +1601,14 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ currentUser, o
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Observaciones / Acuerdos de la Lección
-                </label>
-                <textarea
-                  rows={2}
-                  value={assignNotes}
-                  onChange={(e) => setAssignNotes(e.target.value)}
-                  placeholder="Ej: Se reforzó el uso de silbato en cruces de andén y contacto visual con grueros..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
+              <PredictiveTextarea
+                label="Observaciones / Acuerdos de la Lección"
+                value={assignNotes}
+                onChange={setAssignNotes}
+                context="charla"
+                rows={2}
+                placeholder="Ej: Se reforzó el uso de silbato en cruces de andén y contacto visual con grueros..."
+              />
 
               {/* Foto / Imagen de la Charla de Seguridad */}
               <div className="bg-amber-50/70 border border-amber-300 rounded-2xl p-3.5 space-y-2.5">

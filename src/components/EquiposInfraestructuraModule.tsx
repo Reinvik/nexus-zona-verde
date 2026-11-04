@@ -48,6 +48,8 @@ import {
 } from '../services/storage';
 import { PalletJackModule } from './PalletJackModule';
 import { RfScannerModule } from './RfScannerModule';
+import { PredictiveLeaderInput } from './PredictiveLeaderInput';
+import { PredictiveTextarea } from './PredictiveTextarea';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 
 export type EquiposSubTab = 'transpaletas' | 'pistolas-rf' | 'andenes' | 'checklist-gruas';
@@ -1152,12 +1154,12 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       ))}
                     </div>
                     {andenDoorStatus !== 'operativa' && (
-                      <input
-                        type="text"
-                        placeholder="Detalle de falla en puerta (ej: sensor descalibrado, corte piola)..."
+                      <PredictiveTextarea
+                        context="andenDoor"
+                        rows={2}
+                        placeholder="Detalle de falla en cortina seccional o elige una sugerencia..."
                         value={andenDoorNotes}
-                        onChange={e => setAndenDoorNotes(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white"
+                        onChange={setAndenDoorNotes}
                       />
                     )}
                   </div>
@@ -1189,12 +1191,12 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       ))}
                     </div>
                     {andenGateStatus !== 'operativa' && (
-                      <input
-                        type="text"
-                        placeholder="Detalle de falla en reja (ej: golpeada por transpaleta, seguro trabado)..."
+                      <PredictiveTextarea
+                        context="andenGate"
+                        rows={2}
+                        placeholder="Detalle de falla en reja de seguridad o elige una sugerencia..."
                         value={andenGateNotes}
-                        onChange={e => setAndenGateNotes(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white"
+                        onChange={setAndenGateNotes}
                       />
                     )}
                   </div>
@@ -1226,12 +1228,12 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       ))}
                     </div>
                     {andenLevelerStatus !== 'operativo' && (
-                      <input
-                        type="text"
-                        placeholder="Detalle de falla en niveladora (ej: cilindro no sube, pérdida de presión)..."
+                      <PredictiveTextarea
+                        context="andenLeveler"
+                        rows={2}
+                        placeholder="Detalle de falla en rampa hidráulica o elige una sugerencia..."
                         value={andenLevelerNotes}
-                        onChange={e => setAndenLevelerNotes(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white"
+                        onChange={setAndenLevelerNotes}
                       />
                     )}
                   </div>
@@ -1262,18 +1264,14 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
 
                   {/* Datos del Inspector */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                        Inspector / Supervisor
-                      </label>
-                      <input
-                        type="text"
-                        value={andenInspectedBy}
-                        onChange={e => setAndenInspectedBy(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-slate-300"
-                        required
-                      />
-                    </div>
+                    <PredictiveLeaderInput
+                      label="Inspector / Supervisor Responsable"
+                      required
+                      placeholder="Buscar o escribir nombre..."
+                      value={andenInspectedBy}
+                      onChange={setAndenInspectedBy}
+                      filterRole="all"
+                    />
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 block mb-1">
                         Turno de Inspección
@@ -1593,25 +1591,23 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       </select>
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Evaluador / Operador Responsable</label>
-                      <input
-                        type="text"
-                        value={evaluatorName}
-                        onChange={e => setEvaluadorName(e.target.value)}
-                        className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white"
-                        placeholder="Nombre completo operador"
+                      <PredictiveLeaderInput
+                        label="Evaluador / Operador Responsable"
                         required
+                        placeholder="Buscar nombre o escribir..."
+                        value={evaluatorName}
+                        onChange={setEvaluadorName}
+                        filterRole="all"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Supervisor Directo</label>
-                      <input
-                        type="text"
-                        value={supervisorName}
-                        onChange={e => setSupervisorName(e.target.value)}
-                        className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white"
-                        placeholder="Nombre supervisor"
+                      <PredictiveLeaderInput
+                        label="Supervisor Directo"
                         required
+                        placeholder="Buscar supervisor a cargo..."
+                        value={supervisorName}
+                        onChange={setSupervisorName}
+                        filterRole="all"
                       />
                     </div>
                   </div>
@@ -1847,18 +1843,14 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                   </div>
 
                   {/* Comentarios Adicionales */}
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Comentarios Generales / Observaciones
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={comments}
-                      onChange={e => setComments(e.target.value)}
-                      placeholder="Indicar cualquier novedad adicional antes de liberar el equipo..."
-                      className="w-full text-xs p-3 rounded-xl border border-slate-300"
-                    />
-                  </div>
+                  <PredictiveTextarea
+                    label="Comentarios Generales / Observaciones"
+                    context="gruaChecklist"
+                    rows={2}
+                    placeholder="Indica el estado del equipo o selecciona una frase sugerida..."
+                    value={comments}
+                    onChange={setComments}
+                  />
 
                   {/* Botones de Envío */}
                   <div className="flex items-center justify-between pt-4 border-t border-slate-200">
