@@ -1527,7 +1527,7 @@ export const INITIAL_ANDENES: AndenInspection[] = Array.from({ length: 34 }, (_,
     id: `anden-${num}`,
     andenNumber: num,
     andenCode: `ANDÉN-${num.toString().padStart(2, '0')}`,
-    area: num <= 20 ? 'Andenes de Despacho (1 al 20)' : 'Andenes de Recepción Inbound (21 al 34)',
+    area: num <= 5 ? 'Andenes de Recepción Inbound (1 al 5)' : 'Andenes de Despacho (6 al 34)',
     doorStatus: isAnden5 ? 'falla_sensor' : isAnden28 ? 'trabada' : 'operativa',
     gateStatus: isAnden3 ? 'traba_rota' : 'operativa',
     levelerStatus: isAnden5 ? 'fuera_servicio' : isAnden19 ? 'fuga_hidraulica' : 'operativo',
@@ -1547,9 +1547,21 @@ export function getAndenes(): AndenInspection[] {
     safeSet(KEYS.ANDENES, INITIAL_ANDENES);
     return INITIAL_ANDENES;
   }
+
+  // Normalizar áreas de andenes a la regla oficial CIAL: Andenes 1 al 5 son Inbound, 6 al 34 son Despacho
+  const normalized = data.map(anden => {
+    const expectedArea = anden.andenNumber <= 5 
+      ? 'Andenes de Recepción Inbound (1 al 5)' 
+      : 'Andenes de Despacho (6 al 34)';
+    if (anden.area !== expectedArea) {
+      return { ...anden, area: expectedArea };
+    }
+    return anden;
+  });
+
   // Si en localStorage había menos de 34 andenes (ej: versión anterior con 12), completar hasta 34
-  if (data.length < 34) {
-    const existingMap = new Map<number, AndenInspection>(data.map(a => [a.andenNumber, a]));
+  if (normalized.length < 34) {
+    const existingMap = new Map<number, AndenInspection>(normalized.map(a => [a.andenNumber, a]));
     const mergedList: AndenInspection[] = INITIAL_ANDENES.map(seed => {
       const existing = existingMap.get(seed.andenNumber);
       return existing || seed;
@@ -1557,7 +1569,14 @@ export function getAndenes(): AndenInspection[] {
     safeSet(KEYS.ANDENES, mergedList);
     return mergedList;
   }
-  return data;
+
+  // Guardar si hubo cambios en las áreas normalizadas
+  const hasChanges = normalized.some((a, i) => a.area !== data[i]?.area);
+  if (hasChanges) {
+    safeSet(KEYS.ANDENES, normalized);
+  }
+
+  return normalized;
 }
 
 export function saveAndenInspection(anden: AndenInspection): void {

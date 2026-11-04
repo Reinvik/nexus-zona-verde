@@ -228,8 +228,8 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
       }
     }
 
-    if (andenFilter === 'despacho') return a.andenNumber <= 20;
-    if (andenFilter === 'recepcion') return a.andenNumber >= 21;
+    if (andenFilter === 'despacho') return a.andenNumber >= 6;
+    if (andenFilter === 'recepcion') return a.andenNumber <= 5;
     if (andenFilter === 'alertas') {
       return a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo';
     }
@@ -544,16 +544,6 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                   Todos (34)
                 </button>
                 <button
-                  onClick={() => setAndenFilter('despacho')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
-                    andenFilter === 'despacho'
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  }`}
-                >
-                  Despacho (1 al 20)
-                </button>
-                <button
                   onClick={() => setAndenFilter('recepcion')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
                     andenFilter === 'recepcion'
@@ -561,7 +551,17 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                       : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
                   }`}
                 >
-                  Recepción (21 al 34)
+                  Inbound (1 al 5)
+                </button>
+                <button
+                  onClick={() => setAndenFilter('despacho')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                    andenFilter === 'despacho'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  }`}
+                >
+                  Despacho (6 al 34)
                 </button>
                 <button
                   onClick={() => setAndenFilter('alertas')}
@@ -647,20 +647,20 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
               <p className="text-xs text-slate-400 mt-1">Prueba cambiando el filtro o la búsqueda.</p>
             </div>
           ) : andenViewMode === 'doble-columna' && andenFilter === 'todos' && !andenSearch.trim() ? (
-            /* Vista 2 Columnas Dividida por Zonas Oficiales: Despacho (1-20) y Recepción (21-34) */
+            /* Vista 2 Columnas Dividida por Zonas Oficiales: Recepción Inbound (1-5) y Despacho (6-34) */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               
-              {/* Columna 1: Despacho (Andenes 1 al 20) */}
+              {/* Columna 1: Recepción Inbound (Andenes 1 al 5) */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-900/10 rounded-xl border border-emerald-800/15">
-                  <span className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
-                    Andenes de Despacho (1 al 20)
+                <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-900/10 rounded-xl border border-indigo-800/15">
+                  <span className="text-xs font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                    Andenes de Recepción Inbound (1 al 5)
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-800">
-                    {andenes.filter(a => a.andenNumber <= 20 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length > 0 ? (
+                  <span className="text-[11px] font-bold text-indigo-800">
+                    {andenes.filter(a => a.andenNumber <= 5 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length > 0 ? (
                       <span className="text-rose-700 font-black">
-                        {andenes.filter(a => a.andenNumber <= 20 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length} con alerta
+                        {andenes.filter(a => a.andenNumber <= 5 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length} con alerta
                       </span>
                     ) : (
                       'Todos 100% OK'
@@ -669,7 +669,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                 </div>
 
                 <div className="space-y-1.5">
-                  {andenes.filter(a => a.andenNumber <= 20).map(anden => {
+                  {andenes.filter(a => a.andenNumber <= 5).map(anden => {
                     const isDoorOk = anden.doorStatus === 'operativa';
                     const isGateOk = anden.gateStatus === 'operativa';
                     const isLevelerOk = anden.levelerStatus === 'operativo';
@@ -685,7 +685,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                             ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50/80 ring-1 ring-rose-400/30'
                             : !isFullyOk
                             ? 'border-amber-300 bg-amber-50/20 hover:bg-amber-50/50'
-                            : 'border-slate-200 hover:border-emerald-400 hover:bg-slate-50/50'
+                            : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'
                         }`}
                       >
                         {/* Lado Izquierdo: Badge Número + Código */}
@@ -696,7 +696,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                                 ? 'bg-rose-600 text-white animate-pulse'
                                 : !isFullyOk
                                 ? 'bg-amber-500 text-white'
-                                : 'bg-[#008744] text-white'
+                                : 'bg-indigo-600 text-white'
                             }`}
                           >
                             {anden.andenNumber.toString().padStart(2, '0')}
@@ -706,8 +706,8 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                             <span className="text-xs font-black text-slate-800 block">
                               {anden.andenCode}
                             </span>
-                            <span className="text-[10px] text-slate-400 block font-medium">
-                              Despacho
+                            <span className="text-[10px] text-indigo-700 block font-bold">
+                              Inbound
                             </span>
                           </div>
                         </div>
@@ -799,17 +799,17 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                 </div>
               </div>
 
-              {/* Columna 2: Recepción Inbound (Andenes 21 al 34) */}
+              {/* Columna 2: Despacho (Andenes 6 al 34) */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-900/10 rounded-xl border border-indigo-800/15">
-                  <span className="text-xs font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
-                    Andenes de Recepción Inbound (21 al 34)
+                <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-900/10 rounded-xl border border-emerald-800/15">
+                  <span className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
+                    Andenes de Despacho (6 al 34)
                   </span>
-                  <span className="text-[11px] font-bold text-indigo-800">
-                    {andenes.filter(a => a.andenNumber >= 21 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length > 0 ? (
+                  <span className="text-[11px] font-bold text-emerald-800">
+                    {andenes.filter(a => a.andenNumber >= 6 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length > 0 ? (
                       <span className="text-rose-700 font-black">
-                        {andenes.filter(a => a.andenNumber >= 21 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length} con alerta
+                        {andenes.filter(a => a.andenNumber >= 6 && (a.isBlocked || a.doorStatus !== 'operativa' || a.gateStatus !== 'operativa' || a.levelerStatus !== 'operativo')).length} con alerta
                       </span>
                     ) : (
                       'Todos 100% OK'
@@ -818,7 +818,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                 </div>
 
                 <div className="space-y-1.5">
-                  {andenes.filter(a => a.andenNumber >= 21).map(anden => {
+                  {andenes.filter(a => a.andenNumber >= 6).map(anden => {
                     const isDoorOk = anden.doorStatus === 'operativa';
                     const isGateOk = anden.gateStatus === 'operativa';
                     const isLevelerOk = anden.levelerStatus === 'operativo';
@@ -834,7 +834,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                             ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50/80 ring-1 ring-rose-400/30'
                             : !isFullyOk
                             ? 'border-amber-300 bg-amber-50/20 hover:bg-amber-50/50'
-                            : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'
+                            : 'border-slate-200 hover:border-emerald-400 hover:bg-slate-50/50'
                         }`}
                       >
                         {/* Lado Izquierdo: Badge Número + Código */}
@@ -845,7 +845,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                                 ? 'bg-rose-600 text-white animate-pulse'
                                 : !isFullyOk
                                 ? 'bg-amber-500 text-white'
-                                : 'bg-indigo-600 text-white'
+                                : 'bg-[#008744] text-white'
                             }`}
                           >
                             {anden.andenNumber.toString().padStart(2, '0')}
@@ -856,7 +856,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                               {anden.andenCode}
                             </span>
                             <span className="text-[10px] text-slate-400 block font-medium">
-                              Recepción
+                              Despacho
                             </span>
                           </div>
                         </div>
@@ -979,9 +979,9 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                             ? 'bg-rose-600 text-white animate-pulse'
                             : !isFullyOk
                             ? 'bg-amber-500 text-white'
-                            : anden.andenNumber <= 20
-                            ? 'bg-[#008744] text-white'
-                            : 'bg-indigo-600 text-white'
+                            : anden.andenNumber <= 5
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-[#008744] text-white'
                         }`}
                       >
                         {anden.andenNumber.toString().padStart(2, '0')}
@@ -992,7 +992,7 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                           {anden.andenCode}
                         </span>
                         <span className="text-[10px] text-slate-400 block font-medium">
-                          {anden.andenNumber <= 20 ? 'Despacho' : 'Recepción'}
+                          {anden.andenNumber <= 5 ? 'Inbound' : 'Despacho'}
                         </span>
                       </div>
                     </div>
@@ -1081,9 +1081,9 @@ export const EquiposInfraestructuraModule: React.FC<EquiposInfraestructuraModule
                     <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-lg ${
                       selectedAnden.isBlocked
                         ? 'bg-rose-600'
-                        : selectedAnden.andenNumber <= 20
-                        ? 'bg-[#008744]'
-                        : 'bg-indigo-600'
+                        : selectedAnden.andenNumber <= 5
+                        ? 'bg-indigo-600'
+                        : 'bg-[#008744]'
                     }`}>
                       {selectedAnden.andenNumber}
                     </div>
