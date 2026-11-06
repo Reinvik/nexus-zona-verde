@@ -40,12 +40,15 @@ import {
   Tag,
   Eye,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Settings,
+  SlidersHorizontal
 } from 'lucide-react';
-import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType, AppUser } from '../types';
+import { OperatorItem, AttendanceRecord, AttendanceStatus, ShiftId, ShiftType, AppUser, OperationalSpecialty } from '../types';
 import { 
   getOperators, 
   saveOperator, 
+  saveOperatorsBulk,
   deleteOperator, 
   getAttendanceRecords, 
   saveAttendanceRecord, 
@@ -59,6 +62,7 @@ import {
   saveShiftTeamPhoto,
   deleteShiftTeamPhoto,
   getAppUsers,
+  saveAppUser,
   ShiftTeamPhoto
 } from '../services/storage';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -351,7 +355,13 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const [viewMode, setViewMode] = useState<'diario' | 'matriz'>('matriz');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedShiftId, setSelectedShiftId] = useState<ShiftId | 'todos'>(() => {
-    return currentUser?.shiftId || 'turno-1';
+    if (currentUser?.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos') {
+      return 'todos'; // Al entrar con un supervisor preasignado, mostrar su grupo oficial completo sin ocultar por turno
+    }
+    if (currentUser?.role === 'supervisor') {
+      return 'todos';
+    }
+    return currentUser?.shiftId || 'todos';
   });
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
@@ -373,7 +383,25 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return 'todos';
   });
   const [selectedGroup, setSelectedGroup] = useState<string>('todos');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Estados del Configurador Visual de Grupos Oficiales y Turnos (T1, T2, T3)
+  const [showGroupBuilderModal, setShowGroupBuilderModal] = useState<boolean>(false);
+  const [builderTab, setBuilderTab] = useState<'supervisor' | 'turnos'>('supervisor');
+  const [builderSupervisor, setBuilderSupervisor] = useState<string>(() => {
+    if (currentUser?.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos') {
+      return currentUser.assignedSupervisorName;
+    }
+    if (currentUser?.role === 'supervisor') {
+      return currentUser.name;
+    }
+    return 'Walter Sánchez';
+  });
+  const [builderShift, setBuilderShift] = useState<ShiftId>(() => currentUser?.shiftId || 'turno-1');
+  const [builderSpecialtyFilter, setBuilderSpecialtyFilter] = useState<string>('auto');
+  const [builderSearch, setBuilderSearch] = useState<string>('');
+  const [builderOnlySelected, setBuilderOnlySelected] = useState<boolean>(false);
 
   // Cloud sync status with Supabase
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
@@ -717,27 +745,74 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return Array.from(set).sort();
   }, [operators]);
 
-  // Supervisors list with counts
-  const supervisorOptions = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const op of operators) {
-      if (op.supervisor && op.supervisor.trim()) {
-        const s = op.supervisor.trim();
-        counts[s] = (counts[s] || 0) + 1;
-      }
+  // Normalizador sin tildes para empatar nombres de supervisores sin errores ("Claudio Sepúlveda" === "Claudio Sepulveda")
+  const normalizeSupName = (s?: string): string =>
+    (s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const SPECIALTY_META: Record<string, { label: string; shortLabel: string; emoji: string; badgeClass: string }> = {
+    despacho: { label: 'Despacho', shortLabel: 'Despacho', emoji: '🚛', badgeClass: 'bg-blue-100 text-blue-800 border-blue-300' },
+    picking: { label: 'Picking', shortLabel: 'Picking', emoji: '📦', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    gruas: { label: 'Grúas', shortLabel: 'Grúas', emoji: '🏗️', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300' },
+    encajado: { label: 'Encajado', shortLabel: 'Encajado', emoji: '🧊', badgeClass: 'bg-teal-100 text-teal-800 border-teal-300' },
+    transpaletas: { label: 'Transpaletas', shortLabel: 'Transpaletas', emoji: '🛞', badgeClass: 'bg-orange-100 text-orange-900 border-orange-300' },
+    repaletizado: { label: 'Repaletizado', shortLabel: 'Repaletizado', emoji: '🔄', badgeClass: 'bg-purple-100 text-purple-800 border-purple-300' },
+    patio: { label: 'Patio Inbound', shortLabel: 'Patio', emoji: '🚧', badgeClass: 'bg-cyan-100 text-cyan-800 border-cyan-300' },
+    todos: { label: 'Todas las Áreas', shortLabel: 'General', emoji: '🌐', badgeClass: 'bg-slate-100 text-slate-700 border-slate-300' }
+  };
+
+  // Determina si un operador pertenece al grupo oficial de un supervisor
+  const isOperatorInSupervisorGroup = (op: OperatorItem, supervisorName: string): boolean => {
+    if (!supervisorName || supervisorName === 'todos') return true;
+    return normalizeSupName(op.supervisor) === normalizeSupName(supervisorName);
+  };
+
+  // Obtiene la especialidad principal de un supervisor (ej: Despacho para Walter/Nelson, Picking para Claudio/Cristian)
+  const getSupervisorSpecialty = (supervisorName: string): OperationalSpecialty => {
+    const appUsers = getAppUsers();
+    const norm = normalizeSupName(supervisorName);
+    const matchedUser = appUsers.find(
+      u => normalizeSupName(u.name) === norm ||
+           norm.includes(normalizeSupName(u.name)) ||
+           normalizeSupName(u.name).includes(norm)
+    );
+
+    if (matchedUser?.specialtyGroup && matchedUser.specialtyGroup !== 'todos') {
+      return matchedUser.specialtyGroup;
     }
-    const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
-    return names.map(name => ({ name, count: counts[name] }));
-  }, [operators]);
+
+    if (norm.includes('walter') || norm.includes('nelson') || norm.includes('bryan')) return 'despacho';
+    if (norm.includes('claudio') || norm.includes('cristian')) return 'picking';
+    if (norm.includes('mayckell')) return 'encajado';
+
+    // Inferir por mayoría de sus operadores asignados
+    const supOps = operators.filter(o => isOperatorInSupervisorGroup(o, supervisorName));
+    if (supOps.length > 0) {
+      const grpCounts: Record<string, number> = {};
+      for (const o of supOps) {
+        const gId = getOperatorGroup(o).id;
+        if (gId !== 'general' && gId !== 'jefatura') {
+          grpCounts[gId] = (grpCounts[gId] || 0) + 1;
+        }
+      }
+      const topGrp = Object.keys(grpCounts).sort((a, b) => grpCounts[b] - grpCounts[a])[0];
+      if (topGrp) return topGrp as OperationalSpecialty;
+    }
+
+    return 'todos';
+  };
 
   // Obtener el badge de turno preasignado de un supervisor o jefatura
   const getSupervisorShiftBadge = (supervisorName: string): string | null => {
     const appUsers = getAppUsers();
-    const cleanSup = supervisorName.toLowerCase().trim();
+    const cleanSup = normalizeSupName(supervisorName);
     const matchedUser = appUsers.find(
-      u => u.name.toLowerCase().trim() === cleanSup ||
-           cleanSup.includes(u.name.toLowerCase().trim()) ||
-           u.name.toLowerCase().includes(cleanSup)
+      u => normalizeSupName(u.name) === cleanSup ||
+           cleanSup.includes(normalizeSupName(u.name)) ||
+           normalizeSupName(u.name).includes(cleanSup)
     );
     if (matchedUser?.shiftId) {
       return matchedUser.shiftId === 'turno-1' ? 'T1' : matchedUser.shiftId === 'turno-2' ? 'T2' : 'T3';
@@ -745,54 +820,254 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     return null;
   };
 
-  // Manejador al elegir un supervisor/jefatura: aplica su dotación Y su turno preasignado
+  // Lista consolidada de Supervisores (unificando nombres con/sin tilde y sumando usuarios con rol supervisor)
+  const supervisorOptions = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+
+    // Primero agregar supervisores registrados en AppUsers
+    const appUsers = getAppUsers();
+    for (const u of appUsers) {
+      if (u.role === 'supervisor') {
+        const key = normalizeSupName(u.name);
+        if (!map.has(key)) {
+          map.set(key, { name: u.name.trim(), count: 0 });
+        }
+      }
+    }
+
+    // Luego contar operadores asignados a cada supervisor
+    for (const op of operators) {
+      if (!op.active) continue;
+      if (op.supervisor && op.supervisor.trim() && op.supervisor.trim() !== 'Sin Asignar') {
+        const rawName = op.supervisor.trim();
+        const key = normalizeSupName(rawName);
+        const existing = map.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(key, { name: rawName, count: 1 });
+        }
+      }
+    }
+
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .map(item => {
+        const specialty = getSupervisorSpecialty(item.name);
+        const specMeta = SPECIALTY_META[specialty] || SPECIALTY_META.todos;
+        const shiftBadge = getSupervisorShiftBadge(item.name);
+        return {
+          ...item,
+          specialty,
+          specialtyLabel: specMeta.shortLabel,
+          specialtyEmoji: specMeta.emoji,
+          specialtyBadgeClass: specMeta.badgeClass,
+          shiftBadge
+        };
+      });
+  }, [operators]);
+
+  // Manejador al elegir un supervisor: muestra su Grupo Oficial completo sin que el filtro de turno o área le esconda operadores
   const handleSelectSupervisor = (supervisorName: string) => {
-    if (supervisorName === 'todos' || selectedSupervisor === supervisorName) {
+    if (supervisorName === 'todos' || normalizeSupName(selectedSupervisor) === normalizeSupName(supervisorName)) {
       setSelectedSupervisor('todos');
       return;
     }
 
-    setSelectedSupervisor(supervisorName);
+    const supOps = operators.filter(o => o.active && isOperatorInSupervisorGroup(o, supervisorName));
+    const specialty = getSupervisorSpecialty(supervisorName);
+    const specMeta = SPECIALTY_META[specialty] || SPECIALTY_META.todos;
 
-    // 1. Buscar si este supervisor o jefatura tiene turno preasignado en AppUsers
-    const appUsers = getAppUsers();
-    const cleanSup = supervisorName.toLowerCase().trim();
-    const matchedUser = appUsers.find(
-      u => u.name.toLowerCase().trim() === cleanSup ||
-           cleanSup.includes(u.name.toLowerCase().trim()) ||
-           u.name.toLowerCase().includes(cleanSup)
-    );
-
-    if (matchedUser?.shiftId) {
-      setSelectedShiftId(matchedUser.shiftId);
-      const shiftLabel = matchedUser.shiftId === 'turno-1' ? 'Turno 1' : matchedUser.shiftId === 'turno-2' ? 'Turno 2' : 'Turno 3';
-      showToast(`🎯 Preasignado: ${supervisorName} • ${shiftLabel}`);
+    if (supOps.length > 0) {
+      // Tiene grupo oficial asignado: mostrar el 100% de su grupo oficial limpiando filtros que bloqueen
+      setSelectedSupervisor(supervisorName);
+      setSelectedShiftId('todos');
+      setSelectedGroup('todos');
+      setSelectedArea('todas');
+      showToast(`👤 Grupo Oficial de ${supervisorName}: ${supOps.length} operadores (${specMeta.emoji} ${specMeta.label})`);
     } else {
-      // 2. Si no tiene usuario explícito, detectar turno mayoritario de su dotación
-      const supOperators = operators.filter(o => (o.supervisor || '').trim().toLowerCase() === cleanSup && o.shiftId);
-      if (supOperators.length > 0) {
-        const counts: Record<string, number> = {};
-        for (const op of supOperators) {
-          if (op.shiftId) counts[op.shiftId] = (counts[op.shiftId] || 0) + 1;
-        }
-        const predominantShift = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] as ShiftId;
-        if (predominantShift) {
-          setSelectedShiftId(predominantShift);
-          const shiftLabel = predominantShift === 'turno-1' ? 'Turno 1' : predominantShift === 'turno-2' ? 'Turno 2' : 'Turno 3';
-          showToast(`🎯 Dotación: ${supervisorName} • ${shiftLabel}`);
-        }
+      // Si aún no tiene operadores asignados directamente a su nombre, mostrar su área de especialidad (ej: Despacho o Picking)
+      setSelectedSupervisor(supervisorName);
+      setSelectedShiftId('todos');
+      if (specialty !== 'todos') {
+        setSelectedGroup(specialty);
+        showToast(`${specMeta.emoji} ${supervisorName}: mostrando área ${specMeta.label}. Usa "⚙️ Armar Grupo" para elegir tu nómina oficial.`);
+      } else {
+        setSelectedGroup('todos');
+        showToast(`👤 ${supervisorName}: usa "⚙️ Armar Grupo" para marcar tus operadores oficiales.`);
       }
     }
+  };
+
+  // Manejador para elegir un Turno (T1, T2, T3) sin que un filtro de supervisor anterior deje la lista vacía
+  const handleSelectShiftFilter = (shiftId: ShiftId | 'todos') => {
+    setSelectedShiftId(shiftId);
+    if (shiftId !== 'todos' && selectedSupervisor !== 'todos') {
+      // Verificar si el supervisor actual tiene operadores en ese turno; si no, limpiar supervisor para ver todo el turno
+      const hasOpsInShift = operators.some(
+        o => o.active && isOperatorInSupervisorGroup(o, selectedSupervisor) && o.shiftId === shiftId
+      );
+      if (!hasOpsInShift) {
+        setSelectedSupervisor('todos');
+      }
+    }
+  };
+
+  // Manejador para elegir un Área/Especialidad (Despacho, Picking, Grúas, Encajado...)
+  const handleSelectSpecialtyFilter = (groupId: string) => {
+    const nextGroup = selectedGroup === groupId ? 'todos' : groupId;
+    setSelectedGroup(nextGroup);
+    if (nextGroup !== 'todos' && selectedSupervisor !== 'todos') {
+      // Limpiar filtro de supervisor individual para mostrar toda el área (ej. Todo Despacho o Todo Picking)
+      setSelectedSupervisor('todos');
+      const specMeta = SPECIALTY_META[nextGroup] || SPECIALTY_META.todos;
+      showToast(`${specMeta.emoji} Mostrando dotación de ${specMeta.label}`);
+    }
+  };
+
+  // ============================================================================
+  // FUNCIONES DEL CONFIGURADOR VISUAL DE GRUPOS OFICIALES Y TURNOS (T1, T2, T3)
+  // ============================================================================
+
+  const openGroupBuilderForSupervisor = (supName?: string) => {
+    const target = supName && supName !== 'todos'
+      ? supName
+      : (selectedSupervisor !== 'todos' ? selectedSupervisor : builderSupervisor);
+    setBuilderSupervisor(target);
+    setBuilderTab('supervisor');
+    setBuilderSpecialtyFilter('auto');
+    setBuilderOnlySelected(false);
+    setBuilderSearch('');
+    setShowGroupBuilderModal(true);
+  };
+
+  const openGroupBuilderForShift = (shiftId?: ShiftId) => {
+    const target = shiftId || (selectedShiftId !== 'todos' ? selectedShiftId : builderShift);
+    setBuilderShift(target);
+    setBuilderTab('turnos');
+    setBuilderSpecialtyFilter('todos');
+    setBuilderOnlySelected(false);
+    setBuilderSearch('');
+    setShowGroupBuilderModal(true);
+  };
+
+  // Marcar / Desmarcar un operador como parte del Grupo Oficial del Supervisor
+  const handleToggleOperatorInSupervisorGroup = (operator: OperatorItem, targetSupervisor: string) => {
+    const currentlyInGroup = isOperatorInSupervisorGroup(operator, targetSupervisor);
+    const updatedList = operators.map(op => {
+      if (op.id !== operator.id) return op;
+      return {
+        ...op,
+        supervisor: currentlyInGroup ? 'Sin Asignar' : targetSupervisor
+      };
+    });
+    saveOperatorsBulk(updatedList);
+    setOperators(updatedList);
+  };
+
+  // Asignar o quitar masivamente los operadores filtrados al Grupo Oficial del Supervisor
+  const handleBulkToggleSupervisorGroup = (targetOps: OperatorItem[], targetSupervisor: string, include: boolean) => {
+    const targetIds = new Set(targetOps.map(o => o.id));
+    const updatedList = operators.map(op => {
+      if (!targetIds.has(op.id)) return op;
+      return {
+        ...op,
+        supervisor: include ? targetSupervisor : (isOperatorInSupervisorGroup(op, targetSupervisor) ? 'Sin Asignar' : op.supervisor)
+      };
+    });
+    saveOperatorsBulk(updatedList);
+    setOperators(updatedList);
+    showToast(
+      include
+        ? `✅ ${targetOps.length} operadores integrados al grupo oficial de ${targetSupervisor}`
+        : `⬜ Operadores removidos del grupo de ${targetSupervisor}`
+    );
+  };
+
+  // Cambiar la especialidad oficial de un supervisor (ej. Despacho o Picking)
+  const handleUpdateSupervisorSpecialty = (supervisorName: string, specialty: OperationalSpecialty) => {
+    const appUsers = getAppUsers();
+    const norm = normalizeSupName(supervisorName);
+    const matchedUser = appUsers.find(
+      u => normalizeSupName(u.name) === norm ||
+           norm.includes(normalizeSupName(u.name)) ||
+           normalizeSupName(u.name).includes(norm)
+    );
+    if (matchedUser) {
+      saveAppUser({
+        ...matchedUser,
+        specialtyGroup: specialty,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    setBuilderSpecialtyFilter(specialty);
+    const specMeta = SPECIALTY_META[specialty] || SPECIALTY_META.todos;
+    showToast(`${specMeta.emoji} Especialidad ${specMeta.label} asignada a ${supervisorName}`);
+  };
+
+  // Sincronizar todos los operadores del grupo oficial de un supervisor a un Turno (T1, T2 o T3)
+  const handleSyncSupervisorGroupShift = (supervisorName: string, targetShift: ShiftId) => {
+    let count = 0;
+    const updatedList = operators.map(op => {
+      if (isOperatorInSupervisorGroup(op, supervisorName)) {
+        count++;
+        return { ...op, shiftId: targetShift };
+      }
+      return op;
+    });
+    saveOperatorsBulk(updatedList);
+    setOperators(updatedList);
+
+    // También actualizar el turno preasignado del supervisor en AppUsers
+    const appUsers = getAppUsers();
+    const norm = normalizeSupName(supervisorName);
+    const matchedUser = appUsers.find(
+      u => normalizeSupName(u.name) === norm ||
+           norm.includes(normalizeSupName(u.name)) ||
+           normalizeSupName(u.name).includes(norm)
+    );
+    if (matchedUser) {
+      saveAppUser({
+        ...matchedUser,
+        shiftId: targetShift,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    const shiftLabel = targetShift === 'turno-1' ? 'Turno 1' : targetShift === 'turno-2' ? 'Turno 2' : 'Turno 3';
+    showToast(`🕒 Grupo de ${supervisorName} (${count} op.) asignado oficialmente a ${shiftLabel}`);
+  };
+
+  // Cambiar el turno (T1, T2, T3) de un operador individual
+  const handleAssignOperatorShift = (operatorId: string, targetShift: ShiftId) => {
+    const updatedList = operators.map(op =>
+      op.id === operatorId ? { ...op, shiftId: targetShift } : op
+    );
+    saveOperatorsBulk(updatedList);
+    setOperators(updatedList);
+  };
+
+  // Asignar masivamente un grupo de operadores a un Turno (T1, T2 o T3)
+  const handleBulkAssignShift = (targetOps: OperatorItem[], targetShift: ShiftId) => {
+    const targetIds = new Set(targetOps.map(o => o.id));
+    const updatedList = operators.map(op =>
+      targetIds.has(op.id) ? { ...op, shiftId: targetShift } : op
+    );
+    saveOperatorsBulk(updatedList);
+    setOperators(updatedList);
+    const shiftLabel = targetShift === 'turno-1' ? 'Turno 1' : targetShift === 'turno-2' ? 'Turno 2' : 'Turno 3';
+    showToast(`🕒 ${targetOps.length} operadores asignados a ${shiftLabel}`);
   };
 
   // Operational Groups list with counts
   const groupOptions = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const op of operators) {
+      if (!op.active) continue;
       const grp = getOperatorGroup(op);
       counts[grp.id] = (counts[grp.id] || 0) + 1;
     }
-    const order = ['picking', 'despacho', 'gruas', 'encajado', 'transpaletas', 'repaletizado', 'patio', 'jefatura'];
+    const order = ['despacho', 'picking', 'gruas', 'encajado', 'transpaletas', 'repaletizado', 'patio', 'jefatura'];
     return order
       .filter(id => (counts[id] || 0) > 0)
       .map(id => ({
@@ -801,27 +1076,58 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
       }));
   }, [operators]);
 
-  // Filtered operators (by shift, area, supervisor, group, search)
+  // Conteo de operadores por Turno (T1, T2, T3)
+  const shiftCounts = useMemo(() => {
+    const counts: Record<string, number> = { 'turno-1': 0, 'turno-2': 0, 'turno-3': 0, todos: 0 };
+    for (const op of operators) {
+      if (!op.active) continue;
+      counts.todos++;
+      const s = op.shiftId || 'turno-1';
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    return counts;
+  }, [operators]);
+
+  // Filtered operators (sin choques entre Supervisor, Especialidad y Turno)
   const filteredOperators = useMemo(() => {
     return operators.filter(op => {
       if (!op.active) return false;
+
+      // 1. Si hay un supervisor seleccionado:
+      if (selectedSupervisor !== 'todos') {
+        const supHasDirectMembers = operators.some(o => o.active && isOperatorInSupervisorGroup(o, selectedSupervisor));
+        if (supHasDirectMembers) {
+          if (!isOperatorInSupervisorGroup(op, selectedSupervisor)) return false;
+        } else {
+          // Si aún no tiene miembros directos, filtrar por su especialidad
+          const spec = getSupervisorSpecialty(selectedSupervisor);
+          if (spec !== 'todos' && getOperatorGroup(op).id !== spec) return false;
+        }
+      }
+
+      // 2. Filtro de Turno (T1, T2, T3)
       if (selectedShiftId !== 'todos' && op.shiftId !== selectedShiftId) return false;
-      if (selectedArea !== 'todas' && op.area !== selectedArea) return false;
-      if (selectedSupervisor !== 'todos' && (op.supervisor || '').trim() !== selectedSupervisor) return false;
+
+      // 3. Filtro de Grupo / Especialidad (Despacho, Picking, Grúas, Encajado...)
       if (selectedGroup !== 'todos') {
         const grp = getOperatorGroup(op);
         if (grp.id !== selectedGroup) return false;
       }
+
+      // 4. Filtro de Área específica (opcional)
+      if (selectedArea !== 'todas' && op.area !== selectedArea) return false;
+
+      // 5. Búsqueda por texto
       if (search.trim()) {
-        const q = search.toLowerCase();
+        const q = normalizeSupName(search);
         const grp = getOperatorGroup(op);
-        const matchesName = op.name.toLowerCase().includes(q);
-        const matchesRut = op.rut?.toLowerCase().includes(q) ?? false;
-        const matchesRole = op.role.toLowerCase().includes(q);
-        const matchesSupervisor = op.supervisor?.toLowerCase().includes(q) ?? false;
-        const matchesJefe = op.jefeTurno?.toLowerCase().includes(q) ?? false;
-        const matchesArea = op.area.toLowerCase().includes(q);
-        const matchesGroup = grp.name.toLowerCase().includes(q) || grp.shortName.toLowerCase().includes(q);
+        const matchesName = normalizeSupName(op.name).includes(q);
+        const matchesRut = normalizeSupName(op.rut).includes(q);
+        const matchesRole = normalizeSupName(op.role).includes(q);
+        const matchesSupervisor = normalizeSupName(op.supervisor).includes(q);
+        const matchesJefe = normalizeSupName(op.jefeTurno).includes(q);
+        const matchesArea = normalizeSupName(op.area).includes(q);
+        const matchesGroup = normalizeSupName(grp.name).includes(q) || normalizeSupName(grp.shortName).includes(q);
         if (!matchesName && !matchesRut && !matchesRole && !matchesSupervisor && !matchesJefe && !matchesArea && !matchesGroup) {
           return false;
         }
@@ -1366,129 +1672,73 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
         </div>
       </div>
 
-      {/* Date, Shift & Filter Controls */}
-      <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* =====================================================================
+          PANEL SIMPLIFICADO DE TOMA DE LISTA: GRUPOS OFICIALES, ÁREAS Y TURNOS
+         ===================================================================== */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-4">
+        
+        {/* FILA 1: FECHA/MES + BUSCADOR RÁPIDO + BOTÓN "ARMAR GRUPOS Y TURNOS" */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3.5">
           
-          {/* Date Selector (Only active in Daily view) */}
-          {viewMode === 'diario' ? (
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                Fecha de Registro
-              </label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(todayStr)}
-                  className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                    selectedDate === todayStr 
-                      ? 'bg-emerald-600 text-white border-emerald-600' 
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
-                  }`}
-                >
-                  Hoy
-                </button>
+          {/* Selector de Fecha o Mes */}
+          <div className="w-full lg:w-64 shrink-0">
+            {viewMode === 'diario' ? (
+              <div>
+                <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  Fecha de Toma de Lista
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(todayStr)}
+                    className={`px-3 py-2 text-xs font-black rounded-xl border transition-all cursor-pointer ${
+                      selectedDate === todayStr 
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <CalendarRange className="w-3.5 h-3.5 text-emerald-600" />
-                Filtrar Mes Histórico
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-              >
-                {MONTH_TABS.map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Shift Selector */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-emerald-600" />
-              Turno Operativo
-            </label>
-            <select
-              value={selectedShiftId}
-              onChange={(e) => setSelectedShiftId(e.target.value as ShiftId | 'todos')}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-            >
-              {SHIFT_OPTIONS.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <CalendarRange className="w-3.5 h-3.5 text-emerald-600" />
+                  Mes en Matriz
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
+                >
+                  {MONTH_TABS.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* Supervisor Filter Dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-              Supervisor a Cargo
-            </label>
-            <select
-              value={selectedSupervisor}
-              onChange={(e) => handleSelectSupervisor(e.target.value)}
-              className="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-indigo-600 focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value="todos">Todos los Supervisores ({operators.length})</option>
-              {supervisorOptions.map(s => {
-                const shiftBadge = getSupervisorShiftBadge(s.name);
-                return (
-                  <option key={s.name} value={s.name}>
-                    {s.name} {shiftBadge ? `[${shiftBadge}]` : ''} ({s.count} colab.)
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Operational Group Filter Dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-emerald-600" />
-              Grupo Operativo
-            </label>
-            <select
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="todos">Todos los Grupos ({operators.length})</option>
-              {groupOptions.map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.name} ({g.count})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Search Input */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          {/* Buscador Instantáneo */}
+          <div className="flex-1">
+            <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5 text-emerald-600" />
-              Buscar Colaborador
+              Buscar Operador (Nombre, RUT o Cargo)
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Nombre, RUT, rol, supervisor..."
+                placeholder="Escribe nombre, apellido, RUT, Despacho, Picking..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
@@ -1497,7 +1747,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
                 >
                   ✕
                 </button>
@@ -1505,51 +1755,106 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             </div>
           </div>
 
+          {/* Botones de Configuración de Grupos Oficiales y Turnos */}
+          {canManageAttendance && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => openGroupBuilderForSupervisor()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
+                title="Elegir qué operadores son parte del Grupo Oficial de cada Supervisor o de Turno 1, 2 y 3"
+              >
+                <Settings className="w-4 h-4" />
+                <span>⚙️ Armar Mi Grupo / Turnos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  showAdvancedFilters
+                    ? 'bg-slate-800 text-white border-slate-800'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+                title="Mostrar u ocultar selectores adicionales"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>{showAdvancedFilters ? 'Ocultar filtros' : 'Más filtros'}</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Quick Filter Pill Rows: Supervisors & Groups */}
-        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
-          
-          {/* Quick Pill Row 1: Supervisors */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
-            <span className="font-bold text-slate-600 shrink-0 text-[11px] uppercase tracking-wider flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
+        {/* FILA 2: SELECCIÓN DE SUPERVISOR (GRUPO OFICIAL + ESPECIALIDAD DESPACHO / PICKING) */}
+        <div className="pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-              Supervisores:
+              <span>1. Elegir Supervisor (Muestra su Grupo Oficial directo):</span>
             </span>
+            {currentUser && (currentUser.assignedSupervisorName || currentUser.role === 'supervisor') && (
+              <button
+                type="button"
+                onClick={() => {
+                  const targetSup = currentUser.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos'
+                    ? currentUser.assignedSupervisorName
+                    : currentUser.name;
+                  handleSelectSupervisor(targetSup);
+                }}
+                className="text-[11px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2.5 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span>Ir a Mi Grupo ({currentUser.name.split(' ')[0]})</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
             <button
-              onClick={() => setSelectedSupervisor('todos')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              type="button"
+              onClick={() => {
+                setSelectedSupervisor('todos');
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap cursor-pointer border ${
                 selectedSupervisor === 'todos'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
               }`}
             >
-              Todos ({operators.length})
+              Todos ({operators.filter(o => o.active).length})
             </button>
+
             {supervisorOptions.map(s => {
-              const shiftBadge = getSupervisorShiftBadge(s.name);
-              const isSelected = selectedSupervisor === s.name;
+              const isSelected = normalizeSupName(selectedSupervisor) === normalizeSupName(s.name);
               return (
                 <button
                   key={s.name}
+                  type="button"
                   onClick={() => handleSelectSupervisor(s.name)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer border ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
-                      : 'bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-300 font-black'
+                      : 'bg-indigo-50/60 text-indigo-950 hover:bg-indigo-100 border-indigo-200'
                   }`}
-                  title={shiftBadge ? `Turno preasignado: ${shiftBadge} • Clic para ver su dotación` : `Ver dotación de ${s.name}`}
+                  title={`Ver Grupo Oficial de ${s.name} (${s.specialtyEmoji} ${s.specialtyLabel})`}
                 >
                   <span>{s.name}</span>
-                  {shiftBadge && (
-                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider ${
-                      isSelected ? 'bg-amber-400 text-slate-950 font-black' : 'bg-indigo-200 text-indigo-900 font-bold'
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${
+                    isSelected
+                      ? 'bg-white/20 text-white'
+                      : s.specialtyBadgeClass
+                  }`}>
+                    {s.specialtyEmoji} {s.specialtyLabel}
+                  </span>
+                  {s.shiftBadge && (
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                      isSelected ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-800'
                     }`}>
-                      {shiftBadge}
+                      {s.shiftBadge}
                     </span>
                   )}
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                    isSelected ? 'bg-indigo-700 text-white' : 'bg-indigo-200/80 text-indigo-900'
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                    isSelected ? 'bg-indigo-900 text-white' : 'bg-indigo-200/80 text-indigo-900'
                   }`}>
                     {s.count}
                   </span>
@@ -1558,115 +1863,237 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
             })}
           </div>
 
-          {/* Quick Pill Row 2: Operational Groups */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-thin">
-            <span className="font-bold text-slate-600 shrink-0 text-[11px] uppercase tracking-wider flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-              <Layers className="w-3.5 h-3.5 text-emerald-600" />
-              Grupos:
+          {/* BARRA CONTEXTUAL CUANDO HAY UN SUPERVISOR SELECCIONADO (EJ: DESPACHO PARA WALTER, PICKING PARA CLAUDIO) */}
+          {selectedSupervisor !== 'todos' && (() => {
+            const supSpec = getSupervisorSpecialty(selectedSupervisor);
+            const specMeta = SPECIALTY_META[supSpec] || SPECIALTY_META.todos;
+            const supGroupCount = operators.filter(o => o.active && isOperatorInSupervisorGroup(o, selectedSupervisor)).length;
+            const totalSpecCount = supSpec !== 'todos'
+              ? operators.filter(o => o.active && getOperatorGroup(o).id === supSpec).length
+              : operators.filter(o => o.active).length;
+
+            return (
+              <div className="mt-2.5 p-3 rounded-xl bg-gradient-to-r from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 font-black text-indigo-950">
+                    <UserCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Grupo Oficial de {selectedSupervisor}:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono">
+                      {supGroupCount} operadores
+                    </span>
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border font-bold ${specMeta.badgeClass}`}>
+                    <span>Especialidad: {specMeta.emoji} {specMeta.label}</span>
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {supSpec !== 'todos' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSupervisor('todos');
+                        setSelectedGroup(supSpec);
+                        setSelectedShiftId('todos');
+                        showToast(`${specMeta.emoji} Mostrando los ${totalSpecCount} operadores del área ${specMeta.label}`);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold transition cursor-pointer shadow-2xs"
+                      title={`Ver todos los operadores de ${specMeta.label} del CD`}
+                    >
+                      {specMeta.emoji} Ver Todo {specMeta.label} ({totalSpecCount})
+                    </button>
+                  )}
+
+                  {canManageAttendance && (
+                    <button
+                      type="button"
+                      onClick={() => openGroupBuilderForSupervisor(selectedSupervisor)}
+                      className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black transition cursor-pointer shadow-xs flex items-center gap-1"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Elegir quién es parte del grupo de {selectedSupervisor.split(' ')[0]}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* FILA 3: FILTRO RÁPIDO POR TURNO (T1, T2, T3) Y POR ÁREA DE INTERÉS (DESPACHO, PICKING, GRÚAS...) */}
+        <div className="pt-3 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          
+          {/* Bloque A: Turno 1, Turno 2, Turno 3 */}
+          <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1 mr-1">
+                <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                <span>2. Turno:</span>
+              </span>
+
+              {[
+                { id: 'todos', label: `Todos (${shiftCounts.todos})` },
+                { id: 'turno-1', label: `Turno 1 (${shiftCounts['turno-1']})` },
+                { id: 'turno-2', label: `Turno 2 (${shiftCounts['turno-2']})` },
+                { id: 'turno-3', label: `Turno 3 (${shiftCounts['turno-3']})` }
+              ].map(t => {
+                const isActive = selectedShiftId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleSelectShiftFilter(t.id as ShiftId | 'todos')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      isActive
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {canManageAttendance && (
+              <button
+                type="button"
+                onClick={() => openGroupBuilderForShift(selectedShiftId !== 'todos' ? selectedShiftId : 'turno-1')}
+                className="text-[11px] font-black text-emerald-800 hover:text-emerald-950 bg-emerald-100/80 hover:bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-300 transition cursor-pointer shrink-0"
+                title="Elegir qué operador es parte del Turno 1, Turno 2 o Turno 3"
+              >
+                ✏️ Asignar Turnos
+              </button>
+            )}
+          </div>
+
+          {/* Bloque B: Especialidad / Área Operativa (Despacho, Picking, Grúas, Encajado) */}
+          <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
+            <span className="text-[11px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+              <Layers className="w-3.5 h-3.5 text-blue-600" />
+              <span>3. Área:</span>
             </span>
+
             <button
+              type="button"
               onClick={() => setSelectedGroup('todos')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
                 selectedGroup === 'todos'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                  ? 'bg-slate-800 text-white border-slate-800 shadow-xs font-black'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
               }`}
             >
-              Todos ({operators.length})
+              Todas
             </button>
-            {groupOptions.map(g => (
-              <button
-                key={g.id}
-                onClick={() => setSelectedGroup(selectedGroup === g.id ? 'todos' : g.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  selectedGroup === g.id
-                    ? `${g.pillActiveClass} ring-2 ring-emerald-400`
-                    : g.pillInactiveClass
-                }`}
-              >
-                <span>{g.shortName}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                  selectedGroup === g.id ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-800'
-                }`}>
-                  {g.count}
-                </span>
-              </button>
-            ))}
+
+            {groupOptions.map(g => {
+              const specMeta = SPECIALTY_META[g.id] || SPECIALTY_META.todos;
+              const isSelected = selectedGroup === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => handleSelectSpecialtyFilter(g.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer border ${
+                    isSelected
+                      ? `${g.pillActiveClass} ring-2 ring-emerald-300 font-black`
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                >
+                  <span>{specMeta.emoji} {g.shortName}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                    isSelected ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {g.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
         </div>
 
-        {/* Quick Shortcut to Current User's Preassigned View */}
-        {currentUser && (currentUser.shiftId || currentUser.assignedSupervisorName || currentUser.role === 'supervisor') && (
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Preasignación Activa:</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentUser.shiftId) setSelectedShiftId(currentUser.shiftId);
-                  if (currentUser.assignedSupervisorName && currentUser.assignedSupervisorName !== 'todos') {
-                    setSelectedSupervisor(currentUser.assignedSupervisorName);
-                  } else if (currentUser.role === 'supervisor') {
-                    setSelectedSupervisor(currentUser.name);
-                  }
-                  const shiftLabel = currentUser.shiftId === 'turno-2' ? 'Turno 2' : currentUser.shiftId === 'turno-3' ? 'Turno 3' : 'Turno 1';
-                  showToast(`🎯 Mostrando dotación preasignada de ${currentUser.name} (${shiftLabel})`);
-                }}
-                className="px-3 py-1 rounded-xl text-xs font-black bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                title="Haz clic para aplicar directamente tu turno y dotación preasignada"
+        {/* FILTROS AVANZADOS COLAPSABLES (SOLO SI EL USUARIO PULSA "MÁS FILTROS") */}
+        {showAdvancedFilters && (
+          <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Filtrar Sub-Área</label>
+              <select
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
               >
-                <span>🎯 Mi Dotación: {currentUser.name.split(' ')[0]} • {currentUser.shiftId === 'turno-2' ? 'Turno 2' : currentUser.shiftId === 'turno-3' ? 'Turno 3' : 'Turno 1'}</span>
-              </button>
+                <option value="todas">Todas las Sub-Áreas</option>
+                {areas.map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
             </div>
-            
-            <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-              Preasignado en Configuración (Usuarios & Permisos)
-            </span>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Supervisor (Lista)</label>
+              <select
+                value={selectedSupervisor}
+                onChange={(e) => handleSelectSupervisor(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+              >
+                <option value="todos">Todos los Supervisores</option>
+                {supervisorOptions.map(s => (
+                  <option key={s.name} value={s.name}>
+                    {s.name} ({s.specialtyEmoji} {s.specialtyLabel} • {s.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Grupo Operativo</label>
+              <select
+                value={selectedGroup}
+                onChange={(e) => setSelectedGroup(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+              >
+                <option value="todos">Todos los Grupos</option>
+                {groupOptions.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} ({g.count})</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
-        {/* Applied Filters indicator bar */}
+        {/* RESUMEN DE FILTROS ACTIVOS Y BOTÓN DE LIMPIEZA RÁPIDA */}
         {(selectedSupervisor !== 'todos' || selectedGroup !== 'todos' || selectedShiftId !== 'todos' || selectedArea !== 'todas' || search.trim() !== '') && (
-          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+          <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-bold text-slate-600">Filtros activos:</span>
+              <span className="font-bold text-slate-500">Viendo ahora ({filteredOperators.length} operadores):</span>
               {selectedSupervisor !== 'todos' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-bold border border-indigo-200">
-                  <UserCheck className="w-3 h-3 text-indigo-600" />
-                  Supervisor: {selectedSupervisor}
-                  <button onClick={() => setSelectedSupervisor('todos')} className="hover:text-indigo-950 font-black ml-1">✕</button>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-bold border border-indigo-200">
+                  👤 Grupo de {selectedSupervisor}
+                  <button onClick={() => setSelectedSupervisor('todos')} className="hover:text-indigo-950 font-black ml-1 cursor-pointer">✕</button>
                 </span>
               )}
               {selectedGroup !== 'todos' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-                  <Layers className="w-3 h-3 text-emerald-600" />
-                  Grupo: {OPERATIONAL_GROUPS[selectedGroup]?.name || selectedGroup}
-                  <button onClick={() => setSelectedGroup('todos')} className="hover:text-emerald-950 font-black ml-1">✕</button>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-bold border border-emerald-200">
+                  {SPECIALTY_META[selectedGroup]?.emoji || '📦'} Área: {OPERATIONAL_GROUPS[selectedGroup]?.shortName || selectedGroup}
+                  <button onClick={() => setSelectedGroup('todos')} className="hover:text-emerald-950 font-black ml-1 cursor-pointer">✕</button>
                 </span>
               )}
               {selectedShiftId !== 'todos' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold border border-slate-300">
-                  <Clock className="w-3 h-3 text-slate-600" />
-                  {SHIFT_OPTIONS.find(s => s.id === selectedShiftId)?.name.split(' (')[0]}
-                  <button onClick={() => setSelectedShiftId('todos')} className="hover:text-slate-950 font-black ml-1">✕</button>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-200">
+                  🕒 {SHIFT_OPTIONS.find(s => s.id === selectedShiftId)?.name.split(' (')[0]}
+                  <button onClick={() => setSelectedShiftId('todos')} className="hover:text-amber-950 font-black ml-1 cursor-pointer">✕</button>
                 </span>
               )}
               {selectedArea !== 'todas' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold border border-slate-300">
-                  <Filter className="w-3 h-3 text-slate-600" />
-                  {selectedArea}
-                  <button onClick={() => setSelectedArea('todas')} className="hover:text-slate-950 font-black ml-1">✕</button>
+                  📍 {selectedArea}
+                  <button onClick={() => setSelectedArea('todas')} className="hover:text-slate-950 font-black ml-1 cursor-pointer">✕</button>
                 </span>
               )}
               {search.trim() && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                  <Search className="w-3 h-3 text-amber-700" />
-                  "{search}"
-                  <button onClick={() => setSearch('')} className="hover:text-amber-950 font-black ml-1">✕</button>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold">
+                  🔍 "{search}"
+                  <button onClick={() => setSearch('')} className="hover:text-slate-950 font-black ml-1 cursor-pointer">✕</button>
                 </span>
               )}
             </div>
@@ -1680,7 +2107,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               }}
               className="text-xs font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
             >
-              Limpiar todos los filtros
+              Ver todos los operadores (102)
             </button>
           </div>
         )}
@@ -3276,6 +3703,538 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
           </div>
         </div>
       )}
+
+      {/* =====================================================================
+          MODAL CONFIGURADOR VISUAL: ARMAR GRUPOS OFICIALES Y TURNOS (T1, T2, T3)
+         ===================================================================== */}
+      {showGroupBuilderModal && (() => {
+        const currentSupSpec = getSupervisorSpecialty(builderSupervisor);
+        const effectiveSpecFilter = builderSpecialtyFilter === 'auto' ? currentSupSpec : builderSpecialtyFilter;
+        const supSpecMeta = SPECIALTY_META[currentSupSpec] || SPECIALTY_META.todos;
+
+        // Operadores filtrados para el checklist del modal
+        const builderFilteredOperators = operators
+          .filter(op => {
+            if (!op.active) return false;
+
+            if (builderTab === 'supervisor') {
+              const inSupGroup = isOperatorInSupervisorGroup(op, builderSupervisor);
+              if (builderOnlySelected && !inSupGroup) return false;
+              if (!builderOnlySelected && effectiveSpecFilter !== 'todos') {
+                const grpId = getOperatorGroup(op).id;
+                // Mostrar si es de la especialidad o si ya pertenece al grupo del supervisor
+                if (grpId !== effectiveSpecFilter && !inSupGroup) return false;
+              }
+            } else {
+              const inShift = (op.shiftId || 'turno-1') === builderShift;
+              if (builderOnlySelected && !inShift) return false;
+              if (effectiveSpecFilter !== 'todos') {
+                const grpId = getOperatorGroup(op).id;
+                if (grpId !== effectiveSpecFilter) return false;
+              }
+            }
+
+            if (builderSearch.trim()) {
+              const q = normalizeSupName(builderSearch);
+              const grp = getOperatorGroup(op);
+              const matches =
+                normalizeSupName(op.name).includes(q) ||
+                normalizeSupName(op.rut).includes(q) ||
+                normalizeSupName(op.role).includes(q) ||
+                normalizeSupName(op.supervisor).includes(q) ||
+                normalizeSupName(grp.shortName).includes(q);
+              if (!matches) return false;
+            }
+
+            return true;
+          })
+          .sort((a, b) => {
+            if (builderTab === 'supervisor') {
+              const aIn = isOperatorInSupervisorGroup(a, builderSupervisor) ? 1 : 0;
+              const bIn = isOperatorInSupervisorGroup(b, builderSupervisor) ? 1 : 0;
+              if (aIn !== bIn) return bIn - aIn;
+            } else {
+              const aIn = (a.shiftId || 'turno-1') === builderShift ? 1 : 0;
+              const bIn = (b.shiftId || 'turno-1') === builderShift ? 1 : 0;
+              if (aIn !== bIn) return bIn - aIn;
+            }
+            return a.name.localeCompare(b.name);
+          });
+
+        const supOfficialCount = operators.filter(o => o.active && isOperatorInSupervisorGroup(o, builderSupervisor)).length;
+        const shiftOfficialCount = operators.filter(o => o.active && (o.shiftId || 'turno-1') === builderShift).length;
+
+        return (
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in"
+            onClick={() => setShowGroupBuilderModal(false)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 text-white p-5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
+                    <Settings className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black">
+                      Configurar Grupos Oficiales y Turnos (T1, T2, T3)
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      Elige qué operador es parte del Grupo Oficial de cada Supervisor (Despacho, Picking, etc.) y de cada Turno
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGroupBuilderModal(false)}
+                  className="text-white/70 hover:text-white p-2 rounded-xl hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Pestañas Superiores del Configurador */}
+              <div className="bg-slate-100 p-2 border-b border-slate-200 flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBuilderTab('supervisor');
+                    setBuilderSpecialtyFilter('auto');
+                    setBuilderOnlySelected(false);
+                  }}
+                  className={`flex-1 py-2.5 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    builderTab === 'supervisor'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>1. Armar Grupo Oficial de Supervisor</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBuilderTab('turnos');
+                    setBuilderSpecialtyFilter('todos');
+                    setBuilderOnlySelected(false);
+                  }}
+                  className={`flex-1 py-2.5 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    builderTab === 'turnos'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>2. Elegir Operadores de Turno 1, 2 y 3</span>
+                </button>
+              </div>
+
+              {/* Controles de Selección según Pestaña Activa */}
+              <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 space-y-3.5 shrink-0">
+                {builderTab === 'supervisor' ? (
+                  <>
+                    {/* Selector de Supervisor a Configurar */}
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5">
+                        A. Selecciona el Supervisor para armar su Grupo Oficial:
+                      </label>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                        {supervisorOptions.map(s => {
+                          const isSelected = normalizeSupName(builderSupervisor) === normalizeSupName(s.name);
+                          return (
+                            <button
+                              key={s.name}
+                              type="button"
+                              onClick={() => {
+                                setBuilderSupervisor(s.name);
+                                setBuilderSpecialtyFilter('auto');
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-300 font-black'
+                                  : 'bg-white text-slate-800 hover:bg-indigo-50 border-slate-200'
+                              }`}
+                            >
+                              <span>{s.name}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                                isSelected ? 'bg-white/20 text-white' : s.specialtyBadgeClass
+                              }`}>
+                                {s.specialtyEmoji} {s.specialtyLabel}
+                              </span>
+                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                                isSelected ? 'bg-indigo-900 text-white' : 'bg-slate-200 text-slate-800'
+                              }`}>
+                                {s.count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Especialidad del Supervisor (Despacho, Picking, etc.) + Sincronizar Turno del Grupo */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-2 border-t border-slate-200/80">
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs">
+                          <span className="font-black text-slate-700 block">
+                            B. Área / Especialidad que le interesa a {builderSupervisor.split(' ')[0]}:
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            Si es de Despacho ve Despacho primero; si es de Picking ve Picking primero
+                          </span>
+                        </div>
+                        <select
+                          value={currentSupSpec}
+                          onChange={(e) => handleUpdateSupervisorSpecialty(builderSupervisor, e.target.value as OperationalSpecialty)}
+                          className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-indigo-50/60 text-indigo-950 text-xs font-black cursor-pointer"
+                        >
+                          <option value="despacho">🚛 Despacho</option>
+                          <option value="picking">📦 Picking</option>
+                          <option value="gruas">🏗️ Grúas</option>
+                          <option value="encajado">🧊 Encajado</option>
+                          <option value="transpaletas">🛞 Transpaletas</option>
+                          <option value="repaletizado">🔄 Repaletizado</option>
+                          <option value="patio">🚧 Patio Inbound</option>
+                          <option value="todos">🌐 Todas las Áreas</option>
+                        </select>
+                      </div>
+
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs">
+                          <span className="font-black text-slate-700 block">
+                            C. Asignar Turno a todo el grupo de {builderSupervisor.split(' ')[0]} ({supOfficialCount}):
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            Pasa con 1 clic a todos sus operadores al turno elegido
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {(['turno-1', 'turno-2', 'turno-3'] as ShiftId[]).map((sh, idx) => (
+                            <button
+                              key={sh}
+                              type="button"
+                              onClick={() => handleSyncSupervisorGroupShift(builderSupervisor, sh)}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-900 hover:text-white border border-emerald-300 text-xs font-black transition cursor-pointer"
+                              title={`Asignar a los ${supOfficialCount} operadores de ${builderSupervisor} al Turno ${idx + 1}`}
+                            >
+                              Pasar a T{idx + 1}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* CONTROLES DE PESTAÑA 2: TURNO 1, TURNO 2, TURNO 3 */
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5">
+                      Selecciona el Turno para elegir qué operadores son parte de él:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {([
+                        { id: 'turno-1', name: '🌅 Turno 1 (Mañana)', count: shiftCounts['turno-1'] },
+                        { id: 'turno-2', name: '☀️ Turno 2 (Tarde)', count: shiftCounts['turno-2'] },
+                        { id: 'turno-3', name: '🌙 Turno 3 (Noche)', count: shiftCounts['turno-3'] }
+                      ] as { id: ShiftId; name: string; count: number }[]).map(t => {
+                        const isSelected = builderShift === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setBuilderShift(t.id)}
+                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300 font-black'
+                                : 'bg-white text-slate-800 hover:bg-emerald-50/60 border-slate-200 font-bold'
+                            }`}
+                          >
+                            <span className="text-xs sm:text-sm">{t.name}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-black ${
+                              isSelected ? 'bg-emerald-900 text-white' : 'bg-slate-100 text-slate-800'
+                            }`}>
+                              {t.count} op.
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Barra de Filtro por Especialidad + Buscador + Acciones Masivas dentro del Checklist */}
+                <div className="pt-2 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                    {builderTab === 'supervisor' && currentSupSpec !== 'todos' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBuilderSpecialtyFilter('auto');
+                          setBuilderOnlySelected(false);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black whitespace-nowrap cursor-pointer border ${
+                          effectiveSpecFilter === currentSupSpec && !builderOnlySelected
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {supSpecMeta.emoji} Su Área: {supSpecMeta.shortLabel}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBuilderSpecialtyFilter('todos');
+                        setBuilderOnlySelected(false);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer border ${
+                        effectiveSpecFilter === 'todos' && !builderOnlySelected
+                          ? 'bg-slate-800 text-white border-slate-800'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      🌐 Ver Todos (102)
+                    </button>
+
+                    {['despacho', 'picking', 'gruas', 'encajado', 'repaletizado'].map(specId => {
+                      if (builderTab === 'supervisor' && specId === currentSupSpec) return null;
+                      const meta = SPECIALTY_META[specId];
+                      const active = effectiveSpecFilter === specId && !builderOnlySelected;
+                      return (
+                        <button
+                          key={specId}
+                          type="button"
+                          onClick={() => {
+                            setBuilderSpecialtyFilter(specId);
+                            setBuilderOnlySelected(false);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer border ${
+                            active
+                              ? 'bg-slate-800 text-white border-slate-800'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {meta.emoji} {meta.shortLabel}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setBuilderOnlySelected(!builderOnlySelected)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black whitespace-nowrap cursor-pointer border ${
+                        builderOnlySelected
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      ✅ Solo Incluidos ({builderTab === 'supervisor' ? supOfficialCount : shiftOfficialCount})
+                    </button>
+                  </div>
+
+                  {/* Buscador en el modal */}
+                  <div className="relative w-full sm:w-64 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Buscar operador por nombre o RUT..."
+                      value={builderSearch}
+                      onChange={(e) => setBuilderSearch(e.target.value)}
+                      className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:outline-indigo-600"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    {builderSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setBuilderSearch('')}
+                        className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-barra de Acciones Rápidas Masivas */}
+              <div className="px-5 py-2.5 bg-indigo-50/70 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+                <span className="font-bold text-slate-700">
+                  Mostrando <strong>{builderFilteredOperators.length}</strong> operadores • Haz clic en cada operador para incluirlo o quitarlo:
+                </span>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {builderTab === 'supervisor' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleSupervisorGroup(builderFilteredOperators, builderSupervisor, true)}
+                        className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black transition cursor-pointer shadow-2xs"
+                      >
+                        ✅ Incluir los {builderFilteredOperators.length} mostrados en {builderSupervisor.split(' ')[0]}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleSupervisorGroup(builderFilteredOperators, builderSupervisor, false)}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold transition cursor-pointer"
+                      >
+                        ⬜ Quitar mostrados
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleBulkAssignShift(builderFilteredOperators, builderShift)}
+                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black transition cursor-pointer shadow-2xs"
+                    >
+                      ⚡ Asignar los {builderFilteredOperators.length} mostrados al {builderShift === 'turno-1' ? 'Turno 1' : builderShift === 'turno-2' ? 'Turno 2' : 'Turno 3'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista Scrolleable de Operadores (Checklist de 1 Clic) */}
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 divide-y divide-slate-100">
+                {builderFilteredOperators.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm font-medium">
+                    No hay operadores que coincidan con este filtro. Prueba pulsando "🌐 Ver Todos (102)".
+                  </div>
+                ) : (
+                  builderFilteredOperators.map(op => {
+                    const grp = getOperatorGroup(op);
+                    const specMeta = SPECIALTY_META[grp.id] || SPECIALTY_META.todos;
+                    const isMember = builderTab === 'supervisor'
+                      ? isOperatorInSupervisorGroup(op, builderSupervisor)
+                      : (op.shiftId || 'turno-1') === builderShift;
+
+                    return (
+                      <div
+                        key={op.id}
+                        className={`py-2.5 px-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                          isMember
+                            ? 'bg-emerald-50/70 border border-emerald-200 my-1'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        {/* Izquierda: Checkbox Principal + Datos del Operador */}
+                        <div
+                          onClick={() => {
+                            if (builderTab === 'supervisor') {
+                              handleToggleOperatorInSupervisorGroup(op, builderSupervisor);
+                            } else {
+                              handleAssignOperatorShift(op.id, builderShift);
+                            }
+                          }}
+                          className="flex items-center gap-3 flex-1 cursor-pointer select-none"
+                        >
+                          <button
+                            type="button"
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition shrink-0 cursor-pointer border ${
+                              isMember
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-300'
+                            }`}
+                          >
+                            {isMember ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>Parte del Grupo</span>
+                              </>
+                            ) : (
+                              <span>+ Incluir</span>
+                            )}
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-black text-slate-900 text-xs sm:text-sm truncate">
+                                {op.name}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${specMeta.badgeClass}`}>
+                                {specMeta.emoji} {grp.shortName}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
+                              <span>{op.role}</span>
+                              {op.rut && <span className="font-mono">• {op.rut}</span>}
+                              <span>• Sup. actual: <strong className="text-slate-700">{op.supervisor || 'Sin asignar'}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Derecha: Selector Rápido de Turno [T1] [T2] [T3] por Operador */}
+                        <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                          <span className="text-[10px] font-bold text-slate-400 mr-1">Turno:</span>
+                          {(['turno-1', 'turno-2', 'turno-3'] as ShiftId[]).map((sh, idx) => {
+                            const activeShift = (op.shiftId || 'turno-1') === sh;
+                            return (
+                              <button
+                                key={sh}
+                                type="button"
+                                onClick={() => handleAssignOperatorShift(op.id, sh)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer border ${
+                                  activeShift
+                                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                                    : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200'
+                                }`}
+                                title={`Asignar a ${op.name} al Turno ${idx + 1}`}
+                              >
+                                T{idx + 1}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer con botón de aplicación inmediata */}
+              <div className="p-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="text-xs text-slate-600 font-semibold">
+                  {builderTab === 'supervisor' ? (
+                    <span>
+                      👤 Grupo Oficial de <strong className="text-indigo-950">{builderSupervisor}</strong>: <strong>{supOfficialCount} operadores</strong>
+                    </span>
+                  ) : (
+                    <span>
+                      🕒 Dotación de <strong className="text-emerald-950">{builderShift === 'turno-1' ? 'Turno 1' : builderShift === 'turno-2' ? 'Turno 2' : 'Turno 3'}</strong>: <strong>{shiftOfficialCount} operadores</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (builderTab === 'supervisor') {
+                        handleSelectSupervisor(builderSupervisor);
+                      } else {
+                        setSelectedSupervisor('todos');
+                        setSelectedShiftId(builderShift);
+                      }
+                      setShowGroupBuilderModal(false);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>
+                      {builderTab === 'supervisor'
+                        ? `Listo • Pasar Lista a ${builderSupervisor.split(' ')[0]} (${supOfficialCount})`
+                        : `Listo • Pasar Lista a ${builderShift === 'turno-1' ? 'Turno 1' : builderShift === 'turno-2' ? 'Turno 2' : 'Turno 3'} (${shiftOfficialCount})`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

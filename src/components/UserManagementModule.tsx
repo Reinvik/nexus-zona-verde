@@ -21,7 +21,7 @@ import {
   FileText,
   BadgeCheck
 } from 'lucide-react';
-import { AppUser, UserRole, UserPermissions, ShiftId } from '../types';
+import { AppUser, UserRole, UserPermissions, ShiftId, OperationalSpecialty } from '../types';
 import { 
   getAppUsers, 
   saveAppUser, 
@@ -164,6 +164,22 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
     saveAppUser(updatedUser);
     loadUsers();
     showNotification(`Dotación preasignada "${assignedSupervisorName}" guardada para ${targetUser.name}`);
+  };
+
+  // Update specialty area (Despacho, Picking, Grúas, Encajado, etc.)
+  const handleUpdateUserSpecialty = (userId: string, specialtyGroup: OperationalSpecialty) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+
+    const updatedUser: AppUser = {
+      ...targetUser,
+      specialtyGroup,
+      updatedAt: new Date().toISOString()
+    };
+
+    saveAppUser(updatedUser);
+    loadUsers();
+    showNotification(`Área de interés "${specialtyGroup.toUpperCase()}" guardada para ${targetUser.name}`);
   };
 
   // Delete user
@@ -518,24 +534,45 @@ export const UserManagementModule: React.FC<UserManagementModuleProps> = ({ curr
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-amber-950 shrink-0">Dotación a ver:</span>
-                    <select
-                      value={u.assignedSupervisorName || 'todos'}
-                      onChange={(e) => handleUpdateUserDotacion(u.id, e.target.value)}
-                      className="text-xs font-bold rounded-xl px-3 py-1.5 border border-slate-300 bg-white text-slate-800 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="todos">Toda la Dotación (Sin filtro)</option>
-                      <option value={u.name}>Mi dotación propia ({u.name})</option>
-                      <option value="Walter Sánchez">Walter Sánchez (Despacho)</option>
-                      <option value="Mayckell Pereira">Mayckell Pereira (Encajado/Picking)</option>
-                      <option value="Claudio Sepúlveda">Claudio Sepúlveda (Picking Frío)</option>
-                      <option value="Cristian Hernandez">Cristian Hernández (Recepción)</option>
-                      <option value="Bryan Mariño">Bryan Mariño (Turno 3)</option>
-                      <option value="Carlos Venegas">Carlos Venegas (Jefatura Logística)</option>
-                      <option value="Francisco Lara">Francisco Lara (Jefe Turno)</option>
-                      <option value="Euro Velásquez">Euro Velásquez (Jefe Turno)</option>
-                    </select>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-950 shrink-0">Área Principal:</span>
+                      <select
+                        value={u.specialtyGroup || 'todos'}
+                        onChange={(e) => handleUpdateUserSpecialty(u.id, e.target.value as OperationalSpecialty)}
+                        className="text-xs font-bold rounded-xl px-3 py-1.5 border border-slate-300 bg-white text-slate-800 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="todos">🌐 Todas las Áreas</option>
+                        <option value="despacho">🚛 Despacho</option>
+                        <option value="picking">📦 Picking</option>
+                        <option value="gruas">🏗️ Grúas</option>
+                        <option value="encajado">🧊 Encajado</option>
+                        <option value="transpaletas">🛞 Transpaletas</option>
+                        <option value="repaletizado">🔄 Repaletizado</option>
+                        <option value="patio">🚧 Patio Inbound</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-950 shrink-0">Dotación a ver:</span>
+                      <select
+                        value={u.assignedSupervisorName || 'todos'}
+                        onChange={(e) => handleUpdateUserDotacion(u.id, e.target.value)}
+                        className="text-xs font-bold rounded-xl px-3 py-1.5 border border-slate-300 bg-white text-slate-800 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="todos">Toda la Dotación (Sin filtro)</option>
+                        <option value={u.name}>Mi dotación propia ({u.name})</option>
+                        <option value="Walter Sánchez">Walter Sánchez (Despacho)</option>
+                        <option value="Nelson Brito">Nelson Brito (Despacho)</option>
+                        <option value="Mayckell Pereira">Mayckell Pereira (Encajado/Picking)</option>
+                        <option value="Claudio Sepúlveda">Claudio Sepúlveda (Picking Frío)</option>
+                        <option value="Cristian Hernandez">Cristian Hernández (Picking/Almacén)</option>
+                        <option value="Bryan Mariño">Bryan Mariño (Turno 3)</option>
+                        <option value="Carlos Venegas">Carlos Venegas (Jefatura Logística)</option>
+                        <option value="Francisco Lara">Francisco Lara (Jefe Turno)</option>
+                        <option value="Euro Velásquez">Euro Velásquez (Jefe Turno)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 

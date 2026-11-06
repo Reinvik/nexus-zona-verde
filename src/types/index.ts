@@ -302,6 +302,16 @@ export interface UserPermissions {
   canExportSsoReports?: boolean;
 }
 
+export type OperationalSpecialty =
+  | 'todos'
+  | 'despacho'
+  | 'picking'
+  | 'gruas'
+  | 'encajado'
+  | 'transpaletas'
+  | 'repaletizado'
+  | 'patio';
+
 export interface AppUser {
   id: string;
   email: string;
@@ -310,6 +320,8 @@ export interface AppUser {
   area?: string;
   shiftId?: ShiftId;
   assignedSupervisorName?: string; // Preasignación de dotación para filtrar automáticamente la gente
+  specialtyGroup?: OperationalSpecialty; // Especialidad principal (ej: 'despacho', 'picking', 'gruas')
+  customOperatorIds?: string[]; // Lista personalizada de operadores del grupo oficial del supervisor
   permissions: UserPermissions;
   isSuperAdmin?: boolean; // ariel.mella@cial.cl
   createdAt: string;

@@ -150,6 +150,20 @@ export const INITIAL_USERS: AppUser[] = [
     area: 'Supervisor Despacho & Andenes',
     shiftId: 'turno-1',
     assignedSupervisorName: 'Walter Sánchez',
+    specialtyGroup: 'despacho',
+    permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+    createdAt: '2026-10-01T08:00:00Z',
+    updatedAt: '2026-10-26T15:00:00Z'
+  },
+  {
+    id: 'user-nelson-brito',
+    email: 'nelson.brito@cial.cl',
+    name: 'Nelson Brito',
+    role: 'supervisor',
+    area: 'Supervisor Despacho & Andenes',
+    shiftId: 'turno-1',
+    assignedSupervisorName: 'Nelson Brito',
+    specialtyGroup: 'despacho',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -162,6 +176,7 @@ export const INITIAL_USERS: AppUser[] = [
     area: 'Supervisor Encajado & Picking',
     shiftId: 'turno-1',
     assignedSupervisorName: 'Mayckell Pereira',
+    specialtyGroup: 'encajado',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -173,7 +188,8 @@ export const INITIAL_USERS: AppUser[] = [
     role: 'supervisor',
     area: 'Supervisor Picking Frío',
     shiftId: 'turno-2',
-    assignedSupervisorName: 'Claudio Sepúlveda',
+    assignedSupervisorName: 'Claudio Sepulveda',
+    specialtyGroup: 'picking',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -183,9 +199,10 @@ export const INITIAL_USERS: AppUser[] = [
     email: 'cristian.hernandez@cial.cl',
     name: 'Cristian Hernández',
     role: 'supervisor',
-    area: 'Supervisor Recepción & Almacenamiento',
+    area: 'Supervisor Picking & Almacenamiento',
     shiftId: 'turno-1',
     assignedSupervisorName: 'Cristian Hernandez',
+    specialtyGroup: 'picking',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -198,6 +215,7 @@ export const INITIAL_USERS: AppUser[] = [
     area: 'Supervisor de Turno / Operaciones',
     shiftId: 'turno-3',
     assignedSupervisorName: 'Bryan Mariño',
+    specialtyGroup: 'despacho',
     permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
     createdAt: '2026-10-01T08:00:00Z',
     updatedAt: '2026-10-26T15:00:00Z'
@@ -738,6 +756,14 @@ export function saveOperator(operator: OperatorItem): void {
   }
 }
 
+export function saveOperatorsBulk(operatorsList: OperatorItem[]): void {
+  try {
+    localStorage.setItem(KEYS.OPERATORS, JSON.stringify(operatorsList));
+  } catch (e) {
+    console.error('Error saving operators bulk:', e);
+  }
+}
+
 export function deleteOperator(operatorId: string): void {
   try {
     const current = getOperators();
@@ -1130,16 +1156,35 @@ export function getAppUsers(): AppUser[] {
   ensurePrevencionUser('mariana.vega@cial.cl', 'Mariana Vega', 'Prevención de Riesgos SSO');
   ensurePrevencionUser('ext.fernando.albornoz@cial.cl', 'Fernando Albornoz', 'Prevención de Riesgos SSO (Externo)');
 
-  // Normalizar preasignación de turnos y dotación si no están definidos
+  // Asegurar que Nelson Brito (Supervisor Despacho) exista en la lista de usuarios
+  if (!users.some(u => u.name.toLowerCase().includes('nelson brito'))) {
+    users.push({
+      id: 'user-nelson-brito',
+      email: 'nelson.brito@cial.cl',
+      name: 'Nelson Brito',
+      role: 'supervisor',
+      area: 'Supervisor Despacho & Andenes',
+      shiftId: 'turno-1',
+      assignedSupervisorName: 'Nelson Brito',
+      specialtyGroup: 'despacho',
+      permissions: { ...DEFAULT_ROLE_PERMISSIONS.supervisor },
+      createdAt: '2026-10-01T08:00:00Z',
+      updatedAt: '2026-10-26T15:00:00Z'
+    });
+    safeSet(KEYS.USERS, users);
+  }
+
+  // Normalizar preasignación de turnos, dotación y especialidad (Despacho / Picking / etc.)
   let hasUserUpdates = false;
   users = users.map(u => {
     let updated = { ...u };
     let changed = false;
+    const lowerName = updated.name.toLowerCase();
 
     if (!updated.shiftId) {
-      if (updated.name.toLowerCase().includes('euro') || updated.name.toLowerCase().includes('claudio')) {
+      if (lowerName.includes('euro') || lowerName.includes('claudio')) {
         updated.shiftId = 'turno-2';
-      } else if (updated.name.toLowerCase().includes('bryan')) {
+      } else if (lowerName.includes('bryan')) {
         updated.shiftId = 'turno-3';
       } else {
         updated.shiftId = 'turno-1';
@@ -1155,6 +1200,19 @@ export function getAppUsers(): AppUser[] {
         updated.assignedSupervisorName = 'todos';
         changed = true;
       }
+    }
+
+    if (!updated.specialtyGroup) {
+      if (lowerName.includes('walter') || lowerName.includes('nelson') || lowerName.includes('bryan')) {
+        updated.specialtyGroup = 'despacho';
+      } else if (lowerName.includes('claudio') || lowerName.includes('cristian')) {
+        updated.specialtyGroup = 'picking';
+      } else if (lowerName.includes('mayckell')) {
+        updated.specialtyGroup = 'encajado';
+      } else {
+        updated.specialtyGroup = 'todos';
+      }
+      changed = true;
     }
 
     if (changed) hasUserUpdates = true;
